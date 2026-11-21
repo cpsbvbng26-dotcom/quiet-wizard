@@ -52,7 +52,7 @@ const LEGAL = {
   'src/requests.md': ['運営者のほかの人が開いた issue の題と本文は、書いた人がその issue の中で同意したときだけ、言語モデルに渡します。', 'コメントは、言語モデルに渡しません。', '判断の前に、その記載をいまの版から外します。'],
   'src/legality.md': ['運営者の側の理解を書いたもので、読む人への法的な助言ではありません。', '弁護士の確認は受けていません。', '法令の文を記憶から書いてはいません。'],
   'src/about.md': ['このサイトは、運営者を含め、誰の性経験についても何も述べません。'],
-  'src/strict.md': ['この版は、運営者の求めで Claude が書いたものです。原典ではありません。', '「厳密」なのは言葉の運びのことで、中身が科学として正しいという意味ではありません。', '**定理四　この法則は、成果を観て反証するを得ず。**', '**定理五　魔法使ひは、他の人に優るにあらず。**', '**要請二　値**　人の値は、魔法使ひたると否と、童貞たると否とに由らず。'],
+  'src/strict.md': ['この版は、運営者の求めで Claude が書いたものです。原典ではありません。', '「厳密」なのは言葉の運びのことで、中身が科学として正しいという意味ではありません。', '**定理四　この法則は、外より成果を観て反証するを得ず。**', '**定理九　十の法則は、互いに独立なり。いづれの一つも、他の九つと定義六とより導かれず。**', '注。第十法則の注は、L を外より見えざる遊びの語と定め、後半の帰結を断つ。', '**定理五　魔法使ひは、他の人に優るにあらず。**', '**要請二　値**　人の値は、魔法使ひたると否と、童貞たると否とに由らず。'],
 };
 /* 利用者が正文とした論文。DataCite で確かめた版の DOI。 */
 const PAPER_LINK = '<a href="https://doi.org/10.5281/zenodo.23114131" rel="noopener">10.5281/zenodo.23114131</a>';
@@ -124,9 +124,22 @@ function verdict(x) {
   if (!x['src/about.md'].includes('その DOI は、ここには書いていません。確かめていないためです。')) bad.push('英語の版の DOI を確かめていないという断り');
   /* 原理の数：定義十、要請二、法則十、定理七。原文の行は、原典の文と一字一句同じ。 */
   const st = x['src/strict.md'];
-  if ((st.match(/^\*\*定義[一二三四五六七八九十]+　/mg) || []).length !== 10 || (st.match(/^\*\*要請[一二]　/mg) || []).length !== 2 || (st.match(/^\*\*第[一二三四五六七八九十]+法則　/mg) || []).length !== 10 || (st.match(/^\*\*定理[一二三四五六七]　/mg) || []).length !== 7) bad.push('原理の定義・要請・法則・定理の数');
+  if ((st.match(/^\*\*定義[一二三四五六七八九十]+　/mg) || []).length !== 10 || (st.match(/^\*\*要請[一二]　/mg) || []).length !== 2 || (st.match(/^\*\*第[一二三四五六七八九十]+法則　/mg) || []).length !== 10 || (st.match(/^\*\*定理[一二三四五六七八九十]+　/mg) || []).length !== 13) bad.push('原理の定義・要請・法則・定理の数');
   for (const [n, , d] of DEFS.concat(LAWS)) { const at = st.indexOf('**' + n + '　'); const line = at < 0 ? '' : st.slice(at).split('\n')[1]; if (line !== '原文：' + d) bad.push('原理の ' + n + ' の原文が、原典の文と同じでない'); }
-  if ((st.match(/Q\.E\.D\.$/mg) || []).length !== 7) bad.push('原理の定理の証明が七つでない');
+  if ((st.match(/Q\.E\.D\.$/mg) || []).length !== 13) bad.push('原理の定理の証明が十三でない');
+  /* 第二巻の主張は、verification/models.js が機械で確かめる。頁に書いた数は、計算した数と同じであること。 */
+  const MD = require('./models.js'), mr = MD.run(), mbad = MD.verdict(mr);
+  for (const b of mbad) bad.push('第二巻の模型：' + b);
+  const fmt = (n) => BigInt(n).toLocaleString('en-US');
+  const solidsLine = mr.solids.map((o) => o.name + ' ' + fmt(o.orbits)).join('、');
+  if (!st.includes(solidsLine + ' 通りなり')) bad.push('原理の定理十三の数が計算と違う：' + solidsLine);
+  if (!st.includes('回転の群の位数は、順に ' + mr.solids.map((o) => o.order).join('、') + '。')) bad.push('原理の回転の群の位数');
+  for (const o of mr.solids) {
+    const total = o.orbits * BigInt(o.order);
+    if (!st.includes(o.name + '：') || !st.includes(fmt(total) + '/' + o.order + ' = ' + fmt(o.orbits) + '。')) bad.push('原理の定理十三の式（' + o.name + '）');
+  }
+  if (mr.solids.map((o) => o.centrallySymmetric).join() !== 'false,true,true,true,true') bad.push('原理の定理十二：中心対称でないのが正四面体だけでない');
+  if ((st.match(/^\| M[₀-₉]+ \|/mg) || []).length !== 10) bad.push('原理の定理九の表が十行でない');
   if (require('crypto').createHash('sha256').update(st.split('\n').filter((l) => /^\*\*(定義|要請|第[一二三四五六七八九十]+法則)/.test(l)).join('\n')).digest('hex') !== STRICT_SHA) bad.push('原理の本文が、確かめた文と違う');
   if (!st.includes('2²⁰ すなはち ' + (2 ** 20).toLocaleString('en-US') + ' 通り')) bad.push('原理の定理七の数');
   /* 条文：引いた条はすべて写しにあり、写しは手で変えておらず、頁に原文のまま出る。 */
@@ -215,6 +228,10 @@ const breaks = [
   ['原理の定理を一つ外す', mut('src/strict.md', '**定理六　', '定理六　')],
   ['原理の原文を一字変える', mut('src/strict.md', '原文：負は消えない。蓄積する。', '原文：負は消えない。')],
   ['原理の第十法則を逆さにする', mut('src/strict.md', '長く生くるは難し。', '長く生くるは易し。')],
+  ['原理の定理十三の数を違える', mut('src/strict.md', '正二十面体 17,824 通り', '正二十面体 17,842 通り')],
+  ['原理の定理十三の式を違える', mut('src/strict.md', '552/24 = 23。', '552/24 = 22。')],
+  ['原理の独立の表から一行外す', mut('src/strict.md', /\| M₈ \|[^\n]+\n/, '')],
+  ['原理から第十法則の注の役を外す', mut('src/strict.md', '注。第十法則の注は、L を外より見えざる遊びの語と定め、後半の帰結を断つ。', '')],
   ['原理の定理七の数を違える', mut('src/strict.md', '1,048,576 通り', '1,048,567 通り')],
   ['原理から値の要請を外す', mut('src/strict.md', '**要請二　値**　人の値は、魔法使ひたると否と、童貞たると否とに由らず。', '**要請二　値**　魔法使ひは尊し。')],
   ['厳密版を原典と称する', mut('src/strict.md', 'この版は、運営者の求めで Claude が書いたものです。原典ではありません。', 'この版が原典です。')],
