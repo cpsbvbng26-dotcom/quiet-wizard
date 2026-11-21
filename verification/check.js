@@ -73,7 +73,7 @@ const AWAY = ['cpsbvbng26-dotcom.github.io', 'sophaxis', 'nusquama', 'zenodo.org
 
 function files() {
   const x = {};
-  for (const f of ['README.md', 'CLAUDE.md', 'build.js', 'assets/play.js', 'assets/style.css', 'assets/OFL-InterTight.txt', 'verification/statutes-texts.json', ...B.PAGES.map(([s]) => 'src/' + s + '.md')]) x[f] = R(f);
+  for (const f of ['README.md', 'CLAUDE.md', 'PRINCIPIA.md', 'build.js', 'assets/play.js', 'assets/style.css', 'assets/OFL-InterTight.txt', 'verification/statutes-texts.json', ...B.PAGES.map(([s]) => 'src/' + s + '.md')]) x[f] = R(f);
   for (const f of fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(path.join(ROOT, 'site')) : []) if (/\.html$/.test(f)) x['site/' + f] = R('site/' + f);
   /* 配る素材（書体・図・台本・意匠）は、assets と site/assets で同じであること。書体は中身の指紋で固める。 */
   const sha = (p) => { try { return require('crypto').createHash('sha256').update(fs.readFileSync(path.join(ROOT, p))).digest('hex'); } catch (e) { return ''; } };
@@ -92,6 +92,11 @@ function verdict(x) {
   for (const [f, says] of Object.entries(LEGAL)) for (const w of says) if (!x[f].includes(w)) bad.push(f + '：' + w.slice(0, 24));
   for (const f of ['src/index.md', 'src/about.md']) for (const w of CAUTION) if (!x[f].includes(w)) bad.push(f + '：' + w.slice(0, 20));
   if (B.FRAME !== FRAME) bad.push('上の帯の文が、決めた文と違う');
+  /* GitHub で読む原理の全文は、src/strict.md から作ったものと同じで、断りと開示を持つ。 */
+  const pr = B.principia();
+  if (x['PRINCIPIA.md'] !== pr.md) bad.push('PRINCIPIA.md が src から作ったものと違う（node build.js）');
+  for (const w of [FRAME, B.FOOT, 'Claude は著者ではありません。', '文は CC BY 4.0、コードは MIT です。', 'この版は、運営者の求めで Claude が書いたものです。原典ではありません。']) if (!x['PRINCIPIA.md'].includes(w)) bad.push('PRINCIPIA.md：' + w.slice(0, 16));
+  for (const f of pr.figs) if (R('docs/figs/' + f + '.svg') !== B.githubFig(f)) bad.push('docs/figs/' + f + '.svg が src から作ったものと違う');
   /* 配る書体は OFL の英字書体だけで、許諾の文を添え、断りと開示に書く。書体は自分のところからだけ読む。 */
   const fonts = x['#assets'].split('\n').filter((l) => /\.(woff2?|ttf|otf) /.test(l));
   if (fonts.join(' ') !== 'intertight.woff2 ' + FONT_SHA) bad.push('配る書体が決めたものと違う：' + fonts.join(' / '));
@@ -281,6 +286,8 @@ const breaks = [
   ['書体をもう一つ足す', Object.assign({}, real, { '#assets': real['#assets'] + '\nextra.woff2 ' + '0'.repeat(64) })],
   ['site/assets を作り直さない', Object.assign({}, real, { '#site-assets': real['#site-assets'].replace(/style\.css [0-9a-f]+/, 'style.css ' + '0'.repeat(64)) })],
   ['背景の印を外から読む', mut('assets/style.css', 'mask: url(mark.svg)', 'mask: url(https://x.example/m.svg)')],
+  ['PRINCIPIA.md を手で直す', mut('PRINCIPIA.md', '負は滅せず、積もる。', '負は滅す。')],
+  ['PRINCIPIA.md から開示を外す', Object.assign({}, real, { 'PRINCIPIA.md': real['PRINCIPIA.md'].replace('Claude は著者ではありません。', '') })],
   ['README から別の枠だという断りを外す', mut('README.md', FRAME, '')],
   ['事件の属性を書く', mut('site/play.html', '<button type="button" id="scene">', '<button type="button" id="scene" onclick="x()">')],
 ];
