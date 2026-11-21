@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://quiet-wizard.vercel.app/sitemap.xml

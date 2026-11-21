@@ -1,0 +1,6 @@
+<svg viewBox="0 0 480 200"><g class="s f-ln"><rect x="56" y="40" width="54" height="120"/><rect x="213" y="40" width="54" height="120"/><rect x="370" y="40" width="54" height="120"/></g>
+<rect class="f-inkfill" x="56" y="136" width="54" height="24"/><rect class="f-inkfill" x="213" y="100" width="54" height="60"/><rect class="f-inkfill" x="370" y="58" width="54" height="102"/>
+<path class="s f-gd" d="M358 58h78" stroke-dasharray="4 4"/>
+<path class="s f-mt" d="M126 100h70m-10-8l10 8l-10 8M283 100h70m-10-8l10 8l-10 8"/>
+<g class="f-tx" font-size="13" text-anchor="middle"><text x="83" y="184">少し溜まる</text><text x="240" y="184">減らずに増える</text><text x="397" y="184">閾に届く</text><text x="397" y="30">閾（人によって違う）</text></g>
+</svg>

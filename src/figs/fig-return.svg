@@ -1,0 +1,8 @@
+<svg viewBox="0 0 480 220"><rect class="s f-mt" x="16" y="24" width="300" height="176" stroke-dasharray="4 6"/>
+<g class="s f-mt"><path d="M80 112L196 64M80 112L252 124M80 112L188 172M196 64L252 124M188 172L252 124"/></g>
+<g class="s f-ln"><circle cx="196" cy="64" r="9"/><circle cx="252" cy="124" r="9"/><circle cx="188" cy="172" r="9"/><circle cx="412" cy="112" r="9"/></g>
+<circle class="s f-gd" cx="80" cy="112" r="11" stroke-width="2"/>
+<g class="f-goldf"><circle cx="128" cy="92" r="4"/><circle cx="164" cy="118" r="3.2" opacity=".7"/><circle cx="140" cy="146" r="2.4" opacity=".45"/></g>
+<path class="s f-mt" d="M332 112h64" stroke-dasharray="3 5"/>
+<g class="f-tx" font-size="13" text-anchor="middle"><text x="166" y="16">人の関係（中）</text><text x="80" y="144">魔法使い</text><text x="412" y="144">外の者</text><text x="412" y="166">「何も見えない」</text></g>
+</svg>

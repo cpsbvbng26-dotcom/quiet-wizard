@@ -1,0 +1,6 @@
+<svg viewBox="0 0 480 200"><g class="s f-ln"><rect x="80" y="44" width="96" height="96"/><rect x="304" y="44" width="96" height="96"/></g>
+<rect class="f-inkfill" x="80" y="44" width="96" height="18"/><rect class="f-inkfill" x="304" y="44" width="96" height="18"/>
+<rect class="s f-gd" x="304" y="122" width="96" height="18" stroke-width="2.4"/>
+<path class="s f-mt" d="M206 92h70m-10-8l10 8l-10 8"/>
+<g class="f-tx" font-size="13" text-anchor="middle"><text x="128" y="170">上の面が負</text><text x="352" y="170">向かいの面が、正として光る</text><text x="240" y="24">負は消えない。その逆が光る</text></g>
+</svg>

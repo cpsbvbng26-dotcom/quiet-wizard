@@ -1,0 +1,145 @@
+/* 地味な魔法使い：意匠。
+ * 引き算で作る。罫も枠も塗りも少なく、余白と細い線で見せる。昼（外の目）と夜（魔法使いの目）の二つの世界、正多面体、三十の目盛り。
+ * 書体は読み込まず、端末の明朝と角ゴシックを使う。 */
+:root {
+  --bg: #f7f5f0; --ink: #1d1f23; --muted: #62676f; --hair: #dcd7cd; --accent: #23395b; --gold: #7a5c0c; --tint: #efece5;
+  --serif: "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", "Noto Serif CJK JP", serif;
+  --sans: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", sans-serif;
+  --measure: 40rem;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111317; --ink: #ece8df; --muted: #9ca3ad; --hair: #2a2e35; --accent: #a9bfdc; --gold: #d8b157; --tint: #171a1f; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 1rem; line-height: 2; letter-spacing: .03em; }
+::selection { background: color-mix(in srgb, var(--gold) 30%, transparent); }
+
+/* 頁の枠 */
+header, main, footer { max-width: calc(var(--measure) + 8rem); margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+main { padding-block: 3.2rem 4rem; }
+main > * { max-width: var(--measure); margin-left: auto; margin-right: auto; }
+main > .hero, main > .play, main > .fig { max-width: calc(var(--measure) + 8rem); }
+
+/* 上の欄 */
+header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem 2rem; padding-block: 1.4rem; }
+header a.site { display: inline-flex; align-items: center; gap: .7rem; color: var(--ink); text-decoration: none; }
+header .name { font-family: var(--serif); font-size: 1.05rem; letter-spacing: .32em; }
+header .sub { display: none; }
+.mark { width: 22px; height: 22px; fill: none; stroke: var(--gold); stroke-width: 3; stroke-linejoin: round; }
+nav { display: flex; flex-wrap: wrap; gap: .2rem 1.4rem; font-size: .84rem; letter-spacing: .12em; }
+nav a, nav span { color: var(--muted); text-decoration: none; padding-block: .2rem; border-bottom: 1px solid transparent; transition: color .2s, border-color .2s; }
+nav a:hover { color: var(--ink); border-bottom-color: var(--hair); }
+nav span[aria-current] { color: var(--ink); border-bottom-color: var(--gold); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: .25em; }
+a:hover { text-decoration-color: var(--gold); }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.eye-toggle:focus-visible + .eye-switch { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+/* 文字 */
+.eyebrow { display: flex; align-items: center; gap: .9rem; margin-top: 0; margin-bottom: .6rem; font-size: .72rem; letter-spacing: .34em; color: var(--gold); }
+.eyebrow::before { content: ""; width: 2.2rem; height: 1px; background: var(--gold); flex: none; }
+h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(1.75rem, 5.2vw, 2.6rem); line-height: 1.4; letter-spacing: .1em; margin-top: 0; margin-bottom: 2.4rem; text-wrap: balance; }
+main { counter-reset: chapter; }
+h2 { counter-increment: chapter; font-family: var(--serif); font-weight: 600; font-size: 1.22rem; letter-spacing: .14em; margin-top: 3.6rem; margin-bottom: 1.2rem; display: flex; align-items: baseline; gap: .9rem; }
+h2::before { content: counter(chapter, cjk-ideographic); font-size: .78rem; color: var(--gold); letter-spacing: 0; min-width: 1.4em; }
+h3 { font-family: var(--serif); font-weight: 600; font-size: 1.02rem; letter-spacing: .08em; margin-top: 2.4rem; margin-bottom: .6rem; }
+p { margin-top: .9rem; margin-bottom: .9rem; }
+strong { font-weight: 600; }
+ul, ol { padding-left: 1.3rem; }
+li { margin: .35rem 0; }
+li::marker { color: var(--gold); }
+code { font-size: .9em; padding: .05rem .3rem; background: var(--tint); }
+
+/* 但し書き：静かに、しかし見落とさない場所に */
+blockquote { margin-top: 0; margin-bottom: 2.4rem; padding: 1rem 0 1rem 1.2rem; border-left: 1px solid var(--gold); font-size: .9rem; line-height: 1.9; color: var(--muted); }
+blockquote p { margin: .15rem 0; }
+blockquote p:first-child { color: var(--ink); font-family: var(--serif); letter-spacing: .1em; }
+
+/* 表：枠を描かず、細い罫だけ */
+.table { overflow-x: auto; margin-top: 1.2rem; margin-bottom: 1.2rem; }
+table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+th { font-weight: 400; font-size: .72rem; letter-spacing: .26em; color: var(--muted); text-align: left; padding: .5rem .8rem .5rem 0; border-bottom: 1px solid var(--ink); }
+td { padding: .8rem .8rem .8rem 0; border-bottom: 1px solid var(--hair); vertical-align: top; }
+td:first-child { white-space: nowrap; font-family: var(--serif); color: var(--gold); padding-right: 1.2rem; }
+.p-canon td:nth-child(2) { font-family: var(--serif); white-space: nowrap; padding-right: 1.2rem; }
+
+/* 図 */
+.fig { margin-top: 1.6rem; margin-bottom: 2rem; }
+.fig svg { display: block; width: 100%; height: auto; max-width: 560px; margin: 0 auto; }
+.fig figcaption { text-align: center; font-size: .78rem; letter-spacing: .12em; color: var(--muted); margin-top: .6rem; }
+.s { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.4; }
+.f-ln { stroke: var(--ink); } .f-mt { stroke: var(--muted); } .f-gd { stroke: var(--gold); }
+.f-inkfill { fill: var(--ink); } .f-goldf { fill: var(--gold); } .f-tx { fill: var(--muted); font-family: var(--sans); }
+/* 昼と夜は、頁の配色によらず同じ色 */
+.d-bg { fill: #eeece6; } .d-ln { stroke: #2a2e35; } .d-mt { stroke: #b4b9c0; } .d-tx { fill: #4f555d; font-family: var(--sans); }
+.n-bg { fill: #12161c; } .n-mask { fill: #12161c; } .n-gd { stroke: #d8b157; } .n-mt { stroke: #5d6672; } .n-nd { stroke: #9ca3ad; } .n-pt { fill: #d8b157; } .n-st { fill: #ece8df; opacity: .45; } .n-jar { fill: #3a414b; } .n-tx { fill: #c9ced4; font-family: var(--sans); }
+
+/* はじめにの場面 */
+.hero { position: relative; margin-top: 2.4rem; margin-bottom: 3rem; }
+.eye-toggle { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.eye-switch { display: inline-flex; align-items: center; gap: .7rem; cursor: pointer; font-size: .84rem; letter-spacing: .12em; color: var(--muted); user-select: none; }
+.eye-switch .knob { width: 2.2rem; height: 1.15rem; border-radius: 999px; border: 1px solid var(--muted); position: relative; transition: border-color .3s; }
+.eye-switch .knob::after { content: ""; position: absolute; top: .16rem; left: .18rem; width: .7rem; height: .7rem; border-radius: 50%; background: var(--muted); transition: transform .35s cubic-bezier(.2,.7,.2,1), background .3s; }
+.eye-switch .to-out, .cap .cap-in { display: none; }
+.eye-toggle:checked + .eye-switch { color: var(--ink); }
+.eye-toggle:checked + .eye-switch .knob { border-color: var(--gold); }
+.eye-toggle:checked + .eye-switch .knob::after { transform: translateX(1.02rem); background: var(--gold); }
+.eye-toggle:checked + .eye-switch .to-in { display: none; }
+.eye-toggle:checked + .eye-switch .to-out { display: inline; }
+.scene { position: relative; margin-top: 1rem; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 2px; }
+.scene .layer { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity .9s ease, filter .9s ease; }
+.scene .inner { opacity: 0; filter: blur(4px); }
+.eye-toggle:checked ~ .scene .inner { opacity: 1; filter: none; }
+.drift { animation: drift 6s ease-in-out infinite; transform-box: fill-box; }
+.d2 { animation-delay: -2s; } .d3 { animation-delay: -4s; }
+@keyframes drift { 0% { opacity: 0; transform: translate(-8px, 6px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(26px, -10px); } }
+.cap { text-align: center; font-size: .82rem; letter-spacing: .12em; color: var(--muted); margin-top: .8rem; }
+.eye-toggle:checked ~ .cap .cap-out { display: none; }
+.eye-toggle:checked ~ .cap .cap-in { display: inline; }
+
+/* 遊び場 */
+.play { margin-top: 2rem; margin-bottom: 2.4rem; }
+.play .row { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 1.2rem; }
+.play button { font: inherit; font-size: .84rem; letter-spacing: .1em; padding: .5rem 1.1rem; border: 1px solid var(--hair); background: transparent; color: var(--ink); border-radius: 999px; cursor: pointer; transition: border-color .2s, color .2s; }
+.play button:hover { border-color: var(--gold); color: var(--gold); }
+.views { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1px; background: var(--hair); border: 1px solid var(--hair); }
+.eye { padding: 1.1rem 1.2rem 1.2rem; min-width: 0; }
+.eye h3 { margin: 0 0 .8rem; font-size: .74rem; font-weight: 400; letter-spacing: .32em; }
+.eye.inner { background: #12161c; }
+.eye.inner, .eye.inner h3, .eye.inner p, .eye.inner li { color: #c9ced4; }
+.eye.inner b { color: #d8b157; font-weight: 600; }
+.eye.outer { background: #eeece6; }
+.eye.outer, .eye.outer h3, .eye.outer p, .eye.outer b { color: #2a2e35; }
+.eye.outer .small { color: #4f555d; }
+.eye p { margin: .4rem 0; font-size: .86rem; }
+.net-svg { width: 100%; height: auto; display: block; }
+.legend { list-style: none; padding: 0; margin: .6rem 0 .8rem; display: grid; gap: .1rem; font-size: .76rem; letter-spacing: .06em; }
+.legend li { margin: 0; }
+.legend li::marker { content: ""; }
+.legend .k { display: inline-block; width: 16px; margin-right: .55rem; vertical-align: middle; }
+.k-me { width: 9px !important; height: 9px; border-radius: 50%; border: 1.5px solid #d8b157; }
+.k-neg { border-top: 1.5px dashed #9ca3ad; }
+.k-pos { border-top: 1.5px solid #f2e6c9; }
+.k-gold { border-top: 3px solid #d8b157; }
+.meter { position: relative; height: 3px; background: #2a3039; margin: .4rem 0 .6rem; }
+.meter .fill { height: 100%; width: 0; background: #9ca3ad; transition: width .3s ease; }
+.meter.on .fill { background: #d8b157; }
+.small { font-size: .78rem; line-height: 1.8; }
+.note { font-size: .86rem; color: var(--muted); min-height: 1.8em; margin-top: 1rem; padding-left: .9rem; border-left: 1px solid var(--gold); }
+.note:empty { border-left-color: transparent; }
+
+/* 下の欄：三十の目盛り */
+footer { padding-block: 2.4rem 3rem; color: var(--muted); font-size: .78rem; line-height: 1.9; letter-spacing: .04em; }
+.ruler { position: relative; height: 30px; margin-bottom: 1.6rem; border-top: 1px solid var(--hair);
+  background-image: repeating-linear-gradient(90deg, var(--hair) 0 1px, transparent 1px calc(100% / 30)); background-size: 100% 6px; background-repeat: no-repeat;
+  display: flex; justify-content: space-between; font-size: .66rem; letter-spacing: .2em; padding-top: 10px; }
+.ruler::after { content: ""; position: absolute; right: 0; top: -1px; width: 1px; height: 12px; background: var(--gold); }
+.ruler span:last-child { color: var(--gold); }
+footer p { margin: .5rem 0; max-width: var(--measure); }
+footer nav { margin-top: 1rem; font-size: .76rem; }
+
+@media (prefers-reduced-motion: reduce) { .drift { animation: none; } .scene .layer, .eye-switch .knob::after, .meter .fill { transition: none; } }
+@media (max-width: 34rem) { main { padding-block: 2rem 3rem; } td:first-child, .p-canon td:nth-child(2) { white-space: normal; } h2 { margin-top: 2.8rem; } }
+p, li, h1, h2, h3, blockquote, figcaption, .cap, td { word-break: auto-phrase; line-break: strict; }
