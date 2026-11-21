@@ -13,7 +13,7 @@
  *     三人から六人まで総当たり）、輪の網で一本の線から源が二人に残ること（定理十八）を確かめる。
  * 六、第四巻：転化と魔法を式のとおりに評価し、定理十九から二十二を模型で確かめる。
  * 七、第五巻：観測の記録（Obs と V）をいくつも取り、どれも法則の模型で実現できること（定理二十四）、Obs・V・L を
- *     見えるとすれば実現できない記録があること（定理二十五）、T⁺（魔法使いがいる）も T⁻（いない）も同じ記録を
+ *     見えるとすれば、魔法使いにしてもしなくても法則の破れる記録があること（定理二十五の二つの候補）、T⁺（魔法使いがいる）も T⁻（いない）も同じ記録を
  *     すべて実現すること、Obs・V・L の記録なら T⁺ と T⁻ が分かれること（定理二十六）を確かめる。
  * 依存は Node.js だけ。
  */
@@ -232,11 +232,13 @@ function run() {
   const asPlain = world([Object.assign(wizard('x', 20, { L: 30 }), { Act: [], Rel: new Set() }), wizard('z', 20)], 20);
   res.refutable = { wizardBreaks: Object.entries(evaluate(asWizard)).filter(([, v]) => !v).map(([k]) => k).join(), plainBreaks: Object.entries(evaluate(asPlain)).filter(([, v]) => !v).map(([k]) => k).join() };
   /* 定理二十六：T⁻ の作り方。人はみな M₀⁻ の形（切り替わりはあり、能動はない）、童貞の者は L = 25、そうでない者は L = 100。 */
-  const realizeMinus = (vs, obs, lam) => world(vs.map((v, k) => Object.assign(wizard('q' + k, 20, { L: v ? 25 : 100, V: () => v }), { Act: [], Rel: new Set() })), 20, { Lambda: lam, Obs: new Set(obs) });
+  const realizeMinus = (vs, obs, lam, lv = 25) => world(vs.map((v, k) => Object.assign(wizard('q' + k, 20, { L: v ? lv : 100, V: () => v }), { Act: [], Rel: new Set() })), 20, { Lambda: lam, Obs: new Set(obs) });
   const allW = (mm) => mm.P.some((p) => range(0, p.L).some((t) => W(mm, p, t)));
   res.rival = {
     plusAll: records.every(([vs, obs, lam]) => { const mm = realize(vs, obs, lam); return Object.values(evaluate(mm)).every(Boolean) && allW(mm); }),
-    minusAll: records.every(([vs, obs, lam]) => { const mm = realizeMinus(vs, obs, lam); return Object.values(evaluate(mm)).every(Boolean) && !allW(mm) && mm.P.map((p) => p.V(30)).join() === vs.join() && [...mm.Obs].join() === obs.join(); }),
+    minusAll: range(21, 29).every((lv) => records.every(([vs, obs, lam]) => { const mm = realizeMinus(vs, obs, lam, lv); return Object.values(evaluate(mm)).every(Boolean) && !allW(mm) && mm.P.map((p) => p.V(30)).join() === vs.join() && [...mm.Obs].join() === obs.join(); })),
+    /* 二十一より短いと、切り替わりが生きているうちに来ない。 */
+    minusShortFails: records.filter(([vs]) => vs.every(Boolean)).every(([vs, obs, lam]) => !Object.values(evaluate(realizeMinus(vs, obs, lam, 20))).every(Boolean)),
   };
   /* 注：𝒪 = {Obs, V, L} で V(x, 30) が真、L(x) = 50 の記録。T⁺（Λ = 40）は実現し、魔法使いでない x は L1 を破る。 */
   const sepPlus = world([wizard('x', 20, { L: 50 })], 20, { Lambda: 40 });
@@ -285,7 +287,7 @@ function verdict(res) {
   if (!(rb.before.L1 === false && Object.entries(rb.before).every(([k, v]) => k === 'L1' || v) && Object.values(rb.after).every(Boolean) && rb.sameObs)) bad.push('定理十一：取り替えのあとで法則が成り立たない');
   if (!res.immune) bad.push('定理二十四：法則の模型で実現できない記録がある');
   if (!(res.refutable.wizardBreaks === 'L10' && res.refutable.plainBreaks === 'L1')) bad.push('定理二十五：V(x, 30) と L(x) = 30 の記録が、片方の法則だけで止まらない：' + JSON.stringify(res.refutable));
-  if (!(res.rival.plusAll && res.rival.minusAll)) bad.push('定理二十六：T⁺ と T⁻ が、どちらも記録のすべてを実現しない');
+  if (!(res.rival.plusAll && res.rival.minusAll && res.rival.minusShortFails)) bad.push('定理二十六：T⁺ と T⁻ が、どちらも記録のすべてを実現しない');
   if (!(res.separate.plus && res.separate.minusBreaks === 'L1')) bad.push('定理二十六の注：Obs・V・L の記録で T⁺ と T⁻ が分かれない');
   const g = res.magic;
   if (!(g.M0count === 80 && g.M0negatives === 1 && g.M0allMagic)) bad.push('定理二十二：M₀ で一つの負から八十の魔法');
