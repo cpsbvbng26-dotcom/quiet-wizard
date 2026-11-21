@@ -8,6 +8,9 @@
  * 三、M₀ と M₀⁻ が、外から見えるものを等しくして、魔法使いかどうかだけが違うことを確かめる（定理十）。
  * 四、五つの正多面体について、面の中心の集まりが中心対称か（定理十二）と、回転で重なるものを同じとみた
  *     負正の割り当ての数（定理十三、バーンサイドの補題）を、座標から計算する。
+ * 五、第三巻：回転群が面の上に推移的に働くことと面の安定化群（定理十四）、頂点・辺・面の数とオイラーの公式
+ *     （定理十五）、双対で面と頂点の数が入れ替わること（定理十六）、完全な網での構造均衡定理（定理十七、
+ *     三人から六人まで総当たり）、輪の網で一本の線から源が二人に残ること（定理十八）を確かめる。
  * 依存は Node.js だけ。
  */
 'use strict';
@@ -124,11 +127,11 @@ const icosaV = uniq([[0, 1, PHI], [0, 1, -PHI], [0, -1, PHI], [0, -1, -PHI]].fla
 const dodecaV = uniq([...signs3([1, 1, 1]), ...[[0, PHI, 1 / PHI]].flatMap((v) => signs3(v)).flatMap(cyc)]);
 /* 面の中心の向き。正四面体の面の中心は −v（v は向かい合う頂点）、ほかは双対の頂点。 */
 const SOLIDS = [
-  { name: '正四面体', faces: [[-1, -1, -1], [-1, 1, 1], [1, -1, 1], [1, 1, -1]], gens: [rot([1, 1, 1], 2 * Math.PI / 3), rot([1, 0, 0], Math.PI)] },
-  { name: '正六面体', faces: [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]], gens: [rot([0, 0, 1], Math.PI / 2), rot([1, 1, 1], 2 * Math.PI / 3)] },
-  { name: '正八面体', faces: signs3([1, 1, 1]), gens: [rot([0, 0, 1], Math.PI / 2), rot([1, 1, 1], 2 * Math.PI / 3)] },
-  { name: '正十二面体', faces: icosaV, gens: [rot([0, 1, PHI], 2 * Math.PI / 5), rot([1, 1, 1], 2 * Math.PI / 3)] },
-  { name: '正二十面体', faces: dodecaV, gens: [rot([0, 1, PHI], 2 * Math.PI / 5), rot([1, 1, 1], 2 * Math.PI / 3)] },
+  { name: '正四面体', verts: [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]], faces: [[-1, -1, -1], [-1, 1, 1], [1, -1, 1], [1, 1, -1]], gens: [rot([1, 1, 1], 2 * Math.PI / 3), rot([1, 0, 0], Math.PI)] },
+  { name: '正六面体', verts: signs3([1, 1, 1]), faces: [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]], gens: [rot([0, 0, 1], Math.PI / 2), rot([1, 1, 1], 2 * Math.PI / 3)] },
+  { name: '正八面体', verts: [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]], faces: signs3([1, 1, 1]), gens: [rot([0, 0, 1], Math.PI / 2), rot([1, 1, 1], 2 * Math.PI / 3)] },
+  { name: '正十二面体', verts: dodecaV, faces: icosaV, gens: [rot([0, 1, PHI], 2 * Math.PI / 5), rot([1, 1, 1], 2 * Math.PI / 3)] },
+  { name: '正二十面体', verts: icosaV, faces: dodecaV, gens: [rot([0, 1, PHI], 2 * Math.PI / 5), rot([1, 1, 1], 2 * Math.PI / 3)] },
 ];
 function rot(axis, ang) {
   const n = Math.hypot(...axis), [x, y, z] = axis.map((a) => a / n), c = Math.cos(ang), s = Math.sin(ang), k = 1 - c;
@@ -148,7 +151,35 @@ function solidFacts(sol) {
   const cycles = (pm) => { const seen = new Set(); let c = 0; for (let i = 0; i < pm.length; i++) if (!seen.has(i)) { c++; for (let j = i; !seen.has(j); j = pm[j]) seen.add(j); } return c; };
   const sum = G.reduce((acc, g) => acc + 2n ** BigInt(cycles(perm(g))), 0n);
   if (sum % BigInt(G.length) !== 0n) throw new Error(sol.name + '：割り切れない');
-  return { name: sol.name, faces: F.length, order: G.length, all: 2n ** BigInt(F.length), orbits: sum / BigInt(G.length), centrallySymmetric: F.every((p) => F.some((q) => dist(q, p.map((v) => -v)) < 1e-9)) };
+  /* 面 0 の軌道（推移的か）と安定化群の位数。辺は、最も近い頂点の対の数。 */
+  const orbit = new Set(G.map((g) => perm(g)[0]));
+  const stab = G.filter((g) => perm(g)[0] === 0).length;
+  const Vt = sol.verts; let dmin = Infinity;
+  for (let i = 0; i < Vt.length; i++) for (let j = i + 1; j < Vt.length; j++) dmin = Math.min(dmin, dist(Vt[i], Vt[j]));
+  let E = 0; for (let i = 0; i < Vt.length; i++) for (let j = i + 1; j < Vt.length; j++) if (Math.abs(dist(Vt[i], Vt[j]) - dmin) < 1e-9) E++;
+  return { name: sol.name, faces: F.length, verts: Vt.length, edges: E, euler: Vt.length - E + F.length, transitive: orbit.size === F.length, stabilizer: stab, order: G.length, all: 2n ** BigInt(F.length), orbits: sum / BigInt(G.length), centrallySymmetric: F.every((p) => F.some((q) => dist(q, p.map((v) => -v)) < 1e-9)) };
+}
+
+/* 定理十七：完全な網 K_n の符号のすべてについて、「すべての三角の積が正」と「二つの組に分けられる」が同じか。
+ * 完全な網では、すべての閉路の均衡は、すべての三角の均衡と同じ（閉路は三角の積に分かれる）。 */
+function balanceTheorem(nMax) {
+  for (let n = 3; n <= nMax; n++) {
+    const pairs = []; for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) pairs.push([i, j]);
+    for (let mask = 0; mask < 2 ** pairs.length; mask++) {
+      const s = {}; pairs.forEach(([i, j], k) => { s[i + ',' + j] = (mask >> k) & 1 ? -1 : 1; });
+      const sg = (i, j) => (i < j ? s[i + ',' + j] : s[j + ',' + i]);
+      let tri = true; for (let a = 0; a < n && tri; a++) for (let b = a + 1; b < n && tri; b++) for (let c = b + 1; c < n; c++) if (sg(a, b) * sg(b, c) * sg(a, c) < 0) { tri = false; break; }
+      let split = false; for (let part = 0; part < 2 ** (n - 1) && !split; part++) { const side = (i) => (i === 0 ? 0 : (part >> (i - 1)) & 1); split = pairs.every(([i, j]) => (side(i) === side(j)) === (sg(i, j) > 0)); }
+      if (tri !== split) return { ok: false, n, mask };
+    }
+  }
+  return { ok: true, nMax };
+}
+/* 定理十八：輪 C_n（n ≥ 4）で、線 yz を太らせうる源（y か z に隣り、線の端ではない人）は、ちょうど二人。 */
+function ringSources(n) {
+  const out = [];
+  for (let y = 0; y < n; y++) { const z = (y + 1) % n; const cand = new Set(); for (const [a, b] of [[y, z], [z, y]]) for (const w of [(a + 1) % n, (a + n - 1) % n]) if (w !== a && w !== b) cand.add(w); out.push(cand.size); }
+  return out;
 }
 
 function run() {
@@ -159,6 +190,9 @@ function run() {
   res.switchM5 = range(0, 100).find((t) => Sw(M[5], M[5].P[0], t));
   res.sameObs = [...M[0].Obs].join() === [...M0minus.Obs].join();
   res.solids = SOLIDS.map(solidFacts);
+  res.balance = balanceTheorem(6);
+  res.ring = [4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => ringSources(n).every((c) => c === 2));
+  res.ring3 = ringSources(3);
   return res;
 }
 
@@ -174,6 +208,11 @@ function verdict(res) {
   if (!all(res.M0minus) || !all(res.M0prime)) bad.push('M₀⁻ か M₀′ が法則を満たさない');
   if (!(res.W.M0 && !res.W.M0minus && res.W.M0prime && res.sameObs)) bad.push('識別の不能の対が成り立たない');
   if (res.W.firstM0 !== 21 || res.switchM0 !== 21 || res.switchM5 !== 41) bad.push('M₀ の成る時・切り替わりの時、M₅ の切り替わりの時');
+  for (const s of res.solids) { if (!s.transitive) bad.push(s.name + '：回転群が面の上に推移的でない'); if (s.euler !== 2) bad.push(s.name + '：V − E + F = ' + s.euler); if (s.stabilizer * s.faces !== s.order) bad.push(s.name + '：軌道と安定化群'); }
+  const by = Object.fromEntries(res.solids.map((s) => [s.name, s]));
+  for (const [a, b] of [['正六面体', '正八面体'], ['正十二面体', '正二十面体'], ['正四面体', '正四面体']]) if (by[a].faces !== by[b].verts || by[a].verts !== by[b].faces || by[a].edges !== by[b].edges || by[a].order !== by[b].order) bad.push(a + 'と' + b + '：双対の数が合わない');
+  if (!res.balance.ok) bad.push('構造均衡定理が K_' + res.balance.n + ' で破れる');
+  if (!res.ring.every(Boolean)) bad.push('輪の源が二人でない網がある');
   return bad;
 }
 
@@ -183,7 +222,8 @@ if (require.main === module) {
   const res = run();
   for (let k = 0; k <= 10; k++) console.log('M' + k, Object.entries(res.models[k]).filter(([, v]) => !v).map(([n]) => n).join(' ') || 'すべて満たす');
   console.log('M0- 魔法使い', res.W.M0minus, ' M0 魔法使い', res.W.M0, ' M0′ 魔法使い', res.W.M0prime);
-  for (const s of res.solids) console.log(s.name, '面', s.faces, '回転群', s.order, '割り当て', String(s.all), '本質', String(s.orbits), '中心対称', s.centrallySymmetric);
+  for (const s of res.solids) console.log(s.name, 'V', s.verts, 'E', s.edges, 'F', s.faces, 'V−E+F', s.euler, '推移', s.transitive, '安定化群', s.stabilizer, '回転群', s.order, '割り当て', String(s.all), '本質', String(s.orbits), '中心対称', s.centrallySymmetric);
+  console.log('構造均衡', JSON.stringify(res.balance), '輪の源', res.ring.join(), 'C3', res.ring3.join());
   const bad = verdict(res);
   console.log(bad.length ? '落：' + bad.join(' / ') : '通：すべての主張が成り立つ');
   process.exit(bad.length ? 1 : 0);
