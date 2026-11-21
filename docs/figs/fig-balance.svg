@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 200"><style>.s{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.4}.f-ln{stroke:#0d0f13}.f-mt{stroke:#555b65}.f-gd{stroke:#9a7b2f}.f-inkfill{fill:#0d0f13}.f-goldf{fill:#9a7b2f}.f-tx{fill:#555b65;font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif}</style><rect width="480" height="200" fill="#ffffff"/><g class="s f-ln"><path d="M80 40L40 112M80 40L120 112M40 112H120"/><path d="M400 40L360 112M400 40L440 112"/><path d="M200 112H280"/></g>
+<g class="s f-mt" stroke-dasharray="4 5"><path d="M240 40L200 112M240 40L280 112"/><path d="M360 112H440"/></g>
+<g class="s f-gd" stroke-width="1.6"><circle cx="80" cy="40" r="7"/><circle cx="40" cy="112" r="7"/><circle cx="120" cy="112" r="7"/><circle cx="240" cy="40" r="7"/><circle cx="200" cy="112" r="7"/><circle cx="280" cy="112" r="7"/><circle cx="400" cy="40" r="7"/><circle cx="360" cy="112" r="7"/><circle cx="440" cy="112" r="7"/></g>
+<g class="f-tx" font-size="13" text-anchor="middle"><text x="80" y="148">＋＋＋　均衡</text><text x="80" y="170">組は一つ</text><text x="240" y="148">＋−−　均衡</text><text x="240" y="170">二つの組に分かれる</text><text x="400" y="148">＋＋−　均衡せず</text><text x="400" y="170">どう分けても合わない</text></g>
+<g class="f-tx" font-size="11" text-anchor="middle"><text x="240" y="192">実線は相＋、点線は相−</text></g>
+</svg>

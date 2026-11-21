@@ -216,6 +216,65 @@ ${body}
 `;
 }
 
+/* GitHub で読む原理の全文（PRINCIPIA.md）と、GitHub でも色の付く図（docs/figs/*.svg）。
+ * src/strict.md から作る。手で直さない。GitHub の Markdown に合わせ、〔ラテン語〕は小さく、原文は引用、証明と注は斜体の見出し、
+ * 行の終わりは改行のまま見えるよう、段落の中の行を「\」で切る。 */
+const FIG_STYLE = '<style>.s{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:1.4}.f-ln{stroke:#0d0f13}.f-mt{stroke:#555b65}.f-gd{stroke:#9a7b2f}'
+  + '.f-inkfill{fill:#0d0f13}.f-goldf{fill:#9a7b2f}.f-tx{fill:#555b65;font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif}</style>';
+function githubFig(name) {
+  const svg = fs.readFileSync(path.join(ROOT, 'src', 'figs', name + '.svg'), 'utf8').trim();
+  const vb = /viewBox="0 0 (\d+) (\d+)"/.exec(svg);
+  return svg.replace(/^<svg /, '<svg xmlns="http://www.w3.org/2000/svg" ').replace(/^(<svg[^>]*>)/, '$1' + FIG_STYLE + '<rect width="' + vb[1] + '" height="' + vb[2] + '" fill="#ffffff"/>') + '\n';
+}
+function principia() {
+  const src = fs.readFileSync(path.join(ROOT, 'src', 'strict.md'), 'utf8').replace(/\r/g, '');
+  const preface = /^> (.+)$/m.exec(fs.readFileSync(path.join(ROOT, 'src', 'canon.md'), 'utf8'))[1];
+  const lat = (t) => t.replace(/〔([^〕]+)〕/g, ' <sub>$1</sub>');
+  const lines = src.split('\n');
+  const out = [];
+  const figs = [];
+  const toc = [];
+  let book = 0;
+  for (let i = 0; i < lines.length; i++) {
+    let l = lines[i];
+    if (i === 0) {
+      out.push('# 原理：魔法使いの定義と法則', '', '<p><sub>PRINCIPIA MAGI OCCULTI · ステルス・ウィザード</sub></p>', '',
+        '> [!NOTE]', '> **娯楽の枠**　' + FRAME, '>', '> ' + FOOT, '',
+        'この文書は、サイト「' + NAME + '」の [原理](' + BASE + 'strict.html) の頁と同じ中身を、GitHub で読める形にしたものです。', '',
+        '原典は、こう始まります。', '', '> ' + preface, '', '<!-- 目次 -->', '');
+      continue;
+    }
+    const h = /^## (.+)$/.exec(l);
+    if (h) { book++; toc.push(h[1].replace(/〔[^〕]+〕/g, '')); out.push('<a id="s' + book + '"></a>', '', '## ' + lat(h[1]), ''); continue; }
+    const f = /^!\[([^\]]+)\]\(fig:([a-z0-9-]+)\)$/.exec(l.trim());
+    if (f) { figs.push(f[2]); out.push('<p align="center"><img src="docs/figs/' + f[2] + '.svg" alt="' + f[1] + '" width="560"></p>', '<p align="center"><sub>' + f[1] + '</sub></p>', ''); continue; }
+    if (!l.trim()) { out.push(''); continue; }
+    if (/^> /.test(l) && /^> /.test(out[out.length - 1] || '')) out.push('>');
+    if (/^(> |\| |- )/.test(l)) { out.push(lat(l).replace(/\]\(canon\.html\)/g, '](src/canon.md)').replace(/\]\(([a-z]+)\.html\)/g, '](' + BASE + '$1.html)')); continue; }
+    /* 段落：続く行をまとめ、原文は引用に、証明と注は斜体の見出しに、Q.E.D. は斜体に。 */
+    const para = [];
+    while (i < lines.length && lines[i].trim() && !/^(## |> |\| |- |!\[)/.test(lines[i])) { para.push(lines[i]); i++; }
+    i--;
+    /* 行の順を保つ。原文の行で段落を切り、引用にして挟む。 */
+    let body = [];
+    const flush = () => { if (body.length) out.push(body.join('\\\n'), ''); body = []; };
+    for (const p of para) {
+      let t = lat(p).replace(/\]\(canon\.html\)/g, '](src/canon.md)').replace(/\]\(([a-z]+)\.html\)/g, '](' + BASE + '$1.html)');
+      t = t.replace(/Q\.E\.D\.$/, '*Q.E.D.*');
+      if (/^原文：/.test(t)) { flush(); out.push('> **原文**　' + t.slice(3), ''); continue; }
+      /* 定義・要請・法則は、名の行と本文の行を分ける。 */
+      t = t.replace(/^(\*\*(?:定義|要請|第[一二三四五六七八九十]+法則)[^*]+\*\*(?: <sub>[^<]+<\/sub>)?)　(.+)$/, '$1\\\n$2');
+      body.push(t.replace(/^(証明|注)。/, '*$1*　'));
+    }
+    flush();
+  }
+  out.push('---', '', '原典は運営者の文です。原理と、この文書の形は、運営者の求めで Claude（Anthropic の言語モデル）が書きました。Claude は著者ではありません。', '',
+    '文は CC BY 4.0、コードは MIT です。図は、このリポジトリの `src/figs` から作っています。', '',
+    'この文書は `node build.js` が `src/strict.md` から作る生成物で、手で直しません。式・模型・数は `verification/models.js` が機械で確かめています。', '');
+  const md = out.join('\n').replace(/\n{3,}/g, '\n\n').replace('<!-- 目次 -->', '## 目次\n\n' + toc.map((t, k) => (k + 1) + '. [' + t.trim() + '](#s' + (k + 1) + ')').join('\n'));
+  return { md, figs };
+}
+
 function build() {
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(path.join(OUT, 'assets'), { recursive: true });
@@ -233,8 +292,12 @@ function build() {
   fs.writeFileSync(path.join(OUT, 'vercel.json'), JSON.stringify({ cleanUrls: false, headers: [{ source: '/(.*)', headers: [
     { key: 'Content-Security-Policy', value: CSP }, { key: 'X-Content-Type-Options', value: 'nosniff' }, { key: 'Referrer-Policy', value: 'no-referrer' },
     { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' }] }] }, null, 2) + '\n');
+  const pr = principia();
+  fs.writeFileSync(path.join(ROOT, 'PRINCIPIA.md'), pr.md);
+  fs.mkdirSync(path.join(ROOT, 'docs', 'figs'), { recursive: true });
+  for (const f of pr.figs) fs.writeFileSync(path.join(ROOT, 'docs', 'figs', f + '.svg'), githubFig(f));
   return PAGES.length + 1;
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
