@@ -219,6 +219,66 @@ function verdict(x) {
   return bad;
 }
 
+/* 原理の項と引き合い（2026-11-22）。build.js の読み方に頼らず、src/strict.md を別に読んで確かめる。
+ * 項の番号が欠けずに並ぶこと、引いた項がすべて在ること、証明の引き合いが循環しないこと、後ろの項を引く証明は決めた一つだけで、
+ * その証明が後ろの項の第一巻に依らないことを断っていること。頁では、項ごとに飛び先が一つあり、引き合いのリンクがその項を指し、目次がすべての項を順に挙げること。 */
+const NUMS = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
+const num = (s) => { const i = s.indexOf('十'); if (i < 0) return NUMS[s]; return (i ? NUMS[s.slice(0, i)] : 1) * 10 + (s.slice(i + 1) ? NUMS[s.slice(i + 1)] : 0); };
+/* 後ろの項を引いてよい証明。定理二は、第二巻の模型 M₀′ を、第一巻に依らずに組んだものとして引く。 */
+const FORWARD_OK = { '定理二>定理十': '第二巻の定理十。その証は、第一巻の定理に依らず' };
+const PRIN_COUNTS = { 定義: 20, 要請: 5, 法則: 10, 定理: 26, 系: 1 };
+function principiaVerdict(x) {
+  const bad = [];
+  const lines = x['src/strict.md'].split('\n');
+  const items = [], deps = {}, cites = [];
+  let cur = null;
+  for (const l of lines) {
+    const m = /^\*\*(定義|要請|定理|系)([一二三四五六七八九十]*)　|^\*\*第([一二三四五六七八九十]+)法則　/.exec(l);
+    if (m) {
+      const kind = m[3] ? '法則' : m[1], n = m[3] ? num(m[3]) : (m[1] === '系' ? 1 : num(m[2]));
+      cur = (kind === '法則' ? '第' + m[3] + '法則' : m[1] + (m[2] || ''));
+      items.push({ kind, n, label: cur, id: { 定義: 'def', 要請: 'post', 法則: 'law', 定理: 'prop', 系: 'cor' }[kind] + '-' + n });
+    } else if (/^## /.test(l)) cur = null;
+    if (!cur) continue;
+    const rest = m ? l.slice(l.indexOf('**', 2) + 2) : l;
+    for (const c of rest.matchAll(/(定義|要請|定理)([一二三四五六七八九十]+)(?!つ)|第([一二三四五六七八九十]+)法則/g)) {
+      const t = c[3] ? '第' + c[3] + '法則' : c[1] + c[2];
+      cites.push(t);
+      if (/^証明。/.test(l) && t !== cur) (deps[cur] = deps[cur] || []).push({ t, line: l });
+    }
+  }
+  const pos = new Map(items.map((it, k) => [it.label, k]));
+  for (const [k, want] of Object.entries(PRIN_COUNTS)) {
+    const ns = items.filter((it) => it.kind === k).map((it) => it.n);
+    if (ns.length !== want || ns.some((n, i) => n !== i + 1)) bad.push('原理の' + k + 'の番号が 1 から ' + want + ' まで欠けずに並んでいない（' + ns.join(',') + '）');
+  }
+  if (pos.size !== items.length) bad.push('原理に同じ番号の項が二つある');
+  for (const t of cites) if (!pos.has(t)) bad.push('原理が、無い項を引いている：' + t);
+  /* 証明の引き合いの循環。 */
+  const state = {};
+  const visit = (u, path) => { state[u] = 1; for (const { t } of deps[u] || []) { if (state[t] === 1) bad.push('原理の証明の引き合いが循環する：' + path.concat(u, t).join('→')); else if (!state[t]) visit(t, path.concat(u)); } state[u] = 2; };
+  for (const it of items) if (!state[it.label]) visit(it.label, []);
+  /* 後ろの項を引く証明。 */
+  for (const [u, ds] of Object.entries(deps)) for (const { t, line } of ds) if (pos.get(t) > pos.get(u)) {
+    const why = FORWARD_OK[u + '>' + t];
+    if (!why) bad.push('原理の' + u + 'の証明が、後ろの' + t + 'を引いている');
+    else if (!line.includes(why)) bad.push('原理の' + u + 'の証明が、' + t + 'を引く理由を断っていない');
+  }
+  /* 頁。 */
+  const h = x['site/strict.html'] || '';
+  for (const it of items) if ((h.match(new RegExp('id="' + it.id + '"', 'g')) || []).length !== 1) bad.push('原理の頁に、' + it.label + 'の飛び先が一つない');
+  const byId = new Map(items.map((it) => [it.id, it.label]));
+  for (const a of h.matchAll(/<a class="xref" href="#([a-z]+-\d+)">([^<]+)<\/a>/g)) if (byId.get(a[1]) !== a[2]) bad.push('原理の頁の引き合いのリンクが違う項を指す：' + a[2] + '→' + a[1]);
+  const xrefs = (h.match(/class="xref"/g) || []).length;
+  if (xrefs < 40) bad.push('原理の頁の引き合いのリンクが少ない（' + xrefs + '）');
+  const toc = (/<nav class="toc"[\s\S]*?<\/nav>/.exec(h) || [''])[0];
+  const order = [...toc.matchAll(/href="#((?:def|post|law|prop|cor)-\d+)"/g)].map((m) => m[1]);
+  const want = ['定義', '要請', '法則', '定理', '系'].flatMap((k) => items.filter((it) => it.kind === k).map((it) => it.id));
+  if (order.join() !== want.join()) bad.push('原理の索引が、すべての項を順に挙げていない');
+  if (([...toc.matchAll(/<li><a href="#s\d+">第[一二三四五]巻/g)]).length !== 5) bad.push('原理の目次が五つの巻を挙げていない');
+  return bad;
+}
+
 console.log('\n1. 約束・原典・外への要求・生成物');
 const real = files();
 const now = verdict(real);
@@ -309,6 +369,23 @@ const breaks = [
 ];
 const missed = breaks.filter(([, y]) => verdict(y).length === 0).map(([k]) => k);
 ok('壊して確かめる：原典の一字・法則・前書き・冒頭の断り・科学・性経験・下の欄・開示・外の画像・研究へのリンク・送る・残す・成果を数える・手で直す・style のどれでも落ちる（' + (breaks.length - missed.length) + ' / ' + breaks.length + '）', missed.length === 0, missed.join(' / '));
+
+console.log('\n3. 原理の項と引き合い');
+const pv = principiaVerdict(real);
+ok('原理の項は番号が欠けずに並び、引いた項はすべて在り、証明の引き合いは循環せず、後ろを引く証明は決めた一つで理由を断り、頁は項ごとに飛び先を持ち、リンクと索引が項に合う', pv.length === 0, pv.join(' / '));
+const pmut = (f, a, b) => Object.assign({}, real, { [f]: String(real[f]).replace(a, b) });
+const pbreaks = [
+  ['無い項を引く', pmut('src/strict.md', '定義九により、目安は時を定めず。', '定義九と定理三十により、目安は時を定めず。')],
+  ['証明の引き合いを循環させる', pmut('src/strict.md', 'Obs はともに空で、𝒪 = {Obs} について等しい。', 'Obs はともに空で（定理二）、𝒪 = {Obs} について等しい。')],
+  ['証明が後ろの項を引く', pmut('src/strict.md', '第五法則もまた、三十歳を目安と言ふのみ。', '第五法則もまた、三十歳を目安と言ふのみ（定理十九）。')],
+  ['後ろを引く理由の断りを外す', pmut('src/strict.md', '（第二巻の定理十。その証は、第一巻の定理に依らず）', '（定理十）')],
+  ['定理の番号を飛ばす', pmut('src/strict.md', '**定理七　', '**定理八　')],
+  ['頁から飛び先を一つ外す', pmut('site/strict.html', 'id="law-6"', '')],
+  ['引き合いのリンクを違う項に向ける', pmut('site/strict.html', '<a class="xref" href="#law-6">第六法則</a>', '<a class="xref" href="#law-5">第六法則</a>')],
+  ['索引から項を一つ外す', pmut('site/strict.html', /<a href="#def-7"[^>]*>[^<]*<\/a>/, '')],
+];
+const pmissed = pbreaks.filter(([, y]) => principiaVerdict(y).length === 0).map(([k]) => k);
+ok('壊して確かめる：無い項・循環・後ろを引く・理由の断り・番号の飛び・飛び先・リンクの向き・索引のどれでも落ちる（' + (pbreaks.length - pmissed.length) + ' / ' + pbreaks.length + '）', pmissed.length === 0, pmissed.join(' / '));
 
 console.log('\n' + '-'.repeat(48));
 if (fails.length) { console.log(pass + ' 件が通り、' + fails.length + ' 件が通りませんでした。'); process.exit(1); }

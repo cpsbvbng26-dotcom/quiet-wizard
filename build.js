@@ -105,6 +105,71 @@ function markdown(src) {
   return out.join('\n');
 }
 
+/* 原理の頁の項（定義・要請・法則・定理・系）。頁の中の飛び先と、本文の引き合いのリンクと、目次と索引を、src/strict.md から作る。
+ * 2026-11-22 に足した。引き合いが実在し、循環せず、後ろを引かないことは verification/check.js が別の読み方で確かめる。 */
+const KAN = '一二三四五六七八九';
+function kanNum(s) {
+  if (!/^[一二三四五六七八九十]+$/.test(s)) return NaN;
+  if (!s.includes('十')) return s.length === 1 ? KAN.indexOf(s) + 1 : NaN;
+  const [a, b] = s.split('十');
+  return (a ? KAN.indexOf(a) + 1 : 1) * 10 + (b ? KAN.indexOf(b) + 1 : 0);
+}
+const ITEM_KIND = { 定義: 'def', 要請: 'post', 法則: 'law', 定理: 'prop', 系: 'cor' };
+const ITEM_HEAD = /^\*\*(?:(定義|要請|定理)([一二三四五六七八九十]+)|第([一二三四五六七八九十]+)(法則)|(系))　([^*]*)\*\*/;
+function principiaItems(md) {
+  const items = [];
+  for (const l of md.replace(/\r/g, '').split('\n')) {
+    const m = ITEM_HEAD.exec(l);
+    if (!m) continue;
+    const kind = m[1] || m[4] || m[5];
+    const n = m[5] ? 1 : kanNum(m[2] || m[3]);
+    const label = m[5] ? '系' : (m[1] ? m[1] + m[2] : '第' + m[3] + '法則');
+    items.push({ id: ITEM_KIND[kind] + '-' + n, kind, n, label, title: m[6] });
+  }
+  return items;
+}
+const CITE = /(定義|要請|定理)([一二三四五六七八九十]+)(?!つ)|第([一二三四五六七八九十]+)法則/g;
+function crossref(html, items) {
+  const byLabel = new Map(items.map((it) => [it.label, it]));
+  /* 項の段に飛び先を付ける。 */
+  html = html.replace(/<p><strong>((?:定義|要請|定理)[一二三四五六七八九十]+|第[一二三四五六七八九十]+法則|系)　/g, (m, lab) => {
+    const it = byLabel.get(lab);
+    return it ? '<p id="' + it.id + '"><strong>' + lab + '　' : m;
+  });
+  let h2 = 0;
+  html = html.replace(/<h2>/g, () => '<h2 id="s' + (++h2) + '">');
+  /* 本文の引き合いをリンクにする。見出し・項の名・原文・既にあるリンクの中は変えない。 */
+  const SKIP = /^<(strong|a|h[1-6]|span class="orig"|span class="lat")\b/;
+  let depth = 0, stackTag = [];
+  return html.split(/(<[^>]+>)/).map((tok) => {
+    if (tok.startsWith('<')) {
+      if (tok.startsWith('</')) { if (stackTag.length && tok.slice(2, -1).split(' ')[0] === stackTag[stackTag.length - 1]) { stackTag.pop(); depth--; } }
+      else if (SKIP.test(tok)) { const name = /^<([a-z0-9]+)/.exec(tok)[1]; stackTag.push(name); depth++; }
+      else if (depth && /^<span\b/.test(tok) && stackTag.length) { stackTag.push('span'); depth++; }
+      return tok;
+    }
+    if (depth) return tok;
+    return tok.replace(CITE, (m, k, num, lawNum) => {
+      const it = byLabel.get(k ? k + num : '第' + lawNum + '法則');
+      return it ? '<a class="xref" href="#' + it.id + '">' + m + '</a>' : m;
+    });
+  }).join('');
+}
+function principiaIndex(md, html) {
+  const items = principiaItems(md);
+  const books = [...html.matchAll(/<h2 id="(s\d+)">(.+?)<\/h2>/g)].filter((m) => /^第[一二三四五六七八九十]+巻/.test(m[2].replace(/<[^>]+>/g, '')))
+    .map((m) => '<li><a href="#' + m[1] + '">' + m[2].replace(/<span class="lat"[^>]*>[^<]*<\/span>/g, '').trim() + '</a></li>');
+  const group = (kinds, name) => {
+    const xs = items.filter((it) => kinds.includes(it.kind));
+    return '<div class="idx-g"><p class="idx-h">' + name + '</p><p class="idx-l">'
+      + xs.map((it) => '<a href="#' + it.id + '"' + (it.kind === '定理' || it.kind === '系' ? ' title="' + esc(it.title) + '"' : '') + '>'
+        + esc(it.kind === '定理' || it.kind === '系' ? it.label : it.label + '　' + it.title) + '</a>').join('') + '</p></div>';
+  };
+  return '<nav class="toc" aria-label="原理の目次と索引"><p class="toc-h">目次</p><ol class="toc-books">' + books.join('') + '</ol>'
+    + '<details class="toc-idx"><summary>索引（項ごとに飛ぶ）</summary>'
+    + group(['定義'], '定義') + group(['要請'], '要請') + group(['法則'], '法則') + group(['定理', '系'], '定理と系') + '</details></nav>';
+}
+
 /* はじめにの頁の場面。外の目と魔法使いの目を、スクリプトを使わずに切り替える（チェックボックスと CSS だけ）。 */
 const HERO = `<section class="hero" aria-label="二つの目">
 <input type="checkbox" id="eye" class="eye-toggle">
@@ -175,7 +240,9 @@ const PLAY = `<div class="play" id="play">
 
 /* src の Markdown を、頁の中身にする。差し込みの部品もここで置く。 */
 function render(md) {
-  return statutes(markdown(md).replace('<!-- play -->', PLAY).replace('<!-- hero -->', HERO).replace('<!-- class -->', CLASS));
+  let html = statutes(markdown(md).replace('<!-- play -->', PLAY).replace('<!-- hero -->', HERO).replace('<!-- class -->', CLASS));
+  if (html.includes('<!-- index -->')) { html = crossref(html, principiaItems(md)); html = html.replace('<!-- index -->', principiaIndex(md, html)); }
+  return html;
 }
 
 function page(file, title, body) {
@@ -249,6 +316,7 @@ function principia() {
     const f = /^!\[([^\]]+)\]\(fig:([a-z0-9-]+)\)$/.exec(l.trim());
     if (f) { figs.push(f[2]); out.push('<p align="center"><img src="docs/figs/' + f[2] + '.svg" alt="' + f[1] + '" width="560"></p>', '<p align="center"><sub>' + f[1] + '</sub></p>', ''); continue; }
     if (!l.trim()) { out.push(''); continue; }
+    if (/^<!--.*-->$/.test(l.trim())) continue;
     if (/^> /.test(l) && /^> /.test(out[out.length - 1] || '')) out.push('>');
     if (/^(> |\| |- )/.test(l)) { out.push(lat(l).replace(/\]\(canon\.html\)/g, '](src/canon.md)').replace(/\]\(([a-z]+)\.html\)/g, '](' + BASE + '$1.html)')); continue; }
     /* 段落：続く行をまとめ、原文は引用に、証明と注は斜体の見出しに、Q.E.D. は斜体に。 */
@@ -300,4 +368,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
