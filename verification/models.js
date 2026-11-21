@@ -13,8 +13,8 @@
  *     三人から六人まで総当たり）、輪の網で一本の線から源が二人に残ること（定理十八）を確かめる。
  * 六、第四巻：転化と魔法を式のとおりに評価し、定理十九から二十二を模型で確かめる。
  * 七、第五巻：観測の記録（Obs と V）をいくつも取り、どれも法則の模型で実現できること（定理二十四）、Obs・V・L を
- *     見えるとすれば実現できない記録があること（定理二十五）、M₀ と M₀⁻ が同じ記録で「魔法使いがいる」と
- *     「いない」とを分けること（定理二十六）を確かめる。
+ *     見えるとすれば実現できない記録があること（定理二十五）、T⁺（魔法使いがいる）も T⁻（いない）も同じ記録を
+ *     すべて実現すること、Obs・V・L の記録なら T⁺ と T⁻ が分かれること（定理二十六）を確かめる。
  * 依存は Node.js だけ。
  */
 'use strict';
@@ -231,8 +231,17 @@ function run() {
   const asWizard = world([wizard('x', 20, { L: 30 }), wizard('z', 20)], 20);
   const asPlain = world([Object.assign(wizard('x', 20, { L: 30 }), { Act: [], Rel: new Set() }), wizard('z', 20)], 20);
   res.refutable = { wizardBreaks: Object.entries(evaluate(asWizard)).filter(([, v]) => !v).map(([k]) => k).join(), plainBreaks: Object.entries(evaluate(asPlain)).filter(([, v]) => !v).map(([k]) => k).join() };
-  /* 定理二十六：M₀′ と M₀⁻ は Obs も V も同じで、法則を満たし、「魔法使いがいる」と「いない」とを分ける。 */
-  res.rival = { sameRecord: [...M0prime.Obs].join() === [...M0minus.Obs].join() && M0prime.P[0].V(30) === M0minus.P[0].V(30), bothModels: Object.values(evaluate(M0prime)).every(Boolean) && Object.values(evaluate(M0minus)).every(Boolean), differ: W(M0prime, M0prime.P[0], 100) !== W(M0minus, M0minus.P[0], 100) };
+  /* 定理二十六：T⁻ の作り方。人はみな M₀⁻ の形（切り替わりはあり、能動はない）、童貞の者は L = 25、そうでない者は L = 100。 */
+  const realizeMinus = (vs, obs, lam) => world(vs.map((v, k) => Object.assign(wizard('q' + k, 20, { L: v ? 25 : 100, V: () => v }), { Act: [], Rel: new Set() })), 20, { Lambda: lam, Obs: new Set(obs) });
+  const allW = (mm) => mm.P.some((p) => range(0, p.L).some((t) => W(mm, p, t)));
+  res.rival = {
+    plusAll: records.every(([vs, obs, lam]) => { const mm = realize(vs, obs, lam); return Object.values(evaluate(mm)).every(Boolean) && allW(mm); }),
+    minusAll: records.every(([vs, obs, lam]) => { const mm = realizeMinus(vs, obs, lam); return Object.values(evaluate(mm)).every(Boolean) && !allW(mm) && mm.P.map((p) => p.V(30)).join() === vs.join() && [...mm.Obs].join() === obs.join(); }),
+  };
+  /* 注：𝒪 = {Obs, V, L} で V(x, 30) が真、L(x) = 50 の記録。T⁺（Λ = 40）は実現し、魔法使いでない x は L1 を破る。 */
+  const sepPlus = world([wizard('x', 20, { L: 50 })], 20, { Lambda: 40 });
+  const sepMinus = world([Object.assign(wizard('x', 20, { L: 50 }), { Act: [], Rel: new Set() })], 20, { Lambda: 40 });
+  res.separate = { plus: Object.values(evaluate(sepPlus)).every(Boolean) && allW(sepPlus), minusBreaks: Object.entries(evaluate(sepMinus)).filter(([, v]) => !v).map(([k]) => k).join() };
   /* 第四巻 */
   const x0 = M[0].P[0];
   res.magic = {
@@ -276,7 +285,8 @@ function verdict(res) {
   if (!(rb.before.L1 === false && Object.entries(rb.before).every(([k, v]) => k === 'L1' || v) && Object.values(rb.after).every(Boolean) && rb.sameObs)) bad.push('定理十一：取り替えのあとで法則が成り立たない');
   if (!res.immune) bad.push('定理二十四：法則の模型で実現できない記録がある');
   if (!(res.refutable.wizardBreaks === 'L10' && res.refutable.plainBreaks === 'L1')) bad.push('定理二十五：V(x, 30) と L(x) = 30 の記録が、片方の法則だけで止まらない：' + JSON.stringify(res.refutable));
-  if (!(res.rival.sameRecord && res.rival.bothModels && res.rival.differ)) bad.push('定理二十六：同じ記録で分かれる二つの模型');
+  if (!(res.rival.plusAll && res.rival.minusAll)) bad.push('定理二十六：T⁺ と T⁻ が、どちらも記録のすべてを実現しない');
+  if (!(res.separate.plus && res.separate.minusBreaks === 'L1')) bad.push('定理二十六の注：Obs・V・L の記録で T⁺ と T⁻ が分かれない');
   const g = res.magic;
   if (!(g.M0count === 80 && g.M0negatives === 1 && g.M0allMagic)) bad.push('定理二十二：M₀ で一つの負から八十の魔法');
   if (!(Object.values(g.M2dashLaws).every(Boolean) && g.M2dashWizard && !g.M2dashMagic)) bad.push('定理二十：M″ は法則を満たす魔法使いで、魔法を為さない');
@@ -295,7 +305,7 @@ if (require.main === module) {
   for (const s of res.solids) console.log(s.name, 'V', s.verts, 'E', s.edges, 'F', s.faces, 'V−E+F', s.euler, '推移', s.transitive, '安定化群', s.stabilizer, '回転群', s.order, '割り当て', String(s.all), '本質', String(s.orbits), '中心対称', s.centrallySymmetric);
   console.log('構造均衡', JSON.stringify(res.balance), '輪の源', res.ring.join(), 'C3', res.ring3.join());
   console.log('魔法', JSON.stringify(res.magic));
-  console.log('第五巻', '免疫', res.immune, res.immuneCount, '反証', JSON.stringify(res.refutable), '対', JSON.stringify(res.rival));
+  console.log('第五巻', '免疫', res.immune, res.immuneCount, '反証', JSON.stringify(res.refutable), '対', JSON.stringify(res.rival), '分け', JSON.stringify(res.separate));
   const bad = verdict(res);
   console.log(bad.length ? '落：' + bad.join(' / ') : '通：すべての主張が成り立つ');
   process.exit(bad.length ? 1 : 0);

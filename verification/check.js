@@ -65,7 +65,7 @@ const CLASS_NOTE = 'ここで言うクラスは、ゲームの職業のたとえ
 /* 配る書体の指紋（Inter Tight を英字に絞り、許諾の欄を残した woff2）。差し替えたら、ここも同じ日に変える。 */
 const FONT_SHA = '775d0af912f596ab5ace2d458c00a5e8691b3d97270e0df70c7e8397c772c81e';
 /* 原理の定義・要請・法則の本文（文語）の指紋。中身を変えたら、原典より弱めていないか、補ったものを注解に書いたかを確かめ直し、ここも同じ日に変える。 */
-const STRICT_SHA = 'd3d1cdb4cb43a059bd3599609e6934ad38f3c873a9104848f60f906788b2e636';
+const STRICT_SHA = 'a705a902a423c37563f0825a78bb6b97d3a351541e93e94c391258d77b80c2c4';
 /* 運営者の直観（2026-11-21）。第五巻の定義二十の原文として、一字一句そのまま置く。 */
 const INTUITION = '魔法が実在できないのは魔法が存在しないからではなく存在してはならないからでありここにおける魔法とは異端の学説を反証させない立場に置いたもの';
 const NOT_SCIENCE = { 'src/index.md': '科学の法則ではありません。', 'src/canon.md': '科学の法則ではありません。', 'src/guide.md': '科学の主張でもありません。', 'src/play.md': '何も測らず、何も占わず、何も記録しません。', 'src/faq.md': '原典の法則は、直観から書かれた文で、実験や調査で確かめたものではありません。', 'src/about.md': '科学の法則ではありません。' };
@@ -83,6 +83,9 @@ function files() {
   x['#site-assets'] = fs.existsSync(path.join(ROOT, 'site', 'assets')) ? fs.readdirSync(path.join(ROOT, 'site', 'assets')).sort().map((f) => f + ' ' + sha('site/assets/' + f)).join('\n') : '';
   return x;
 }
+
+/* 第二巻からの模型と数。模型は頁の文に依らないので、一度だけ計算する。 */
+const MD = require('./models.js'), mr = MD.run(), mbad = MD.verdict(mr);
 
 function verdict(x) {
   const bad = [];
@@ -131,11 +134,11 @@ function verdict(x) {
   if (!x['src/about.md'].includes('その DOI は、ここには書いていません。確かめていないためです。')) bad.push('英語の版の DOI を確かめていないという断り');
   /* 原理の数：定義十、要請二、法則十、定理七。原文の行は、原典の文と一字一句同じ。 */
   const st = x['src/strict.md'];
-  if ((st.match(/^\*\*定義[一二三四五六七八九十]+　/mg) || []).length !== 20 || (st.match(/^\*\*要請[一二三四五]　/mg) || []).length !== 5 || (st.match(/^\*\*第[一二三四五六七八九十]+法則　/mg) || []).length !== 10 || (st.match(/^\*\*定理[一二三四五六七八九十]+　/mg) || []).length !== 27) bad.push('原理の定義・要請・法則・定理の数');
+  if ((st.match(/^\*\*定義[一二三四五六七八九十]+　/mg) || []).length !== 20 || (st.match(/^\*\*要請[一二三四五]　/mg) || []).length !== 5 || (st.match(/^\*\*第[一二三四五六七八九十]+法則　/mg) || []).length !== 10 || (st.match(/^\*\*定理[一二三四五六七八九十]+　/mg) || []).length !== 26) bad.push('原理の定義・要請・法則・定理の数');
   for (const [n, , d] of DEFS.concat(LAWS)) { const at = st.indexOf('**' + n + '　'); const line = at < 0 ? '' : st.slice(at).split('\n')[1]; if (line !== '原文：' + d) bad.push('原理の ' + n + ' の原文が、原典の文と同じでない'); }
-  if ((st.match(/Q\.E\.D\.$/mg) || []).length !== 27) bad.push('原理の定理の証明が二十七でない');
+  if ((st.match(/Q\.E\.D\.$/mg) || []).length !== 26) bad.push('原理の定理の証明が二十六でない');
+  if (!st.includes('**系　魔法は、知の内に在るべからず。**')) bad.push('原理の第五巻の系');
   /* 第二巻の主張は、verification/models.js が機械で確かめる。頁に書いた数は、計算した数と同じであること。 */
-  const MD = require('./models.js'), mr = MD.run(), mbad = MD.verdict(mr);
   for (const b of mbad) bad.push('第二巻の模型：' + b);
   const fmt = (n) => BigInt(n).toLocaleString('en-US');
   const solidsLine = mr.solids.map((o) => o.name + ' ' + fmt(o.orbits)).join('、');
@@ -160,8 +163,9 @@ function verdict(x) {
   if (!st.includes('**定義二十　魔法（第二の義）**') || st.split('\n').find((l, k, a) => a[k - 1] && a[k - 1].startsWith('**定義二十　')) !== '原文：' + INTUITION) bad.push('原理の定義二十の原文が、運営者の直観と一字一句同じでない');
   if (!mr.immune || !st.includes('で、' + kan(mr.immuneCount) + 'の記録を実現して確かめている')) bad.push('原理の定理二十四の記録の数が計算と違う');
   if (mr.refutable.wizardBreaks !== 'L10' || mr.refutable.plainBreaks !== 'L1' || !st.includes('x を魔法使いとすれば L10 が破れ（Λ > 30）、魔法使いとしなければ L1 が破れる')) bad.push('原理の定理二十五');
-  if (!(mr.rival.sameRecord && mr.rival.bothModels && mr.rival.differ)) bad.push('原理の定理二十六の模型');
-  if (!st.includes('結語。魔法が実在し得ないのは、無いからではなく、在ってはならないからである。在ってはならない所は知の内であり、在ってよい所は遊びの枠である。')) bad.push('原理の第五巻の結語');
+  if (!(mr.rival.plusAll && mr.rival.minusAll && mr.separate.plus && mr.separate.minusBreaks === 'L1')) bad.push('原理の定理二十六の模型');
+  if (!st.includes('このサイトは、どの頁も上の帯で「' + FRAME + '」と名乗り')) bad.push('原理の第五巻：帯の文の引用が FRAME と違う');
+  if (!st.includes('結語。魔法が知の内に在り得ないのは、無いからではなく、在ってはならないからである。在ってはならない所は知の内であり、在ってよい所は知の外である。')) bad.push('原理の第五巻の結語');
   if (!st.includes('人の四人以上なる時') || !mr.ring.every(Boolean) || mr.ring3.some((c) => c !== 1)) bad.push('原理の定理十八の人数');
   if (!st.includes('組は線の相から定まる形の上のものであり、人の属性にはよらない。') || !st.includes('人の属性は、どこにも置かない。')) bad.push('原理の第三巻：属性を置かないという断り');
   if (require('crypto').createHash('sha256').update(st.split('\n').filter((l) => /^\*\*(定義|要請|第[一二三四五六七八九十]+法則)/.test(l)).join('\n')).digest('hex') !== STRICT_SHA) bad.push('原理の本文が、確かめた文と違う');
@@ -264,7 +268,7 @@ const breaks = [
   ['原理から魔法の結語を外す', mut('src/strict.md', '結語。魔法とは、負を、その逆の正に転じ、見えざる関係へ還すことである。', '')],
   ['運営者の直観を一字変える', mut('src/strict.md', '原文：' + INTUITION, '原文：' + INTUITION.replace('存在してはならない', '存在できない'))],
   ['原理の定理二十四の記録の数を違える', mut('src/strict.md', 'で、百十二の記録を', 'で、百二十の記録を')],
-  ['原理から第五巻の結語を外す', mut('src/strict.md', '結語。魔法が実在し得ないのは、', '魔法が実在し得ないのは、')],
+  ['原理から第五巻の結語を外す', mut('src/strict.md', '結語。魔法が知の内に在り得ないのは、', '魔法が知の内に在り得ないのは、')],
   ['原理の定理七の数を違える', mut('src/strict.md', '1,048,576 通り', '1,048,567 通り')],
   ['原理から値の要請を外す', mut('src/strict.md', '**要請二　値**　人の値は、魔法使ひたると否と、童貞たると否とに由らず。', '**要請二　値**　魔法使ひは尊し。')],
   ['厳密版を原典と称する', mut('src/strict.md', 'この版は、運営者の求めで Claude が書いたものです。原典ではありません。', 'この版が原典です。')],
