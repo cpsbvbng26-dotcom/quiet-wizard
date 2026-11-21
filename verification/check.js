@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* 地味な魔法使いの検査。約束が消えていないか、原典が一字も変わっていないか、外へ何も要求しないかを確かめ、壊して落ちることも確かめる。
+/* ステルス・ウィザードの検査。約束が消えていないか、原典が一字も変わっていないか、外へ何も要求しないかを確かめ、壊して落ちることも確かめる。
  *
  *   node verification/check.js
  */
@@ -84,7 +84,17 @@ function verdict(x) {
   for (const [f, says] of Object.entries(LEGAL)) for (const w of says) if (!x[f].includes(w)) bad.push(f + '：' + w.slice(0, 24));
   for (const f of ['src/index.md', 'src/about.md']) for (const w of CAUTION) if (!x[f].includes(w)) bad.push(f + '：' + w.slice(0, 20));
   if (B.FRAME !== FRAME) bad.push('上の帯の文が、決めた文と違う');
-  if (!(x['site/index.html'] || '').includes('<p class="cls-note">' + CLASS_NOTE + '上位職ではなく、ほかのクラスより強くも偉くもありません。</p>')) bad.push('クラス表：職業のたとえで、人を分ける区分ではなく、上位職でもないという断り');
+  /* クラス表は build.js の CLASS から読む（頁の手直しは「生成物が元と同じ」が見る。ここは表の中身を見る）。 */
+  const cls = (/const CLASS = `([\s\S]*?)`;/.exec(x['build.js']) || [, ''])[1];
+  if (!cls.includes('<p class="cls-note">' + CLASS_NOTE + '上位職ではなく、ほかのクラスより強くも偉くもありません。</p>')) bad.push('クラス表：職業のたとえで、人を分ける区分ではなく、上位職でもないという断り');
+  /* スキルと状態の名は、引いた法則の名と同じ。原典より多くを言わないよう、引く条も決めた並びに固める。 */
+  const lawName = Object.fromEntries(LAWS.map(([n, w]) => [n, w]));
+  const skills = [...cls.matchAll(/<li><b>([^<]+)<\/b><span>[^<]*<\/span><i>(第.+?法則)<\/i><\/li>/g)];
+  if (skills.length !== 6) bad.push('クラス表のスキルが六つでない');
+  for (const [, nm, law] of skills) if (lawName[law] !== nm) bad.push('クラス表：スキル「' + nm + '」と' + law + 'の名が合わない');
+  if (!/<b>状態<\/b>泥沼：[^<]*（第八法則）/.test(cls)) bad.push('クラス表：状態が第八法則 泥沼でない');
+  const cites = (cls.match(/第[一二三四五六七八九十]+法則|定義[一二三四五六七八九]/g) || []).join(' ');
+  if (cites !== '定義八 第五法則 第二法則 第三法則 第四法則 第六法則 第九法則 第十法則 第八法則') bad.push('クラス表が引く条：' + cites);
   if (!x['src/faq.md'].includes(CLASS_NOTE) || !x['README.md'].includes(CLASS_NOTE)) bad.push('問いか README：クラスは人を分ける区分ではないという断り');
   if (!x['src/index.md'].includes('<!-- class -->')) bad.push('はじめにのクラス表');
   /* はじめにの断りの二行目は、札で目立たせる行（style.css の nth-child(2)）。別の枠だという断りがそこにあること。 */
@@ -199,8 +209,11 @@ const breaks = [
   ['下の欄を消す', mut('site/privacy.html', /<footer>[\s\S]*<\/footer>/, '')],
   ['上の帯を見た目で隠す', mut('assets/style.css', '/* 上の帯：娯楽の枠 */', '/* 上の帯：娯楽の枠 */\n.frame { display: none; }')],
   ['はじめにの断りの行を入れ替える', mut('src/index.md', '> これは遊びです。\n> ' + FRAME, '> ' + FRAME + '\n> これは遊びです。')],
-  ['クラス表の断りを外す', mut('site/index.html', CLASS_NOTE, '')],
-  ['クラスを上位職にする', mut('site/index.html', '上位職ではなく、ほかのクラスより強くも偉くもありません。', '最上位の職です。')],
+  ['クラス表の断りを外す', mut('build.js', '<p class="cls-note">' + CLASS_NOTE, '<p class="cls-note">')],
+  ['クラスを上位職にする', mut('build.js', '上位職ではなく、ほかのクラスより強くも偉くもありません。', '最上位の職です。')],
+  ['スキルの名を法則と違えて「最強」にする', mut('build.js', '<li><b>多面</b>', '<li><b>最強</b>')],
+  ['外見に原典の言わない条を引く', mut('build.js', '傘を持った人が立っているだけ</dd>', '傘を持った人が立っているだけ（第七法則）</dd>')],
+  ['転職の条件に第一法則を引く', mut('build.js', '切り替わりのとき（定義八）', '三十歳まで童貞のとき（第一法則）')],
   ['問いからクラスの断りを外す', mut('src/faq.md', CLASS_NOTE, '')],
   ['はじめにからクラス表を外す', mut('src/index.md', '<!-- class -->', '')],
   ['README から別の枠だという断りを外す', mut('README.md', FRAME, '')],
