@@ -60,6 +60,8 @@ const PAPER_LINK = '<a href="https://doi.org/10.5281/zenodo.23114131" rel="noope
 const CAUTION = ['これは内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。', '選民思想ではありません。', '運営者は、魔法使いの代表ではありません。'];
 /* 運営者の学術的な活動とは別の枠だという断り（2026-11-21 に利用者が求めた）。どの頁の上の帯と下の欄、はじめに・断りと開示・問い・README のどれにも置く。 */
 const FRAME = 'これは運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。';
+/* クラスは職業のたとえで、人を分ける区分ではない（2026-11-21、名をクラスへ替えたときに決めた）。 */
+const CLASS_NOTE = 'ここで言うクラスは、ゲームの職業のたとえです。人を分ける区分ではなく、誰かを当てはめるものでもありません。';
 const NOT_SCIENCE = { 'src/index.md': '科学の法則ではありません。', 'src/canon.md': '科学の法則ではありません。', 'src/guide.md': '科学の主張でもありません。', 'src/play.md': '何も測らず、何も占わず、何も記録しません。', 'src/faq.md': '原典の法則は、直観から書かれた文で、実験や調査で確かめたものではありません。', 'src/about.md': '科学の法則ではありません。' };
 const DISCLOSE = ['遊びの部分は Claude（Anthropic の言語モデル）が書きました。Claude は著者ではありません。', '文は CC BY 4.0、コードは MIT。'];
 /* 研究の系列と、ほかの遊びの国へはつながない。 */
@@ -82,6 +84,9 @@ function verdict(x) {
   for (const [f, says] of Object.entries(LEGAL)) for (const w of says) if (!x[f].includes(w)) bad.push(f + '：' + w.slice(0, 24));
   for (const f of ['src/index.md', 'src/about.md']) for (const w of CAUTION) if (!x[f].includes(w)) bad.push(f + '：' + w.slice(0, 20));
   if (B.FRAME !== FRAME) bad.push('上の帯の文が、決めた文と違う');
+  if (!(x['site/index.html'] || '').includes('<p class="cls-note">' + CLASS_NOTE + '上位職ではなく、ほかのクラスより強くも偉くもありません。</p>')) bad.push('クラス表：職業のたとえで、人を分ける区分ではなく、上位職でもないという断り');
+  if (!x['src/faq.md'].includes(CLASS_NOTE) || !x['README.md'].includes(CLASS_NOTE)) bad.push('問いか README：クラスは人を分ける区分ではないという断り');
+  if (!x['src/index.md'].includes('<!-- class -->')) bad.push('はじめにのクラス表');
   /* はじめにの断りの二行目は、札で目立たせる行（style.css の nth-child(2)）。別の枠だという断りがそこにあること。 */
   if ((/^# .+\n\n> [^\n]+\n> ([^\n]+)/.exec(x['src/index.md']) || [])[1] !== FRAME) bad.push('はじめにの断りの二行目が、別の枠だという断りでない');
   /* 上の帯を、見た目で消していないこと。 */
@@ -136,7 +141,7 @@ function verdict(x) {
   if (!x['src/play.md'].includes('人には、名前も年齢も性別も、どんな属性も付けていません。見るのは、関係の移り変わりだけです。')) bad.push('遊び場：属性を付けないという断り');
   if ((x['src/play.md'].match(/^\| 第[二三四五六七八九十]法則 /mg) || []).length !== 9) bad.push('遊び場：法則と働きの表が九行でない');
   /* 生成物が元と同じか（site/ は手で直さない）。 */
-  const fresh = (s) => { const md = x['src/' + s + '.md']; return B.page(s, /^# (.+)$/m.exec(md)[1], B.statutes(B.markdown(md).replace('<!-- play -->', B.PLAY).replace('<!-- hero -->', B.HERO))); };
+  const fresh = (s) => { const md = x['src/' + s + '.md']; return B.page(s, /^# (.+)$/m.exec(md)[1], B.render(md)); };
   const freshOr = (s) => { try { return fresh(s); } catch (e) { bad.push('src/' + s + '.md から作れない：' + e.message); return null; } };
   for (const [s, out] of B.PAGES) if (x['site/' + out + '.html'] !== undefined && x['site/' + out + '.html'] !== freshOr(s)) bad.push('site/' + out + '.html が src から作ったものと違う（node build.js）');
   return bad;
@@ -194,6 +199,10 @@ const breaks = [
   ['下の欄を消す', mut('site/privacy.html', /<footer>[\s\S]*<\/footer>/, '')],
   ['上の帯を見た目で隠す', mut('assets/style.css', '/* 上の帯：娯楽の枠 */', '/* 上の帯：娯楽の枠 */\n.frame { display: none; }')],
   ['はじめにの断りの行を入れ替える', mut('src/index.md', '> これは遊びです。\n> ' + FRAME, '> ' + FRAME + '\n> これは遊びです。')],
+  ['クラス表の断りを外す', mut('site/index.html', CLASS_NOTE, '')],
+  ['クラスを上位職にする', mut('site/index.html', '上位職ではなく、ほかのクラスより強くも偉くもありません。', '最上位の職です。')],
+  ['問いからクラスの断りを外す', mut('src/faq.md', CLASS_NOTE, '')],
+  ['はじめにからクラス表を外す', mut('src/index.md', '<!-- class -->', '')],
   ['README から別の枠だという断りを外す', mut('README.md', FRAME, '')],
   ['事件の属性を書く', mut('site/play.html', '<button type="button" id="scene">', '<button type="button" id="scene" onclick="x()">')],
 ];
