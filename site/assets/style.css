@@ -112,6 +112,19 @@ blockquote p:first-child { color: var(--ink); font-family: var(--head); font-wei
 .p-index main > ul > li:has(a:focus-visible) { outline: 2px solid var(--gold); outline-offset: 2px; }
 .p-index main > ul > li > a:focus-visible { outline: none; }
 
+/* 原理：古典の数学書の体裁。本文は明朝、原典の文は細い罫の下に小さく、ラテン語は小さな大文字 */
+.lat { font-family: var(--display); font-weight: 500; font-size: .62rem; letter-spacing: .3em; text-transform: uppercase; color: var(--gold); white-space: nowrap; }
+h2 .lat { font-weight: 400; color: var(--muted); letter-spacing: .32em; }
+.p-strict main > p:has(> strong:first-child) { position: relative; margin: 0 auto; padding: 1.2rem 0 1.25rem; border-top: 1px solid var(--hair); font-family: var(--serif); font-size: 1.04rem; line-height: 2; letter-spacing: .06em; }
+.p-strict main > h2 + p:has(> strong:first-child) { border-top-color: var(--ink); }
+.p-strict main > p > strong:first-child { display: block; margin-bottom: .35rem; font-family: var(--head); font-weight: 700; font-size: .92rem; letter-spacing: .14em; }
+.p-strict main > p > strong:first-child + .lat { position: absolute; right: 0; top: 1.45rem; }
+.p-strict main > p > strong:first-child + br { display: none; }
+.p-strict main > p br:has(+ .orig) { display: none; }
+.orig { display: block; margin-top: .55rem; padding-left: .9rem; border-left: 1px solid var(--hair); font-family: var(--sans); font-size: .8rem; line-height: 1.8; letter-spacing: .04em; color: var(--muted); }
+.orig-k, .proof-k { font-family: var(--head); font-size: .66rem; font-weight: 600; letter-spacing: .3em; color: var(--gold); margin-right: .8rem; }
+.qed { float: right; margin-left: 1rem; font-family: var(--display); font-weight: 500; font-size: .66rem; letter-spacing: .28em; color: var(--gold); line-height: 2.9; }
+
 /* 表：枠を描かず、細い罫だけ */
 .table { overflow-x: auto; margin-top: 1.2rem; margin-bottom: 1.2rem; }
 table { border-collapse: collapse; width: 100%; font-size: .93rem; }
@@ -254,6 +267,7 @@ main > h1 { animation-delay: .08s; } main > .en-title { animation-delay: .16s; }
   .table td:nth-child(n+3) { grid-column: 1 / -1; padding-top: .3rem; }
   .p-canon .table td:nth-child(2) { white-space: normal; font-weight: 600; }
   .p-index main > blockquote:first-of-type { grid-template-columns: 1fr; padding: 1.6rem 1.2rem 1.3rem; }
+  .p-strict main > p > strong:first-child + .lat { position: static; display: block; margin: -.2rem 0 .3rem; }
   .p-index main > blockquote:first-of-type::before { left: 1.2rem; }
   .p-index main > ul > li { display: block; padding: 1rem .2rem 1rem 2.2rem; }
   .p-index main > ul > li::before { position: absolute; left: 0; top: 1.15rem; width: 1.6rem; }
