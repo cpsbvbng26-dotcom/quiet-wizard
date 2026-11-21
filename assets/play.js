@@ -73,7 +73,7 @@
     var flash = null, msg;
     if (!switched && stock >= threshold) {
       switched = true;
-      msg = day + ' 日め。蓄積が閾に届き、負を向けた相手との線の逆が、正として光り始めました（第四法則）。早いか遅いかは、人によります（第五法則）。';
+      msg = day + ' 日め。蓄積が閾に届き、負を向けた相手との線の逆が、正として光り始めました（第四法則）。早いことがあるのは第五法則によります。遅いこともあるのは、遊び場の作りです。';
     } else if (switched && negs.length) {
       /* 成果は、相手と、その隣のどちらかの人との関係へ入る。隣が魔法使いのこともある。外の目で、魔法使いの線だけが細いままにならないように。 */
       negs.forEach(function (r) { var s = Math.random() < 0.5 ? (r + 1) % N : (r + N - 1) % N; var k = key(r, s); tie[k] = (tie[k] || 0) + 1; flash = k; deeds += 1; });
