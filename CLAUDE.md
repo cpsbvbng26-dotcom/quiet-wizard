@@ -12,7 +12,7 @@
 15. 内輪ノリであり気分を害する方がいる可能性があること、選民思想ではないこと、運営者が魔法使いの代表ではないことを、どの頁の下の欄にも書く。
 16. 運営者の学術的な活動とは別の、エンターテインメントの枠であり、科学ではないことを、どの頁の上の帯と下の欄にも書く（2026-11-21 に利用者が求めた）。文は `build.js` の `FRAME` で、`verification/check.js` が同じ文で固めている。
 17. 「クラス」はゲームの職業のたとえで、人を分ける区分ではなく、誰かを当てはめるものでもないと、クラス表と問いに書く。上位職として描かない（2026-11-21 に名をクラスへ替えたときに決めた）。
-18. 配る書体は、SIL Open Font License 1.1 の英字書体 Cormorant Garamond（英字だけに絞った写し）だけ。許諾の文 `assets/OFL-Cormorant.txt` を添え、断りと開示に書く。和文の書体は配らない。書体はこのサイトからだけ読む（CSP の `font-src 'self'`）。
+18. 配る書体は、SIL Open Font License 1.1 の英字書体 Inter Tight（英字だけに絞った写し）だけ。許諾の文 `assets/OFL-InterTight.txt` を添え、断りと開示に書く。和文の書体は配らない。書体はこのサイトからだけ読む（CSP の `font-src 'self'`）。
 5. `site/` は生成物。`src/`・`assets/`・`build.js` を直して `node build.js`。手で直さない。
 6. 頁は外へ何も要求しない。CSP は `default-src 'none'`。スクリプトは遊び場の `assets/play.js` 一本だけで、何も送らず、何も残さない（localStorage も cookie も使わない）。innerHTML を使わない。
 7. 言語モデル利用の開示は消さない。Claude を著者にしない。
