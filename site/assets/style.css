@@ -1,4 +1,4 @@
-/* 地味な魔法使い：意匠。
+/* ステルス・ウィザード：意匠。
  * 引き算で作る。罫も枠も塗りも少なく、余白と細い線で見せる。昼（外の目）と夜（魔法使いの目）の二つの世界、正多面体、三十の目盛り。
  * 書体は読み込まず、端末の明朝と角ゴシックを使う。
  * 枠の印（四隅の鉤）は、ここが運営者の学術的な活動とは別の、娯楽の枠であることの目印。 */
@@ -145,7 +145,7 @@ main > .class-sheet { max-width: calc(var(--measure) + 8rem); }
     linear-gradient(var(--c), var(--c)) top right / var(--l) 1px, linear-gradient(var(--c), var(--c)) top right / 1px var(--l),
     linear-gradient(var(--c), var(--c)) bottom left / var(--l) 1px, linear-gradient(var(--c), var(--c)) bottom left / 1px var(--l),
     linear-gradient(var(--c), var(--c)) bottom right / var(--l) 1px, linear-gradient(var(--c), var(--c)) bottom right / 1px var(--l), #12161c;
-  background-repeat: no-repeat; }
+  background-repeat: no-repeat; box-shadow: inset 0 0 0 1px #262b33; }
 .class-sheet > * { min-width: 0; }
 .cls-kind { grid-column: 1 / -1; margin: 0; font-size: .7rem; letter-spacing: .36em; color: #d8b157; }
 .class-sheet .cls-name { grid-column: 1 / -1; counter-increment: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1.1rem; margin: -.6rem 0 .2rem; font-size: clamp(1.6rem, 4.6vw, 2.4rem); letter-spacing: .1em; color: #ece8df; }
@@ -234,3 +234,5 @@ footer nav { margin-top: 1rem; font-size: .76rem; }
   .cls-skills i { grid-column: 2; }
 }
 p, li, h1, h2, h3, blockquote, figcaption, .cap, td, dd, .cls-skills span { word-break: auto-phrase; line-break: strict; }
+/* 印刷では背景が落ちるので、クラス表を白地の黒字に戻す。 */
+@media print { .class-sheet { background: none; box-shadow: none; border: 1px solid #000; } .class-sheet, .class-sheet * { color: #000 !important; border-color: #888 !important; } .frame { background: none; } }
