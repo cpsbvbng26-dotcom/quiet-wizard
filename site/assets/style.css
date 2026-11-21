@@ -84,10 +84,10 @@ blockquote p:first-child { color: var(--ink); font-family: var(--serif); letter-
 .p-index main > ul { list-style: none; padding: 0; margin-top: 1.4rem; border-top: 1px solid var(--ink); counter-reset: idx; }
 .p-index main > ul > li { counter-increment: idx; position: relative; display: grid; grid-template-columns: 2.2rem 7.2rem 1fr; align-items: baseline; gap: 0 1rem; margin: 0; padding: 1.05rem .4rem 1.05rem 0; border-bottom: 1px solid var(--hair); font-size: .88rem; line-height: 1.8; color: var(--muted); transition: background .25s; }
 .p-index main > ul > li::before { content: counter(idx, cjk-ideographic); font-family: var(--serif); font-size: .74rem; color: var(--gold); text-align: center; }
-.p-index main > ul > li > a { font-family: var(--serif); font-size: 1.04rem; letter-spacing: .14em; color: var(--ink); text-decoration: none; font-feature-settings: "palt"; }
-.p-index main > ul > li > a::after { content: ""; position: absolute; inset: 0; }
+.p-index main > ul > li > a:first-child { font-family: var(--serif); font-size: 1.04rem; letter-spacing: .14em; color: var(--ink); text-decoration: none; font-feature-settings: "palt"; }
+.p-index main > ul > li > a:first-child::after { content: ""; position: absolute; inset: 0; }
 .p-index main > ul > li:hover { background: var(--tint); }
-.p-index main > ul > li:hover > a { color: var(--gold); }
+.p-index main > ul > li:hover > a:first-child { color: var(--gold); }
 .p-index main > ul > li:has(a:focus-visible) { outline: 2px solid var(--gold); outline-offset: 2px; }
 .p-index main > ul > li > a:focus-visible { outline: none; }
 
@@ -100,7 +100,7 @@ td:first-child { white-space: nowrap; font-family: var(--serif); color: var(--go
 .p-canon td:nth-child(2) { font-family: var(--serif); white-space: nowrap; padding-right: 1.2rem; }
 
 /* 図 */
-.fig { --c: var(--hair); --l: 12px; margin-top: 1.6rem; margin-bottom: 2rem; padding: 1.6rem 1.2rem 1.1rem;
+.fig { --c: var(--muted); --l: 12px; margin-top: 1.6rem; margin-bottom: 2rem; padding: 1.6rem 1.2rem 1.1rem;
   background: linear-gradient(var(--c), var(--c)) top left / var(--l) 1px, linear-gradient(var(--c), var(--c)) top left / 1px var(--l),
     linear-gradient(var(--c), var(--c)) top right / var(--l) 1px, linear-gradient(var(--c), var(--c)) top right / 1px var(--l),
     linear-gradient(var(--c), var(--c)) bottom left / var(--l) 1px, linear-gradient(var(--c), var(--c)) bottom left / 1px var(--l),
@@ -184,18 +184,20 @@ footer nav { margin-top: 1rem; font-size: .76rem; }
   main { padding-block: 2rem 3rem; } h2 { margin-top: 2.8rem; }
   header nav { width: 100%; justify-content: space-between; gap: .2rem .6rem; letter-spacing: .06em; }
   .frame p { flex-direction: column; gap: .2rem; padding-block: .55rem .6rem; }
-  /* 表は、行を積む。頭の行は隠し、一つめ（と二つめ）を見出しの行に、残りを下に置く。 */
-  .table tr:first-child { display: none; }
+  /* 表は、行を積む。頭の行は見た目だけ隠し（読み上げには残す）、一つめ（と二つめ）を見出しの行に、残りを下に置く。 */
+  .table tr:first-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .table tr { display: grid; grid-template-columns: auto 1fr; gap: .1rem 1rem; padding: .9rem 0; border-bottom: 1px solid var(--hair); }
   .table td { border: 0; padding: 0; white-space: normal; }
-  .table td:first-child { white-space: nowrap; }
+  .p-canon .table td:first-child { white-space: nowrap; }
+  .p-legality .table td:nth-child(n+2) { grid-column: 1 / -1; padding-top: .35rem; }
+  .p-legality .table td:nth-child(n+2)::before { content: attr(data-col); display: block; font-size: .68rem; letter-spacing: .24em; color: var(--muted); }
   .table td:nth-child(n+3) { grid-column: 1 / -1; padding-top: .3rem; }
   .p-canon .table td:nth-child(2) { white-space: normal; font-weight: 600; }
   .p-index main > blockquote:first-of-type { grid-template-columns: 1fr; padding: 1.6rem 1.2rem 1.3rem; }
   .p-index main > blockquote:first-of-type::before { left: 1.2rem; }
   .p-index main > ul > li { display: block; padding: 1rem .2rem 1rem 2.2rem; }
   .p-index main > ul > li::before { position: absolute; left: 0; top: 1.15rem; width: 1.6rem; }
-  .p-index main > ul > li > a { display: block; margin-bottom: .15rem; }
+  .p-index main > ul > li > a:first-child { display: block; margin-bottom: .15rem; }
   .fig { padding: 1.2rem .4rem .9rem; }
 }
 p, li, h1, h2, h3, blockquote, figcaption, .cap, td { word-break: auto-phrase; line-break: strict; }
