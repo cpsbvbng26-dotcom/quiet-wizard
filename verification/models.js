@@ -56,7 +56,7 @@ function Tr(m, p, a) {
   return a.U.some(([ei, s, c]) => m.sigma(p, ei, p.E[ei].phi(s, c), s, c) === NEG
     && a.U.some(([ej, s2, c2]) => ej === ei && s < s2 && p.E[ei].phi(s2, c2) === p.E[ei].type.iota(p.E[ei].phi(s, c)) && m.sigma(p, ei, p.E[ei].phi(s2, c2), s2, c2) === POS));
 }
-const Mag = (m, p, a) => Tr(m, p, a) && a.R.length > 0 && a.R.every((r) => p.Rel.has(r)) && [...p.Rel].every((r) => !m.Obs.has(r)) && a.U.every(([, s]) => s <= a.t);
+const Mag = (m, p, a) => Tr(m, p, a) && a.R.length > 0 && a.R.every((r) => p.Rel.has(r)) && a.R.every((r) => !m.Obs.has(r)) && a.U.every(([, s]) => s <= a.t);
 const alive = (p) => range(0, p.L);
 const LAWS = {
   D6: (m) => m.P.every((p) => p.E.every((el, ei) => el.type.faces.every((u) => {
@@ -64,6 +64,8 @@ const LAWS = {
     return sig.includes(NEG) && sig.includes(POS);
   }))),
   D7: (m) => m.P.every((p) => alive(p).every((t) => [...N(m, p, t)].every((k) => H(m, p, t).has(k)))),
+  /* 能動の定め：時は生きている長さの内、用いる向きはみな自らの要素のもので、能動の時以前。 */
+  ACT: (m) => m.P.every((p) => p.Act.every((a) => a.t <= p.L && a.U.every(([ei, s]) => ei < p.E.length && s <= a.t))),
   L1: (m) => m.P.every((p) => !(p.L >= 30 && p.V(30)) || alive(p).some((t) => W(m, p, t))),
   L2: (m) => m.P.every((p) => p.E.every((el) => new Set(alive(p).flatMap((t) => m.C.map((c) => el.phi(t, c)))).size >= 2)),
   L3: (m) => m.P.every((p) => alive(p).every((t) => { const n = N(m, p, t), h = H(m, p, t); return n.size === h.size && [...h].every((k) => n.has(k)); })),
@@ -123,10 +125,12 @@ const M0minus = world([Object.assign(wizard('x', 20, { V: () => false }), { Act:
 /* M″：時 21 に逆 f* を正として向けるが、時 22 からは f を正として向け、能動は f の負と f の正とを用いる。
  * 魔法使いだが、転化を用いないので魔法を為さない（定理二十）。 */
 const M2dash = world([wizard('x', 20, { phi: (t) => (t < 20 ? G : t === 21 ? FSTAR : F), acts: range(22, 100) })], 20);
+/* M₃′：M₀ で N を常に空とし、M₀ の x の写し z を足す。 */
+const M3prime = world([wizard('x', 20, { N: () => new Set() }), wizard('z', 20)], 20);
 /* M₀′：M₀ で童貞を偽とする。童貞でない魔法使い（定理二・定理十）。 */
 const M0prime = world([wizard('x', 20, { V: () => false })], 20);
 
-function evaluate(m) { const r = {}; for (const k of ['D6', 'D7', ...LAW_NAMES]) r[k] = LAWS[k](m); return r; }
+function evaluate(m) { const r = {}; for (const k of ['D6', 'D7', 'ACT', ...LAW_NAMES]) r[k] = LAWS[k](m); return r; }
 
 /* ---- 四、正多面体 ---- */
 
@@ -223,6 +227,9 @@ function run() {
     afterSwitch: [M[0], M0prime, M2dash, ...[1, 2, 4, 5, 6, 7, 8, 9, 10].map((k) => M[k])].every((mm) => mm.P.every((p) => p.Act.filter((a) => Mag(mm, p, a)).every((a) => range(0, a.t).some((t) => Sw(mm, p, t))))),
     /* 定理十九：第六法則を満たす模型では、成果を生む転化はみな魔法。 */
     trIsMag: [M[0], M0prime, M2dash, ...[1, 2, 3, 4, 5, 7, 8, 9, 10].map((k) => M[k])].every((mm) => mm.P.every((p) => p.Act.every((a) => !(Tr(mm, p, a) && a.R.length > 0) || Mag(mm, p, a)))),
+    /* M₃′：N を常に空とし、z を足す。第三法則だけを破り、x の魔法の前に切り替わりがない（定理二十一の注）。 */
+    M3primeLaws: evaluate(M3prime),
+    M3primeNoSwitch: M3prime.P[0].Act.filter((a) => Mag(M3prime, M3prime.P[0], a)).length === 80 && !range(0, 100).some((t) => Sw(M3prime, M3prime.P[0], t)),
     /* 第六法則を破る M₆ では、成果を生む転化でも魔法でないものがある。 */
     M6notMagic: M[6].P[0].Act.some((a) => Tr(M[6], M[6].P[0], a) && a.R.length > 0 && !Mag(M[6], M[6].P[0], a)),
   };
@@ -252,6 +259,7 @@ function verdict(res) {
   if (!(g.M0count === 80 && g.M0negatives === 1 && g.M0allMagic)) bad.push('定理二十二：M₀ で一つの負から八十の魔法');
   if (!(Object.values(g.M2dashLaws).every(Boolean) && g.M2dashWizard && !g.M2dashMagic)) bad.push('定理二十：M″ は法則を満たす魔法使いで、魔法を為さない');
   if (!g.afterSwitch) bad.push('定理二十一：切り替わりの前に魔法がある');
+  if (!(Object.entries(g.M3primeLaws).filter(([, v]) => !v).map(([k]) => k).join() === 'L3' && g.M3primeNoSwitch)) bad.push('定理二十一の注：M₃′ は第三法則だけを破り、魔法の前に切り替わりがない');
   if (!(g.trIsMag && g.M6notMagic)) bad.push('定理十九：第六法則の下で、成果を生む転化が魔法でない');
   return bad;
 }
