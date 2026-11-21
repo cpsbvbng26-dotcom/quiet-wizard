@@ -1,7 +1,7 @@
 <svg class="layer outer" viewBox="0 0 640 360" aria-hidden="true">
 <rect class="d-bg" width="640" height="360"/>
 <path class="s d-mt" d="M16 36V16h20M604 16h20v20M624 324v20h-20M36 344H16v-20"/>
-<text class="d-tx" x="40" y="40" font-size="11" letter-spacing="4">外の目</text>
+<text class="d-tx" x="44" y="50" font-size="18" letter-spacing="5">外の目</text>
 <g class="s d-mt"><rect x="40" y="140" width="64" height="160"/><rect x="118" y="104" width="48" height="196"/><rect x="486" y="122" width="58" height="178"/><rect x="556" y="168" width="56" height="132"/>
 <path d="M150 40l-6 18M214 22l-6 18M402 30l-6 18M470 60l-6 18M262 64l-6 18M548 36l-6 18M96 84l-6 18M360 92l-6 18"/></g>
 <line class="s d-ln" x1="24" y1="300" x2="616" y2="300"/>
@@ -18,7 +18,7 @@
 <svg class="layer inner" viewBox="0 0 640 360" aria-hidden="true">
 <rect class="n-bg" width="640" height="360"/>
 <path class="s n-gd" d="M16 36V16h20M604 16h20v20M624 324v20h-20M36 344H16v-20"/>
-<text class="n-tx" x="40" y="40" font-size="11" letter-spacing="4">魔法使いの目</text>
+<text class="n-tx" x="44" y="50" font-size="18" letter-spacing="5">魔法使いの目</text>
 <g class="n-st"><circle cx="48" cy="34" r="1"/><circle cx="132" cy="74" r=".8"/><circle cx="226" cy="22" r="1.1"/><circle cx="430" cy="38" r=".8"/><circle cx="530" cy="84" r="1"/><circle cx="604" cy="28" r=".8"/><circle cx="580" cy="200" r=".8"/><circle cx="70" cy="200" r="1"/></g>
 <g class="s n-mt"><path d="M316 226L96 150M316 226L136 292M316 226L470 330" stroke-dasharray="4 6"/></g>
 <g class="s n-gd" stroke-width="1"><path d="M316 226L176 84M316 226L548 132M316 226L564 282"/></g>
