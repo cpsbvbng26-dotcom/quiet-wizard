@@ -32,7 +32,7 @@ function statutes(html) {
 /* 運営者の学術的な活動とは別の枠であること（2026-11-21 に利用者が求めた）。どの頁の上の帯にも出す。 */
 const FRAME = 'これは運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。';
 const FOOT = 'これは遊びです。運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。都市伝説を題材にした娯楽の頁で、ここに書く法則は科学の法則ではなく、誰の性経験も評価せず、特定の人を指しません。内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。選民思想ではなく、運営者は魔法使いの代表ではありません。';
-const META_CSP = "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'";
+const META_CSP = "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'";
 /* frame-ancestors は meta では効かないので、配信のヘッダーにだけ足す。 */
 const CSP = META_CSP + "; frame-ancestors 'none'";
 
@@ -110,6 +110,9 @@ ${fs.readFileSync(path.join(ROOT, 'src', 'hero.svg.part'), 'utf8').trim()}
 </div>
 <p class="cap"><span class="cap-out">外の目：傘を持った人が、立っているだけ。</span><span class="cap-in">魔法使いの目：面が回り、負が溜まり、成果が人の関係へ溶けていく。</span></p>
 </section>`;
+/* 頁の題の下に置く英語の添え名（飾り。読み上げからは外す）と、上の案内の英語。 */
+const EN = { index: 'Stealth Wizard', canon: 'The Canon', strict: 'The Strict Edition', guide: 'Field Guide', play: 'Playground', faq: 'Questions',
+  about: 'Disclaimers & Disclosure', terms: 'Terms of Use', privacy: 'Privacy', requests: 'Requests & Contact', legality: 'On Legality', 404: 'Not Found' };
 /* 頁の題の上に置く小さな見出し。 */
 const EYEBROW = { index: '三十歳魔法使い都市伝説から生まれた、遊びのクラス', canon: '原典　定義九・法則十', strict: '厳密版　記号と論理', guide: '図鑑　十の法則の地味な現れ', play: '遊び場　関係の上で働く法則', faq: '問いと答え',
   about: '断りと開示', terms: '決まり', privacy: '決まり', requests: '決まり', legality: '決まり', 404: '迷子' };
@@ -170,7 +173,9 @@ function render(md) {
 }
 
 function page(file, title, body) {
-  const nav = PAGES.filter((x) => x[3]).map(([, out, short]) => (out === file ? '<span aria-current="page">' + esc(short) + '</span>' : '<a href="' + out + '.html">' + esc(short) + '</a>')).join('\n');
+  const label = (out, short) => '<span class="ja">' + esc(short) + '</span><span class="en" lang="en" aria-hidden="true">' + esc(EN[out].replace(/^The /, '')) + '</span>';
+  const nav = PAGES.filter((x) => x[3]).map(([, out, short]) => (out === file ? '<span aria-current="page">' + label(out, short) + '</span>' : '<a href="' + out + '.html">' + label(out, short) + '</a>')).join('\n');
+  body = body.replace('</h1>', '</h1>\n<p class="en-title" lang="en" aria-hidden="true">' + esc(EN[file] || '') + '</p>');
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -194,6 +199,7 @@ ${nav}
 ${body}
 </main>
 <footer>
+<p class="wordmark" lang="en" aria-hidden="true">Stealth Wizard</p>
 <div class="ruler" aria-hidden="true"><span>0</span><span>十</span><span>二十</span><span>三十（目安）</span></div>
 <p>${esc(FOOT)}</p>
 <p>原典は運営者の文で、遊びの部分は Claude（Anthropic の言語モデル）が書きました。Claude は著者ではありません。文は CC BY 4.0、コードは MIT。<a href="${REPO}" rel="noopener">リポジトリ</a></p>
@@ -225,4 +231,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
