@@ -114,7 +114,7 @@ blockquote p:first-child { color: var(--ink); font-family: var(--head); font-wei
 
 /* 原理：古典の数学書の体裁。本文は明朝、原典の文は細い罫の下に小さく、ラテン語は小さな大文字 */
 .lat { font-family: var(--display); font-weight: 500; font-size: .62rem; letter-spacing: .3em; text-transform: uppercase; color: var(--gold); white-space: nowrap; }
-h2 .lat { font-weight: 400; color: var(--muted); letter-spacing: .32em; }
+h2 .lat { font-weight: 400; color: var(--muted); letter-spacing: .32em; white-space: normal; min-width: 0; line-height: 1.6; }
 .p-strict main > p:has(> strong:first-child) { position: relative; margin: 0 auto; padding: 1.2rem 0 1.25rem; border-top: 1px solid var(--hair); font-family: var(--serif); font-size: 1.04rem; line-height: 2; letter-spacing: .06em; }
 .p-strict main > h2 + p:has(> strong:first-child) { border-top-color: var(--ink); }
 .p-strict main > p > strong:first-child { display: block; margin-bottom: .35rem; font-family: var(--head); font-weight: 700; font-size: .92rem; letter-spacing: .14em; }
