@@ -111,28 +111,28 @@ ${fs.readFileSync(path.join(ROOT, 'src', 'hero.svg.part'), 'utf8').trim()}
 <p class="cap"><span class="cap-out">外の目：傘を持った人が、立っているだけ。</span><span class="cap-in">魔法使いの目：面が回り、負が溜まり、成果が人の関係へ溶けていく。</span></p>
 </section>`;
 /* 頁の題の上に置く小さな見出し。 */
-const EYEBROW = { index: '三十歳魔法使い都市伝説の、遊びのクラス', canon: '原典　定義九・法則十', strict: '厳密版　記号と論理', guide: '図鑑　十の法則の地味な現れ', play: '遊び場　関係の上で働く法則', faq: '問いと答え',
+const EYEBROW = { index: '三十歳魔法使い都市伝説から生まれた、遊びのクラス', canon: '原典　定義九・法則十', strict: '厳密版　記号と論理', guide: '図鑑　十の法則の地味な現れ', play: '遊び場　関係の上で働く法則', faq: '問いと答え',
   about: '断りと開示', terms: '決まり', privacy: '決まり', requests: '決まり', legality: '決まり', 404: '迷子' };
 /* 小さな正二十面体のしるし。 */
 const MARK = '<svg class="mark" viewBox="-50 -50 100 100" aria-hidden="true"><polygon points="0,-46 40,-23 40,23 0,46 -40,23 -40,-23"/><polygon points="0,-24 21,12 -21,12"/><path d="M0,-46L0,-24M40,-23L0,-24M-40,-23L0,-24M40,-23L21,12M40,23L21,12M0,46L21,12M0,46L-21,12M-40,23L-21,12M-40,-23L-21,12"/></svg>';
 
 /* はじめにのクラス表。ゲームの職業のたとえで、人を分ける区分ではない（下の断りを外さない）。 */
-const CLASS = `<section class="class-sheet" aria-labelledby="cls-name">
-<p class="cls-kind">クラス表（遊び）</p>
-<h2 id="cls-name" class="cls-name">ステルス・ウィザード<span lang="en">Stealth Wizard</span></h2>
+const CLASS = `<section class="class-sheet" aria-labelledby="cls-kind cls-name">
+<p class="cls-kind" id="cls-kind">クラス表（遊び）</p>
+<h2 id="cls-name" class="cls-name">ステルス・ウィザード<span lang="en" aria-hidden="true">Stealth Wizard</span></h2>
 <dl class="cls-stats">
 <div><dt>系統</dt><dd>魔法職・隠密系</dd></div>
-<div><dt>転職</dt><dd>負の蓄積が閾に届いたとき（第四法則）。三十は目安で、早いことも遅いこともある（第五法則）</dd></div>
-<div><dt>外見</dt><dd>ほかの人と同じ。外の目には、傘を持った人が立っているだけ（第七法則）</dd></div>
+<div><dt>転職</dt><dd>切り替わりのとき（定義八）。三十歳は目安にすぎず、それより早いこともある（第五法則）</dd></div>
+<div><dt>外見</dt><dd>ほかの人と同じ。外の目には、傘を持った人が立っているだけ</dd></div>
 <div><dt>呪文</dt><dd>「確認します」「お先に失礼します」</dd></div>
 <div><dt>見える成果</dt><dd class="num">0（いつも）</dd></div>
 </dl>
 <div class="cls-skills-wrap">
-<h3>スキル（いつも発動）</h3>
+<h3>スキル（パッシブ）</h3>
 <ul class="cls-skills">
 <li><b>多面</b><span>場面ごとに、向ける面を変える</span><i>第二法則</i></li>
 <li><b>保存</b><span>向けた負は消えず、溜まっていく</span><i>第三法則</i></li>
-<li><b>反転</b><span>負の面の逆が、正として光る</span><i>第四法則</i></li>
+<li><b>反転</b><span>負の蓄積が進めば、逆の面が正として顕れる</span><i>第四法則</i></li>
 <li><b>還元</b><span>成果は、出た瞬間に人の関係へ溶ける</span><i>第六法則</i></li>
 <li><b>秘匿</b><span>具体は記さない</span><i>第九法則</i></li>
 <li><b>長命</b><span>長く生きる。長く生きるのは大変</span><i>第十法則</i></li>
