@@ -12,6 +12,9 @@
  *     （定理十五）、双対で面と頂点の数が入れ替わること（定理十六）、完全な網での構造均衡定理（定理十七、
  *     三人から六人まで総当たり）、輪の網で一本の線から源が二人に残ること（定理十八）を確かめる。
  * 六、第四巻：転化と魔法を式のとおりに評価し、定理十九から二十二を模型で確かめる。
+ * 七、第五巻：観測の記録（Obs と V）をいくつも取り、どれも法則の模型で実現できること（定理二十四）、Obs・V・L を
+ *     見えるとすれば、魔法使いにしてもしなくても法則の破れる記録があること（定理二十五の二つの候補）、T⁺（魔法使いがいる）も T⁻（いない）も同じ記録を
+ *     すべて実現すること、Obs・V・L の記録なら T⁺ と T⁻ が分かれること（定理二十六）を確かめる。
  * 依存は Node.js だけ。
  */
 'use strict';
@@ -90,8 +93,8 @@ function wizard(id, n, opts = {}) {
   return {
     id, L, kappa: 1, V: opts.V ?? (() => true),
     E: [{ type: CUBE, phi: opts.phi ?? ((t) => (t < n ? G : t === n ? F : FSTAR)) }],
-    Act: acts.map((s) => ({ t: s, U: [[0, n, 'c'], [0, s, 'c']], R: ['r' + id + s] })),
-    Rel: new Set(acts.map((s) => 'r' + id + s)),
+    Act: acts.map((s) => ({ t: s, U: [[0, n, 'c'], [0, s, 'c']], R: [(opts.rp ?? 'r') + id + s] })),
+    Rel: new Set(acts.map((s) => (opts.rp ?? 'r') + id + s)),
     B: opts.B ?? (() => true), Toil: (t) => t, N: opts.N,
   };
 }
@@ -214,6 +217,33 @@ function run() {
   const before = world([wizard('z', 20, { L: 160 }), cex], 20, { Lambda: lam, Obs: new Set(['o1']) });
   const after = world([wizard('z', 20, { L: 160 }), wizard('y', 20, { L: Math.max(100, lam) })], 20, { Lambda: lam, Obs: new Set(['o1']) });
   res.replace = { before: evaluate(before), after: evaluate(after), sameObs: [...before.Obs].join() === [...after.Obs].join() };
+  /* 第五巻。記録は、人ごとの V と、Obs。法則の模型で、どの記録も実現できる（𝒪 = {Obs, V}）。
+   * 人はみな M₀ の x の形で、L = max(100, Λ)、成果の名は Obs と重ならない新しいものにする。 */
+  const realize = (vs, obs, lam) => {
+    let rp = 'r'; while ([...obs].some((o) => o.startsWith(rp))) rp += '_';
+    return world(vs.map((v, k) => wizard('p' + k, 20, { L: Math.max(100, lam), V: () => v, rp })), 20, { Lambda: lam, Obs: new Set(obs) });
+  };
+  const records = [];
+  for (const n of [1, 2, 3]) for (let mask = 0; mask < 2 ** n; mask++) for (const obs of [[], ['o1'], ['rp021', 'rp121'], ['r', 'r_x']]) for (const lam of [80, 150]) records.push([range(0, n - 1).map((k) => !!((mask >> k) & 1)), obs, lam]);
+  res.immune = records.every(([vs, obs, lam]) => { const mm = realize(vs, obs, lam); return Object.values(evaluate(mm)).every(Boolean) && mm.P.map((p) => p.V(30)).join() === vs.join() && [...mm.Obs].join() === obs.join(); });
+  res.immuneCount = records.length;
+  /* 𝒪 = {Obs, V, L}：V(x, 30) が真で L(x) = 30 の記録は、魔法使いにしても（L10 が破れる）、しなくても（L1 が破れる）実現できない。 */
+  const asWizard = world([wizard('x', 20, { L: 30 }), wizard('z', 20)], 20);
+  const asPlain = world([Object.assign(wizard('x', 20, { L: 30 }), { Act: [], Rel: new Set() }), wizard('z', 20)], 20);
+  res.refutable = { wizardBreaks: Object.entries(evaluate(asWizard)).filter(([, v]) => !v).map(([k]) => k).join(), plainBreaks: Object.entries(evaluate(asPlain)).filter(([, v]) => !v).map(([k]) => k).join() };
+  /* 定理二十六：T⁻ の作り方。人はみな M₀⁻ の形（切り替わりはあり、能動はない）、童貞の者は L = 25、そうでない者は L = 100。 */
+  const realizeMinus = (vs, obs, lam, lv = 25) => world(vs.map((v, k) => Object.assign(wizard('q' + k, 20, { L: v ? lv : 100, V: () => v }), { Act: [], Rel: new Set() })), 20, { Lambda: lam, Obs: new Set(obs) });
+  const allW = (mm) => mm.P.some((p) => range(0, p.L).some((t) => W(mm, p, t)));
+  res.rival = {
+    plusAll: records.every(([vs, obs, lam]) => { const mm = realize(vs, obs, lam); return Object.values(evaluate(mm)).every(Boolean) && allW(mm); }),
+    minusAll: range(21, 29).every((lv) => records.every(([vs, obs, lam]) => { const mm = realizeMinus(vs, obs, lam, lv); return Object.values(evaluate(mm)).every(Boolean) && !allW(mm) && mm.P.map((p) => p.V(30)).join() === vs.join() && [...mm.Obs].join() === obs.join(); })),
+    /* 二十一より短いと、切り替わりが生きているうちに来ない。 */
+    minusShortFails: records.filter(([vs]) => vs.every(Boolean)).every(([vs, obs, lam]) => !Object.values(evaluate(realizeMinus(vs, obs, lam, 20))).every(Boolean)),
+  };
+  /* 注：𝒪 = {Obs, V, L} で V(x, 30) が真、L(x) = 50 の記録。T⁺（Λ = 40）は実現し、魔法使いでない x は L1 を破る。 */
+  const sepPlus = world([wizard('x', 20, { L: 50 })], 20, { Lambda: 40 });
+  const sepMinus = world([Object.assign(wizard('x', 20, { L: 50 }), { Act: [], Rel: new Set() })], 20, { Lambda: 40 });
+  res.separate = { plus: Object.values(evaluate(sepPlus)).every(Boolean) && allW(sepPlus), minusBreaks: Object.entries(evaluate(sepMinus)).filter(([, v]) => !v).map(([k]) => k).join() };
   /* 第四巻 */
   const x0 = M[0].P[0];
   res.magic = {
@@ -255,6 +285,10 @@ function verdict(res) {
   if (!res.ring.every(Boolean)) bad.push('輪の源が二人でない網がある');
   const rb = res.replace;
   if (!(rb.before.L1 === false && Object.entries(rb.before).every(([k, v]) => k === 'L1' || v) && Object.values(rb.after).every(Boolean) && rb.sameObs)) bad.push('定理十一：取り替えのあとで法則が成り立たない');
+  if (!res.immune) bad.push('定理二十四：法則の模型で実現できない記録がある');
+  if (!(res.refutable.wizardBreaks === 'L10' && res.refutable.plainBreaks === 'L1')) bad.push('定理二十五：V(x, 30) と L(x) = 30 の記録が、片方の法則だけで止まらない：' + JSON.stringify(res.refutable));
+  if (!(res.rival.plusAll && res.rival.minusAll && res.rival.minusShortFails)) bad.push('定理二十六：T⁺ と T⁻ が、どちらも記録のすべてを実現しない');
+  if (!(res.separate.plus && res.separate.minusBreaks === 'L1')) bad.push('定理二十六の注：Obs・V・L の記録で T⁺ と T⁻ が分かれない');
   const g = res.magic;
   if (!(g.M0count === 80 && g.M0negatives === 1 && g.M0allMagic)) bad.push('定理二十二：M₀ で一つの負から八十の魔法');
   if (!(Object.values(g.M2dashLaws).every(Boolean) && g.M2dashWizard && !g.M2dashMagic)) bad.push('定理二十：M″ は法則を満たす魔法使いで、魔法を為さない');
@@ -273,6 +307,7 @@ if (require.main === module) {
   for (const s of res.solids) console.log(s.name, 'V', s.verts, 'E', s.edges, 'F', s.faces, 'V−E+F', s.euler, '推移', s.transitive, '安定化群', s.stabilizer, '回転群', s.order, '割り当て', String(s.all), '本質', String(s.orbits), '中心対称', s.centrallySymmetric);
   console.log('構造均衡', JSON.stringify(res.balance), '輪の源', res.ring.join(), 'C3', res.ring3.join());
   console.log('魔法', JSON.stringify(res.magic));
+  console.log('第五巻', '免疫', res.immune, res.immuneCount, '反証', JSON.stringify(res.refutable), '対', JSON.stringify(res.rival), '分け', JSON.stringify(res.separate));
   const bad = verdict(res);
   console.log(bad.length ? '落：' + bad.join(' / ') : '通：すべての主張が成り立つ');
   process.exit(bad.length ? 1 : 0);
