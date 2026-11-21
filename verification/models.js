@@ -11,6 +11,7 @@
  * 五、第三巻：回転群が面の上に推移的に働くことと面の安定化群（定理十四）、頂点・辺・面の数とオイラーの公式
  *     （定理十五）、双対で面と頂点の数が入れ替わること（定理十六）、完全な網での構造均衡定理（定理十七、
  *     三人から六人まで総当たり）、輪の網で一本の線から源が二人に残ること（定理十八）を確かめる。
+ * 六、第四巻：転化と魔法を式のとおりに評価し、定理十九から二十二を模型で確かめる。
  * 依存は Node.js だけ。
  */
 'use strict';
@@ -49,6 +50,13 @@ function Sw(m, p, t) {
   return false;
 }
 
+/* 第四巻。転化：負の向き (e, s, c) と、のちの (e, s′, c′) で、その逆を正として向けた向きとを、ともに用いること。
+ * 魔法：転化を用い、成果が空でなく、成果が x の関係の中にあり、関係が外から見えないこと。 */
+function Tr(m, p, a) {
+  return a.U.some(([ei, s, c]) => m.sigma(p, ei, p.E[ei].phi(s, c), s, c) === NEG
+    && a.U.some(([ej, s2, c2]) => ej === ei && s < s2 && p.E[ei].phi(s2, c2) === p.E[ei].type.iota(p.E[ei].phi(s, c)) && m.sigma(p, ei, p.E[ei].phi(s2, c2), s2, c2) === POS));
+}
+const Mag = (m, p, a) => Tr(m, p, a) && a.R.length > 0 && a.R.every((r) => p.Rel.has(r)) && [...p.Rel].every((r) => !m.Obs.has(r)) && a.U.every(([, s]) => s <= a.t);
 const alive = (p) => range(0, p.L);
 const LAWS = {
   D6: (m) => m.P.every((p) => p.E.every((el, ei) => el.type.faces.every((u) => {
@@ -59,7 +67,8 @@ const LAWS = {
   L1: (m) => m.P.every((p) => !(p.L >= 30 && p.V(30)) || alive(p).some((t) => W(m, p, t))),
   L2: (m) => m.P.every((p) => p.E.every((el) => new Set(alive(p).flatMap((t) => m.C.map((c) => el.phi(t, c)))).size >= 2)),
   L3: (m) => m.P.every((p) => alive(p).every((t) => { const n = N(m, p, t), h = H(m, p, t); return n.size === h.size && [...h].every((k) => n.has(k)); })),
-  L4: (m) => m.P.every((p) => !alive(p).some((t) => A(m, p, t) >= p.kappa) || alive(p).some((t) => Sw(m, p, t))),
+  /* 閾に初めて達した時 t₀ より後（t₀ を含む）に、切り替わりがある。 */
+  L4: (m) => m.P.every((p) => { const t0 = alive(p).find((t) => A(m, p, t) >= p.kappa); return t0 === undefined || range(t0, p.L).some((t) => Sw(m, p, t)); }),
   L5: (m) => m.P.some((p) => range(0, Math.min(29, p.L)).some((t) => Sw(m, p, t))),
   L6: (m) => m.P.every((p) => p.Act.every((a) => a.R.every((r) => p.Rel.has(r))) && [...p.Rel].every((r) => !m.Obs.has(r))),
   L7: (m) => m.P.every((p) => alive(p).every((t) => !W(m, p, t) || range(t, p.L).every((s) => p.Act.some((a) => a.t === s && a.R.length > 0)))),
@@ -111,6 +120,9 @@ M[9] = world([wizard('x', 20)], 20, { Wr: [['x', 'rx21']] });
 M[10] = world([wizard('x', 20, { L: 50 })], 20);
 /* M₀⁻：M₀ から能動を除き、童貞を偽とする。外から見えるもの（Obs）は M₀ と同じ。 */
 const M0minus = world([Object.assign(wizard('x', 20, { V: () => false }), { Act: [], Rel: new Set() })], 20);
+/* M″：時 21 に逆 f* を正として向けるが、時 22 からは f を正として向け、能動は f の負と f の正とを用いる。
+ * 魔法使いだが、転化を用いないので魔法を為さない（定理二十）。 */
+const M2dash = world([wizard('x', 20, { phi: (t) => (t < 20 ? G : t === 21 ? FSTAR : F), acts: range(22, 100) })], 20);
 /* M₀′：M₀ で童貞を偽とする。童貞でない魔法使い（定理二・定理十）。 */
 const M0prime = world([wizard('x', 20, { V: () => false })], 20);
 
@@ -193,6 +205,27 @@ function run() {
   res.balance = balanceTheorem(6);
   res.ring = [4, 5, 6, 7, 8, 9, 10, 11, 12].map((n) => ringSources(n).every((c) => c === 2));
   res.ring3 = ringSources(3);
+  /* 定理十一の前半の取り替え：Λ = 150 の模型で、三十歳まで童貞で魔法使いと成らない y を、M₀ の x の形（L = max(100, Λ)）に取り替えると、すべての法則が成り立つ。 */
+  const lam = 150, cex = { id: 'y', L: 100, kappa: 2, V: () => true, E: [{ type: CUBE, phi: (t) => (t % 2 ? 3 : 2) }], Act: [], Rel: new Set(), B: () => true, Toil: (t) => t };
+  const before = world([wizard('z', 20, { L: 160 }), cex], 20, { Lambda: lam, Obs: new Set(['o1']) });
+  const after = world([wizard('z', 20, { L: 160 }), wizard('y', 20, { L: Math.max(100, lam) })], 20, { Lambda: lam, Obs: new Set(['o1']) });
+  res.replace = { before: evaluate(before), after: evaluate(after), sameObs: [...before.Obs].join() === [...after.Obs].join() };
+  /* 第四巻 */
+  const x0 = M[0].P[0];
+  res.magic = {
+    M0count: x0.Act.filter((a) => Mag(M[0], x0, a)).length,
+    M0negatives: H(M[0], x0, 100).size,
+    M0allMagic: x0.Act.every((a) => Mag(M[0], x0, a)),
+    M2dashLaws: evaluate(M2dash),
+    M2dashWizard: W(M2dash, M2dash.P[0], 100),
+    M2dashMagic: M2dash.P[0].Act.some((a) => Mag(M2dash, M2dash.P[0], a)),
+    /* 定理二十一：法則を満たす模型（M₀、M₀′、M″）と、第三法則を保つ M_k で、魔法の能動の時までに切り替わりがある。 */
+    afterSwitch: [M[0], M0prime, M2dash, ...[1, 2, 4, 5, 6, 7, 8, 9, 10].map((k) => M[k])].every((mm) => mm.P.every((p) => p.Act.filter((a) => Mag(mm, p, a)).every((a) => range(0, a.t).some((t) => Sw(mm, p, t))))),
+    /* 定理十九：第六法則を満たす模型では、成果を生む転化はみな魔法。 */
+    trIsMag: [M[0], M0prime, M2dash, ...[1, 2, 3, 4, 5, 7, 8, 9, 10].map((k) => M[k])].every((mm) => mm.P.every((p) => p.Act.every((a) => !(Tr(mm, p, a) && a.R.length > 0) || Mag(mm, p, a)))),
+    /* 第六法則を破る M₆ では、成果を生む転化でも魔法でないものがある。 */
+    M6notMagic: M[6].P[0].Act.some((a) => Tr(M[6], M[6].P[0], a) && a.R.length > 0 && !Mag(M[6], M[6].P[0], a)),
+  };
   return res;
 }
 
@@ -213,6 +246,13 @@ function verdict(res) {
   for (const [a, b] of [['正六面体', '正八面体'], ['正十二面体', '正二十面体'], ['正四面体', '正四面体']]) if (by[a].faces !== by[b].verts || by[a].verts !== by[b].faces || by[a].edges !== by[b].edges || by[a].order !== by[b].order) bad.push(a + 'と' + b + '：双対の数が合わない');
   if (!res.balance.ok) bad.push('構造均衡定理が K_' + res.balance.n + ' で破れる');
   if (!res.ring.every(Boolean)) bad.push('輪の源が二人でない網がある');
+  const rb = res.replace;
+  if (!(rb.before.L1 === false && Object.entries(rb.before).every(([k, v]) => k === 'L1' || v) && Object.values(rb.after).every(Boolean) && rb.sameObs)) bad.push('定理十一：取り替えのあとで法則が成り立たない');
+  const g = res.magic;
+  if (!(g.M0count === 80 && g.M0negatives === 1 && g.M0allMagic)) bad.push('定理二十二：M₀ で一つの負から八十の魔法');
+  if (!(Object.values(g.M2dashLaws).every(Boolean) && g.M2dashWizard && !g.M2dashMagic)) bad.push('定理二十：M″ は法則を満たす魔法使いで、魔法を為さない');
+  if (!g.afterSwitch) bad.push('定理二十一：切り替わりの前に魔法がある');
+  if (!(g.trIsMag && g.M6notMagic)) bad.push('定理十九：第六法則の下で、成果を生む転化が魔法でない');
   return bad;
 }
 
@@ -224,6 +264,7 @@ if (require.main === module) {
   console.log('M0- 魔法使い', res.W.M0minus, ' M0 魔法使い', res.W.M0, ' M0′ 魔法使い', res.W.M0prime);
   for (const s of res.solids) console.log(s.name, 'V', s.verts, 'E', s.edges, 'F', s.faces, 'V−E+F', s.euler, '推移', s.transitive, '安定化群', s.stabilizer, '回転群', s.order, '割り当て', String(s.all), '本質', String(s.orbits), '中心対称', s.centrallySymmetric);
   console.log('構造均衡', JSON.stringify(res.balance), '輪の源', res.ring.join(), 'C3', res.ring3.join());
+  console.log('魔法', JSON.stringify(res.magic));
   const bad = verdict(res);
   console.log(bad.length ? '落：' + bad.join(' / ') : '通：すべての主張が成り立つ');
   process.exit(bad.length ? 1 : 0);
