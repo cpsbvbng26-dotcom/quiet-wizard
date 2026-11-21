@@ -138,6 +138,35 @@ td:first-child { white-space: nowrap; font-family: var(--serif); color: var(--go
 .eye-toggle:checked ~ .cap .cap-out { display: none; }
 .eye-toggle:checked ~ .cap .cap-in { display: inline; }
 
+/* はじめにのクラス表：夜の色の札。四隅の鉤は金 */
+main > .class-sheet { max-width: calc(var(--measure) + 8rem); }
+.class-sheet { --c: #d8b157; --l: 16px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.4rem 2.6rem; margin-top: 3rem; margin-bottom: 3.2rem; padding: 2.2rem 2.2rem 1.8rem; color: #c9ced4;
+  background: linear-gradient(var(--c), var(--c)) top left / var(--l) 1px, linear-gradient(var(--c), var(--c)) top left / 1px var(--l),
+    linear-gradient(var(--c), var(--c)) top right / var(--l) 1px, linear-gradient(var(--c), var(--c)) top right / 1px var(--l),
+    linear-gradient(var(--c), var(--c)) bottom left / var(--l) 1px, linear-gradient(var(--c), var(--c)) bottom left / 1px var(--l),
+    linear-gradient(var(--c), var(--c)) bottom right / var(--l) 1px, linear-gradient(var(--c), var(--c)) bottom right / 1px var(--l), #12161c;
+  background-repeat: no-repeat; }
+.class-sheet > * { min-width: 0; }
+.cls-kind { grid-column: 1 / -1; margin: 0; font-size: .7rem; letter-spacing: .36em; color: #d8b157; }
+.class-sheet .cls-name { grid-column: 1 / -1; counter-increment: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1.1rem; margin: -.6rem 0 .2rem; font-size: clamp(1.6rem, 4.6vw, 2.4rem); letter-spacing: .1em; color: #ece8df; }
+.class-sheet .cls-name::before { content: none; }
+.cls-name span { font-family: var(--sans); font-weight: 400; font-size: .68rem; letter-spacing: .42em; text-transform: uppercase; color: #9ca3ad; }
+.cls-stats { margin: 0; border-top: 1px solid #3a414b; }
+.cls-stats div { display: grid; grid-template-columns: 5.6rem minmax(0, 1fr); gap: 1rem; padding: .6rem 0; border-bottom: 1px solid #2a3039; }
+.cls-stats dt { font-size: .7rem; letter-spacing: .24em; color: #9ca3ad; padding-top: .15rem; }
+.cls-stats dd { margin: 0; font-size: .86rem; line-height: 1.8; color: #ece8df; }
+.cls-stats dd.num { font-family: var(--serif); font-size: 1.15rem; letter-spacing: .08em; color: #d8b157; line-height: 1.5; }
+.class-sheet h3 { margin: 0 0 .1rem; padding-bottom: .5rem; border-bottom: 1px solid #3a414b; font-family: var(--sans); font-weight: 400; font-size: .7rem; letter-spacing: .32em; color: #d8b157; }
+.cls-skills { list-style: none; padding: 0; margin: 0; }
+.cls-skills li { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr) auto; align-items: baseline; gap: .9rem; margin: 0; padding: .6rem 0; border-bottom: 1px solid #2a3039; font-size: .86rem; line-height: 1.7; }
+.cls-skills li::marker { content: ""; }
+.cls-skills b { font-family: var(--serif); font-weight: 600; letter-spacing: .12em; color: #d8b157; }
+.cls-skills span { color: #ece8df; }
+.cls-skills i { font-style: normal; font-size: .68rem; letter-spacing: .1em; color: #9ca3ad; white-space: nowrap; }
+.cls-status { grid-column: 1 / -1; margin: 0; font-size: .86rem; color: #ece8df; display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem .8rem; }
+.cls-status b { font-weight: 400; font-size: .68rem; letter-spacing: .28em; color: #d8b157; border: 1px solid #d8b157; padding: .05rem .25rem .05rem .5rem; }
+.cls-note { grid-column: 1 / -1; margin: 0; padding-top: 1rem; border-top: 1px solid #2a3039; font-size: .78rem; line-height: 1.9; color: #9ca3ad; }
+
 /* 遊び場 */
 .play { margin-top: 2rem; margin-bottom: 2.4rem; }
 .play .row { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 1.2rem; }
@@ -199,5 +228,9 @@ footer nav { margin-top: 1rem; font-size: .76rem; }
   .p-index main > ul > li::before { position: absolute; left: 0; top: 1.15rem; width: 1.6rem; }
   .p-index main > ul > li > a:first-child { display: block; margin-bottom: .15rem; }
   .fig { padding: 1.2rem .4rem .9rem; }
+  .class-sheet { grid-template-columns: minmax(0, 1fr); padding: 1.7rem 1.2rem 1.4rem; gap: 1.2rem; }
+  .cls-stats div { grid-template-columns: 4.6rem minmax(0, 1fr); gap: .8rem; }
+  .cls-skills li { grid-template-columns: 2.6rem minmax(0, 1fr); gap: .1rem .8rem; }
+  .cls-skills i { grid-column: 2; }
 }
-p, li, h1, h2, h3, blockquote, figcaption, .cap, td { word-break: auto-phrase; line-break: strict; }
+p, li, h1, h2, h3, blockquote, figcaption, .cap, td, dd, .cls-skills span { word-break: auto-phrase; line-break: strict; }
