@@ -29,9 +29,9 @@ function statutes(html) {
   }).join('\n') + '\n<p class="note">出どころ：e-Gov 法令 API（v1）から取り寄せ、運営者が ' + esc(STATUTES.recorded) + ' に記した文の写し。写したもとは、このリポジトリの verification/statutes-texts.json に書いてあります。</p>');
 }
 /* どの頁の下にも出す断り。 */
-/* 運営者の学術的な活動とは別の枠であること（2026-11-21 に利用者が求めた）。どの頁の上の帯に出す。 */
+/* 運営者の学術的な活動とは別の枠であること（2026-11-21 に利用者が求めた）。どの頁の上の帯にも出す。 */
 const FRAME = 'これは運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。';
-const FOOT = 'これは遊びです。運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。都市伝説を題材にした娯楽の頁で、誰の性経験も評価せず、特定の人を指しません。内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。選民思想ではなく、運営者は魔法使いの代表ではありません。';
+const FOOT = 'これは遊びです。運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。都市伝説を題材にした娯楽の頁で、ここに書く法則は科学の法則ではなく、誰の性経験も評価せず、特定の人を指しません。内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。選民思想ではなく、運営者は魔法使いの代表ではありません。';
 const META_CSP = "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'";
 /* frame-ancestors は meta では効かないので、配信のヘッダーにだけ足す。 */
 const CSP = META_CSP + "; frame-ancestors 'none'";
@@ -79,7 +79,7 @@ function markdown(src) {
       const head = cells(rows[0]), body = rows.slice(2).map(cells);
       /* 狭い画面では行を積んで見せるので、表の意味が読み上げで消えないよう、役割を書いておく。 */
       out.push('<div class="table"><table role="table"><tr role="row">' + head.map((c) => '<th scope="col" role="columnheader">' + inline(c) + '</th>').join('') + '</tr>'
-        + body.map((r) => '<tr role="row">' + r.map((c) => '<td role="cell">' + inline(c) + '</td>').join('') + '</tr>').join('') + '</table></div>');
+        + body.map((r) => '<tr role="row">' + r.map((c, k) => '<td role="cell" data-col="' + esc(head[k] || '') + '">' + inline(c) + '</td>').join('') + '</tr>').join('') + '</table></div>');
       continue;
     }
     if (/^- /.test(l)) {
