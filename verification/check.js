@@ -65,7 +65,7 @@ const CLASS_NOTE = 'ここで言うクラスは、ゲームの職業のたとえ
 /* 配る書体の指紋（Inter Tight を英字に絞り、許諾の欄を残した woff2）。差し替えたら、ここも同じ日に変える。 */
 const FONT_SHA = '775d0af912f596ab5ace2d458c00a5e8691b3d97270e0df70c7e8397c772c81e';
 /* 原理の定義・要請・法則の本文（文語）の指紋。中身を変えたら、原典より弱めていないか、補ったものを注解に書いたかを確かめ直し、ここも同じ日に変える。 */
-const STRICT_SHA = '8133f2f7c6fa38f48bf0df3aef65f099fce267cd7e8c7720fd5c84cecbf21258';
+const STRICT_SHA = '955fbb5308f345788192133adf2218055daf32d2476aacd5f99d2b365c336df0';
 const NOT_SCIENCE = { 'src/index.md': '科学の法則ではありません。', 'src/canon.md': '科学の法則ではありません。', 'src/guide.md': '科学の主張でもありません。', 'src/play.md': '何も測らず、何も占わず、何も記録しません。', 'src/faq.md': '原典の法則は、直観から書かれた文で、実験や調査で確かめたものではありません。', 'src/about.md': '科学の法則ではありません。' };
 const DISCLOSE = ['遊びの部分は Claude（Anthropic の言語モデル）が書きました。Claude は著者ではありません。', '文は CC BY 4.0、コードは MIT。'];
 /* 研究の系列と、ほかの遊びの国へはつながない。 */
