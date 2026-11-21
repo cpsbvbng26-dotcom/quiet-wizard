@@ -6,7 +6,7 @@
 :root {
   --display: "Inter Tight", "Helvetica Neue", Arial, sans-serif;
   --head: var(--sans);
-  --bg: #f4f5f7; --ink: #0d0f13; --muted: #555b65; --hair: #d5d8de; --accent: #1d3557; --gold: #76602a; --tint: #e9ebef;
+  --bg: #f4f5f7; --ink: #0d0f13; --muted: #555b65; --hair: #d5d8de; --accent: #1d3557; --gold: #6c5722; --tint: #e9ebef;
   --serif: "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", "Noto Serif CJK JP", serif;
   --sans: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", sans-serif;
   --measure: 40rem;
@@ -22,7 +22,7 @@ body::before { content: ""; position: absolute; z-index: -1; top: 4.5rem; right:
   -webkit-mask: url(mark.svg) no-repeat center / contain; mask: url(mark.svg) no-repeat center / contain; pointer-events: none; }
 body:not(.p-index)::before { opacity: .05; }
 /* 図面の格子：上のほうにだけ、細く */
-body::after { content: ""; position: absolute; z-index: -2; inset: 0 0 auto; height: 44rem; pointer-events: none; opacity: .55;
+body::after { content: ""; position: absolute; z-index: -2; inset: 0 0 auto; height: 44rem; pointer-events: none; opacity: .35;
   background-image: linear-gradient(var(--hair) 1px, transparent 1px), linear-gradient(90deg, var(--hair) 1px, transparent 1px); background-size: 72px 72px; background-position: center top;
   -webkit-mask: linear-gradient(#000, transparent); mask: linear-gradient(#000, transparent); }
 ::selection { background: color-mix(in srgb, var(--gold) 30%, transparent); }
@@ -44,13 +44,13 @@ main > .hero, main > .play, main > .fig { max-width: calc(var(--measure) + 8rem)
 header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .8rem 2rem; padding-block: 1.4rem; }
 header a.site { display: inline-flex; align-items: center; gap: .7rem; color: var(--ink); text-decoration: none; }
 header .name { font-family: var(--head); font-weight: 600; font-size: .98rem; letter-spacing: .26em; }
-header .sub { font-family: var(--display); font-size: .6rem; font-weight: 500; letter-spacing: .34em; text-transform: uppercase; color: var(--muted); padding-left: .8rem; border-left: 1px solid var(--hair); }
+header .sub { font-family: var(--display); font-size: .64rem; font-weight: 500; letter-spacing: .34em; text-transform: uppercase; color: var(--muted); padding-left: .8rem; border-left: 1px solid var(--hair); }
 .mark { width: 22px; height: 22px; fill: none; stroke: var(--gold); stroke-width: 3; stroke-linejoin: round; }
 nav { display: flex; flex-wrap: wrap; gap: .2rem 1.4rem; font-size: .84rem; letter-spacing: .12em; }
 nav a, nav > span { color: var(--muted); text-decoration: none; padding-block: .2rem; border-bottom: 1px solid transparent; transition: color .2s, border-color .2s; }
 nav a:hover { color: var(--ink); border-bottom-color: var(--hair); }
 header nav a, header nav > span { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.5; }
-header nav .en { font-family: var(--display); font-weight: 500; font-size: .56rem; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); }
+header nav .en { font-family: var(--display); font-weight: 500; font-size: .62rem; letter-spacing: .24em; text-transform: uppercase; color: var(--muted); }
 header nav > span[aria-current] .en { color: var(--gold); }
 nav > span[aria-current] { color: var(--ink); border-bottom-color: var(--gold); }
 a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: .25em; }
