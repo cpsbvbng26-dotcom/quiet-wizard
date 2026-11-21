@@ -2,7 +2,7 @@
 <rect class="d-bg" width="640" height="360"/>
 <path class="s d-mt" d="M16 36V16h20M604 16h20v20M624 324v20h-20M36 344H16v-20"/>
 <text class="d-tx" x="44" y="50" font-size="18" letter-spacing="5">外の目</text>
-<g class="s d-mt"><rect x="40" y="140" width="64" height="160"/><rect x="118" y="104" width="48" height="196"/><rect x="486" y="122" width="58" height="178"/><rect x="556" y="168" width="56" height="132"/>
+<g class="s d-mt"><rect x="34" y="96" width="58" height="204"/><rect x="116" y="44" width="42" height="256"/><path d="M137 44V18"/><rect x="170" y="150" width="34" height="150"/><rect x="468" y="66" width="52" height="234"/><path d="M494 66V40"/><rect x="532" y="124" width="46" height="176"/><rect x="590" y="172" width="28" height="128"/><path d="M50 108V292M76 108V292M130 56V292M144 56V292M187 162V292M484 78V292M504 78V292M548 136V292M562 136V292M604 184V292" stroke-dasharray="3 7"/>
 <path d="M150 40l-6 18M214 22l-6 18M402 30l-6 18M470 60l-6 18M262 64l-6 18M548 36l-6 18M96 84l-6 18M360 92l-6 18"/></g>
 <line class="s d-ln" x1="24" y1="300" x2="616" y2="300"/>
 <g class="s d-ln">
@@ -19,6 +19,8 @@
 <rect class="n-bg" width="640" height="360"/>
 <path class="s n-gd" d="M16 36V16h20M604 16h20v20M624 324v20h-20M36 344H16v-20"/>
 <text class="n-tx" x="44" y="50" font-size="18" letter-spacing="5">魔法使いの目</text>
+<g class="s n-sky"><rect x="34" y="96" width="58" height="204"/><rect x="116" y="44" width="42" height="256"/><path d="M137 44V18"/><rect x="170" y="150" width="34" height="150"/><rect x="468" y="66" width="52" height="234"/><path d="M494 66V40"/><rect x="532" y="124" width="46" height="176"/><rect x="590" y="172" width="28" height="128"/></g>
+<g class="n-win"><circle cx="50" cy="140" r="1.6"/><circle cx="76" cy="196" r="1.6"/><circle cx="130" cy="92" r="1.6"/><circle cx="144" cy="180" r="1.6"/><circle cx="187" cy="230" r="1.6"/><circle cx="484" cy="120" r="1.6"/><circle cx="504" cy="214" r="1.6"/><circle cx="548" cy="170" r="1.6"/><circle cx="562" cy="256" r="1.6"/><circle cx="604" cy="220" r="1.6"/></g>
 <g class="n-st"><circle cx="48" cy="34" r="1"/><circle cx="132" cy="74" r=".8"/><circle cx="226" cy="22" r="1.1"/><circle cx="430" cy="38" r=".8"/><circle cx="530" cy="84" r="1"/><circle cx="604" cy="28" r=".8"/><circle cx="580" cy="200" r=".8"/><circle cx="70" cy="200" r="1"/></g>
 <g class="s n-mt"><path d="M316 226L96 150M316 226L136 292M316 226L470 330" stroke-dasharray="4 6"/></g>
 <g class="s n-gd" stroke-width="1"><path d="M316 226L176 84M316 226L548 132M316 226L564 282"/></g>

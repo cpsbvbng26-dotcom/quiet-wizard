@@ -21,13 +21,13 @@
 - Knowledge Commons のレコード：vaa96-ss949
 - 英語の版 1.1（The "Wizard at Thirty" Urban Legend: A Structural Analysis）も、Knowledge Commons と Zenodo にあります。その DOI は、ここには書いていません。確かめていないためです。
 
-査読は受けていない文です。このサイトの原典と厳密版は、その正文の一部ではありません。
+査読は受けていない文です。このサイトの原典と原理は、その正文の一部ではありません。
 
 ## 誰が何を書いたか
 
 - **原典**：運営者が書いた一枚の文です。この頁では、文に手を入れずに写しています。
 - **遊びの部分**：図鑑・問い・遊び場の文と、頁の作りは、運営者の求めで Claude（Anthropic の言語モデル）が書きました。Claude は著者ではありません。
-- **厳密版**：原典の直観を記号と論理で鋭くした版で、運営者の求めで Claude が書きました。原典ではありません。
+- **原理**：原典の定義と法則を骨に、古典の数学書の形で組み直した版で、運営者の求めで Claude が書きました。原典ではありません。2026-11-21 までは「厳密版」と呼んでいました。
 - このサイトは、運営者を含め、誰の性経験についても何も述べません。
 
 ## 決まり
@@ -45,6 +45,7 @@
 
 - 文（原典を含む）：[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja)
 - コード：MIT
+- 英字の書体：Inter Tight（Copyright 2022 The Inter Project Authors、SIL Open Font License 1.1）。英字だけに絞った写しを、許諾の文（[assets/OFL-InterTight.txt](assets/OFL-InterTight.txt)）と一緒に配っています。和文は、読む人の端末の書体です。
 
 ## 誤りの知らせ
 

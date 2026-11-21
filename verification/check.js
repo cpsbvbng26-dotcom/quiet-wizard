@@ -52,7 +52,7 @@ const LEGAL = {
   'src/requests.md': ['運営者のほかの人が開いた issue の題と本文は、書いた人がその issue の中で同意したときだけ、言語モデルに渡します。', 'コメントは、言語モデルに渡しません。', '判断の前に、その記載をいまの版から外します。'],
   'src/legality.md': ['運営者の側の理解を書いたもので、読む人への法的な助言ではありません。', '弁護士の確認は受けていません。', '法令の文を記憶から書いてはいません。'],
   'src/about.md': ['このサイトは、運営者を含め、誰の性経験についても何も述べません。'],
-  'src/strict.md': ['この版は、運営者の求めで Claude が書いたものです。原典ではありません。', '「厳密」なのは言葉の運びのことで、中身が科学として正しいという意味ではありません。', '命題四 この法則は、成果の観測では反証できない'],
+  'src/strict.md': ['この版は、運営者の求めで Claude が書いたものです。原典ではありません。', '「厳密」なのは言葉の運びのことで、中身が科学として正しいという意味ではありません。', '**定理四　この法則は、外より成果を観て反証するを得ず。**', '**定理九　十の法則は、互いに独立なり。いづれの一つも、他の九つと定義六とより導かれず。**', '注。この版は、第一巻の第十法則の注から、L を外より見えざるものと読む。', '**定理五　魔法使ひは、他の人に優るにあらず。**', '**要請二　値**　人の値は、魔法使ひたると否と、童貞たると否とに由らず。'],
 };
 /* 利用者が正文とした論文。DataCite で確かめた版の DOI。 */
 const PAPER_LINK = '<a href="https://doi.org/10.5281/zenodo.23114131" rel="noopener">10.5281/zenodo.23114131</a>';
@@ -62,6 +62,10 @@ const CAUTION = ['これは内輪ノリであり、気分を害する方がい�
 const FRAME = 'これは運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。';
 /* クラスは職業のたとえで、人を分ける区分ではない（2026-11-21、名をクラスへ替えたときに決めた）。 */
 const CLASS_NOTE = 'ここで言うクラスは、ゲームの職業のたとえです。人を分ける区分ではなく、誰かを当てはめるものでもありません。';
+/* 配る書体の指紋（Inter Tight を英字に絞り、許諾の欄を残した woff2）。差し替えたら、ここも同じ日に変える。 */
+const FONT_SHA = '775d0af912f596ab5ace2d458c00a5e8691b3d97270e0df70c7e8397c772c81e';
+/* 原理の定義・要請・法則の本文（文語）の指紋。中身を変えたら、原典より弱めていないか、補ったものを注解に書いたかを確かめ直し、ここも同じ日に変える。 */
+const STRICT_SHA = '955fbb5308f345788192133adf2218055daf32d2476aacd5f99d2b365c336df0';
 const NOT_SCIENCE = { 'src/index.md': '科学の法則ではありません。', 'src/canon.md': '科学の法則ではありません。', 'src/guide.md': '科学の主張でもありません。', 'src/play.md': '何も測らず、何も占わず、何も記録しません。', 'src/faq.md': '原典の法則は、直観から書かれた文で、実験や調査で確かめたものではありません。', 'src/about.md': '科学の法則ではありません。' };
 const DISCLOSE = ['遊びの部分は Claude（Anthropic の言語モデル）が書きました。Claude は著者ではありません。', '文は CC BY 4.0、コードは MIT。'];
 /* 研究の系列と、ほかの遊びの国へはつながない。 */
@@ -69,8 +73,12 @@ const AWAY = ['cpsbvbng26-dotcom.github.io', 'sophaxis', 'nusquama', 'zenodo.org
 
 function files() {
   const x = {};
-  for (const f of ['README.md', 'CLAUDE.md', 'build.js', 'assets/play.js', 'assets/style.css', 'verification/statutes-texts.json', ...B.PAGES.map(([s]) => 'src/' + s + '.md')]) x[f] = R(f);
+  for (const f of ['README.md', 'CLAUDE.md', 'build.js', 'assets/play.js', 'assets/style.css', 'assets/OFL-InterTight.txt', 'verification/statutes-texts.json', ...B.PAGES.map(([s]) => 'src/' + s + '.md')]) x[f] = R(f);
   for (const f of fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(path.join(ROOT, 'site')) : []) if (/\.html$/.test(f)) x['site/' + f] = R('site/' + f);
+  /* 配る素材（書体・図・台本・意匠）は、assets と site/assets で同じであること。書体は中身の指紋で固める。 */
+  const sha = (p) => { try { return require('crypto').createHash('sha256').update(fs.readFileSync(path.join(ROOT, p))).digest('hex'); } catch (e) { return ''; } };
+  x['#assets'] = fs.readdirSync(path.join(ROOT, 'assets')).sort().map((f) => f + ' ' + sha('assets/' + f)).join('\n');
+  x['#site-assets'] = fs.existsSync(path.join(ROOT, 'site', 'assets')) ? fs.readdirSync(path.join(ROOT, 'site', 'assets')).sort().map((f) => f + ' ' + sha('site/assets/' + f)).join('\n') : '';
   return x;
 }
 
@@ -84,6 +92,15 @@ function verdict(x) {
   for (const [f, says] of Object.entries(LEGAL)) for (const w of says) if (!x[f].includes(w)) bad.push(f + '：' + w.slice(0, 24));
   for (const f of ['src/index.md', 'src/about.md']) for (const w of CAUTION) if (!x[f].includes(w)) bad.push(f + '：' + w.slice(0, 20));
   if (B.FRAME !== FRAME) bad.push('上の帯の文が、決めた文と違う');
+  /* 配る書体は OFL の英字書体だけで、許諾の文を添え、断りと開示に書く。書体は自分のところからだけ読む。 */
+  const fonts = x['#assets'].split('\n').filter((l) => /\.(woff2?|ttf|otf) /.test(l));
+  if (fonts.join(' ') !== 'intertight.woff2 ' + FONT_SHA) bad.push('配る書体が決めたものと違う：' + fonts.join(' / '));
+  if (x['#assets'] !== x['#site-assets']) bad.push('site/assets が assets と違う（node build.js）');
+  /* style.css が読むのは、自分のところの書体と図だけ。 */
+  for (const m of x['assets/style.css'].matchAll(/url\(([^)]*)\)/g)) if (!/^(intertight\.woff2|mark\.svg)$/.test(m[1])) bad.push('style.css が読むもの：' + m[1]);
+  if (!x['assets/OFL-InterTight.txt'].includes('SIL OPEN FONT LICENSE Version 1.1') || !x['assets/OFL-InterTight.txt'].includes('Copyright 2022 The Inter Project Authors')) bad.push('書体の許諾の文');
+  if (!x['src/about.md'].includes('Inter Tight（Copyright 2022 The Inter Project Authors、SIL Open Font License 1.1）')) bad.push('断りと開示：書体の許諾');
+  if (!/font-src 'self';/.test(B.META_CSP) || /@font-face[^}]*url\((?!intertight\.woff2\))/.test(x['assets/style.css'])) bad.push('書体を自分のところ以外から読む');
   /* クラス表は build.js の CLASS から読む（頁の手直しは「生成物が元と同じ」が見る。ここは表の中身を見る）。 */
   const cls = (/const CLASS = `([\s\S]*?)`;/.exec(x['build.js']) || [, ''])[1];
   if (!cls.includes('<p class="cls-note">' + CLASS_NOTE + '上位職ではなく、ほかのクラスより強くも偉くもありません。</p>')) bad.push('クラス表：職業のたとえで、人を分ける区分ではなく、上位職でもないという断り');
@@ -105,9 +122,36 @@ function verdict(x) {
   if (!x['src/faq.md'].includes('選民思想ではありません。') || !x['src/terms.md'].includes('運営者は、魔法使いの代表ではありません。')) bad.push('問いか利用規約の断り');
   if (!(x['site/about.html'] || '').includes(PAPER_LINK) || (x['site/about.html'] || '').split('doi.org').length !== 2) bad.push('学術的な正文の DOI は、確かめた一つだけ');
   if (!x['src/about.md'].includes('その DOI は、ここには書いていません。確かめていないためです。')) bad.push('英語の版の DOI を確かめていないという断り');
-  /* 厳密版の数：定義十、法則十、命題六。 */
+  /* 原理の数：定義十、要請二、法則十、定理七。原文の行は、原典の文と一字一句同じ。 */
   const st = x['src/strict.md'];
-  if ((st.match(/^\*\*定義[一二三四五六七八九十]+′ /mg) || []).length !== 10 || (st.match(/^\*\*第[一二三四五六七八九十]+法則′ /mg) || []).length !== 10 || (st.match(/^\*\*命題[一二三四五六] /mg) || []).length !== 6) bad.push('厳密版の定義・法則・命題の数');
+  if ((st.match(/^\*\*定義[一二三四五六七八九十]+　/mg) || []).length !== 16 || (st.match(/^\*\*要請[一二三四]　/mg) || []).length !== 4 || (st.match(/^\*\*第[一二三四五六七八九十]+法則　/mg) || []).length !== 10 || (st.match(/^\*\*定理[一二三四五六七八九十]+　/mg) || []).length !== 23) bad.push('原理の定義・要請・法則・定理の数');
+  for (const [n, , d] of DEFS.concat(LAWS)) { const at = st.indexOf('**' + n + '　'); const line = at < 0 ? '' : st.slice(at).split('\n')[1]; if (line !== '原文：' + d) bad.push('原理の ' + n + ' の原文が、原典の文と同じでない'); }
+  if ((st.match(/Q\.E\.D\.$/mg) || []).length !== 23) bad.push('原理の定理の証明が二十三でない');
+  /* 第二巻の主張は、verification/models.js が機械で確かめる。頁に書いた数は、計算した数と同じであること。 */
+  const MD = require('./models.js'), mr = MD.run(), mbad = MD.verdict(mr);
+  for (const b of mbad) bad.push('第二巻の模型：' + b);
+  const fmt = (n) => BigInt(n).toLocaleString('en-US');
+  const solidsLine = mr.solids.map((o) => o.name + ' ' + fmt(o.orbits)).join('、');
+  if (!st.includes(solidsLine + ' 通りなり')) bad.push('原理の定理十三の数が計算と違う：' + solidsLine);
+  if (!st.includes('回転の群の位数は、順に ' + mr.solids.map((o) => o.order).join('、') + '。')) bad.push('原理の回転の群の位数');
+  for (const o of mr.solids) {
+    const total = o.orbits * BigInt(o.order);
+    if (!st.includes(o.name + '：') || !st.includes(fmt(total) + '/' + o.order + ' = ' + fmt(o.orbits) + '。')) bad.push('原理の定理十三の式（' + o.name + '）');
+  }
+  if (mr.solids.map((o) => o.centrallySymmetric).join() !== 'false,true,true,true,true') bad.push('原理の定理十二：中心対称でないのが正四面体だけでない');
+  if ((st.match(/^\| M[₀-₉]+ \|/mg) || []).length !== 10) bad.push('原理の定理九の表が十行でない');
+  /* 第三巻の数：位数 = 面の数 × 安定化群、V − E + F = 2、輪の源は四人以上で二人、三人で一人。 */
+  if (!st.includes(mr.solids.map((o) => o.name + ' ' + o.order + ' = ' + o.faces + ' × ' + o.stabilizer).join('、') + '。')) bad.push('原理の定理十四の数が計算と違う');
+  for (const o of mr.solids) if (!st.includes(o.name + '：' + o.verts + ' − ' + o.edges + ' + ' + o.faces + ' = ' + o.euler + '。')) bad.push('原理の定理十五の数（' + o.name + '）');
+  /* 第四巻：M₀ の一つの負から八十の魔法、魔法の定義の文、結語。 */
+  const kanji = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  const tens = (n) => (n >= 10 ? (Math.floor(n / 10) > 1 ? kanji[Math.floor(n / 10)] : '') + '十' + kanji[n % 10] : kanji[n]);
+  if (mr.magic.M0negatives !== 1 || !st.includes('負の向きは時 20 の一つだけで、能動 a_s（21 ≤ s ≤ 100）の' + tens(mr.magic.M0count) + 'がみな')) bad.push('原理の定理二十二の数が計算と違う');
+  if (!st.includes('**定義十六　魔法**　魔法とは、転化を用ゐて成果を出だし、その成果を、外より見えざる人の関係へ還す能動を謂ふ。') || !st.includes('結語。魔法とは、負を、その逆の正に転じ、見えざる関係へ還すことである。')) bad.push('原理の第四巻：魔法の定義と結語');
+  if (!st.includes('人の四人以上なる時') || !mr.ring.every(Boolean) || mr.ring3.some((c) => c !== 1)) bad.push('原理の定理十八の人数');
+  if (!st.includes('組は線の相から定まる形の上のものであり、人の属性にはよらない。') || !st.includes('人の属性は、どこにも置かない。')) bad.push('原理の第三巻：属性を置かないという断り');
+  if (require('crypto').createHash('sha256').update(st.split('\n').filter((l) => /^\*\*(定義|要請|第[一二三四五六七八九十]+法則)/.test(l)).join('\n')).digest('hex') !== STRICT_SHA) bad.push('原理の本文が、確かめた文と違う');
+  if (!st.includes('2²⁰ すなはち ' + (2 ** 20).toLocaleString('en-US') + ' 通り')) bad.push('原理の定理七の数');
   /* 条文：引いた条はすべて写しにあり、写しは手で変えておらず、頁に原文のまま出る。 */
   let S = {};
   try { S = JSON.parse(x['verification/statutes-texts.json']); } catch (e) { bad.push('条文の写しが読めない'); }
@@ -191,7 +235,21 @@ const breaks = [
   ['条文の写しを手で変える', mut('verification/statutes-texts.json', '三年以下の拘禁刑', '二年以下の拘禁刑')],
   ['写しに無い条を引く', mut('src/legality.md', '民法 第548条の2 -->', '民法 第548条の2、刑法 第999条 -->')],
   ['頁の条文を手で変える', mut('site/legality.html', '公然と人を侮辱した者は', '人を侮辱した者は')],
-  ['厳密版の命題を一つ外す', mut('src/strict.md', '**命題五 ', '命題五 ')],
+  ['原理の定理を一つ外す', mut('src/strict.md', '**定理六　', '定理六　')],
+  ['原理の原文を一字変える', mut('src/strict.md', '原文：負は消えない。蓄積する。', '原文：負は消えない。')],
+  ['原理の第十法則を逆さにする', mut('src/strict.md', '長く生くるは難し。', '長く生くるは易し。')],
+  ['原理の定理十三の数を違える', mut('src/strict.md', '正二十面体 17,824 通り', '正二十面体 17,842 通り')],
+  ['原理の定理十三の式を違える', mut('src/strict.md', '552/24 = 23。', '552/24 = 22。')],
+  ['原理の独立の表から一行外す', mut('src/strict.md', /\| M₈ \|[^\n]+\n/, '')],
+  ['原理から第十法則の注の役を外す', mut('src/strict.md', '注。この版は、第一巻の第十法則の注から、L を外より見えざるものと読む。', '')],
+  ['原理の定理十五の数を違える', mut('src/strict.md', '正十二面体：20 − 30 + 12 = 2。', '正十二面体：20 − 30 + 12 = 3。')],
+  ['原理の定理十四の数を違える', mut('src/strict.md', '正十二面体 60 = 12 × 5', '正十二面体 60 = 12 × 4')],
+  ['原理の定理十八の人数を違える', mut('src/strict.md', '人の四人以上なる時', '人の三人以上なる時')],
+  ['原理の第三巻から属性の断りを外す', mut('src/strict.md', '人の属性は、どこにも置かない。', '')],
+  ['原理の定理二十二の数を違える', mut('src/strict.md', 'の八十がみな', 'の九十がみな')],
+  ['原理から魔法の結語を外す', mut('src/strict.md', '結語。魔法とは、負を、その逆の正に転じ、見えざる関係へ還すことである。', '')],
+  ['原理の定理七の数を違える', mut('src/strict.md', '1,048,576 通り', '1,048,567 通り')],
+  ['原理から値の要請を外す', mut('src/strict.md', '**要請二　値**　人の値は、魔法使ひたると否と、童貞たると否とに由らず。', '**要請二　値**　魔法使ひは尊し。')],
   ['厳密版を原典と称する', mut('src/strict.md', 'この版は、運営者の求めで Claude が書いたものです。原典ではありません。', 'この版が原典です。')],
   ['決まりの頁へのつなぎを外す', mut('site/faq.html', '<a href="privacy.html">', '<a href="x.html">')],
   ['内輪ノリの断りを外す', mut('src/index.md', 'これは内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。', '')],
@@ -216,6 +274,13 @@ const breaks = [
   ['転職の条件に第一法則を引く', mut('build.js', '切り替わりのとき（定義八）', '三十歳まで童貞のとき（第一法則）')],
   ['問いからクラスの断りを外す', mut('src/faq.md', CLASS_NOTE, '')],
   ['はじめにからクラス表を外す', mut('src/index.md', '<!-- class -->', '')],
+  ['書体の許諾の文を外す', mut('assets/OFL-InterTight.txt', 'SIL OPEN FONT LICENSE Version 1.1', '')],
+  ['断りと開示から書体の許諾を外す', mut('src/about.md', 'Inter Tight（Copyright 2022 The Inter Project Authors、SIL Open Font License 1.1）', 'Inter Tight')],
+  ['書体を外から読む', mut('assets/style.css', 'src: url(intertight.woff2)', 'src: url(https://fonts.example.com/x.woff2)')],
+  ['書体の中身を差し替える', Object.assign({}, real, { '#assets': real['#assets'].replace(FONT_SHA, '0'.repeat(64)) })],
+  ['書体をもう一つ足す', Object.assign({}, real, { '#assets': real['#assets'] + '\nextra.woff2 ' + '0'.repeat(64) })],
+  ['site/assets を作り直さない', Object.assign({}, real, { '#site-assets': real['#site-assets'].replace(/style\.css [0-9a-f]+/, 'style.css ' + '0'.repeat(64)) })],
+  ['背景の印を外から読む', mut('assets/style.css', 'mask: url(mark.svg)', 'mask: url(https://x.example/m.svg)')],
   ['README から別の枠だという断りを外す', mut('README.md', FRAME, '')],
   ['事件の属性を書く', mut('site/play.html', '<button type="button" id="scene">', '<button type="button" id="scene" onclick="x()">')],
 ];
