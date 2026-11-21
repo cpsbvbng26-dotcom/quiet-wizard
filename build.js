@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* 地味な魔法使いのサイトを、src/*.md から生成する。
+/* ステルス・ウィザード（2026-11-21 までの名は地味な魔法使い）のサイトを、src/*.md から生成する。
  *
  *   node build.js            site/ に書き出す
  *
@@ -14,7 +14,7 @@ const ROOT = __dirname;
 const OUT = path.join(ROOT, 'site');
 const BASE = 'https://quiet-wizard.vercel.app/';
 const REPO = 'https://github.com/cpsbvbng26-dotcom/quiet-wizard';
-const NAME = '地味な魔法使い';
+const NAME = 'ステルス・ウィザード';
 /* 頁の順。[元, 出力, 案内の短い名, 上の案内に出すか] 上に出さない頁は、下の欄からつなぐ。 */
 const PAGES = [['index', 'index', 'はじめに', true], ['canon', 'canon', '原典', true], ['strict', 'strict', '厳密版', true], ['guide', 'guide', '図鑑', true], ['play', 'play', '遊び場', true], ['faq', 'faq', '問い', true],
   ['about', 'about', '断りと開示', false], ['terms', 'terms', '利用規約', false], ['privacy', 'privacy', '個人情報', false], ['requests', 'requests', '求めと連絡', false], ['legality', 'legality', '適法性の説明', false]];
@@ -111,10 +111,36 @@ ${fs.readFileSync(path.join(ROOT, 'src', 'hero.svg.part'), 'utf8').trim()}
 <p class="cap"><span class="cap-out">外の目：傘を持った人が、立っているだけ。</span><span class="cap-in">魔法使いの目：面が回り、負が溜まり、成果が人の関係へ溶けていく。</span></p>
 </section>`;
 /* 頁の題の上に置く小さな見出し。 */
-const EYEBROW = { index: '三十歳魔法使い都市伝説の、遊び', canon: '原典　定義九・法則十', strict: '厳密版　記号と論理', guide: '図鑑　十の法則の地味な現れ', play: '遊び場　関係の上で働く法則', faq: '問いと答え',
+const EYEBROW = { index: '三十歳魔法使い都市伝説から生まれた、遊びのクラス', canon: '原典　定義九・法則十', strict: '厳密版　記号と論理', guide: '図鑑　十の法則の地味な現れ', play: '遊び場　関係の上で働く法則', faq: '問いと答え',
   about: '断りと開示', terms: '決まり', privacy: '決まり', requests: '決まり', legality: '決まり', 404: '迷子' };
 /* 小さな正二十面体のしるし。 */
 const MARK = '<svg class="mark" viewBox="-50 -50 100 100" aria-hidden="true"><polygon points="0,-46 40,-23 40,23 0,46 -40,23 -40,-23"/><polygon points="0,-24 21,12 -21,12"/><path d="M0,-46L0,-24M40,-23L0,-24M-40,-23L0,-24M40,-23L21,12M40,23L21,12M0,46L21,12M0,46L-21,12M-40,23L-21,12M-40,-23L-21,12"/></svg>';
+
+/* はじめにのクラス表。ゲームの職業のたとえで、人を分ける区分ではない（下の断りを外さない）。 */
+const CLASS = `<section class="class-sheet" aria-labelledby="cls-kind cls-name">
+<p class="cls-kind" id="cls-kind">クラス表（遊び）</p>
+<h2 id="cls-name" class="cls-name">ステルス・ウィザード<span lang="en" aria-hidden="true">Stealth Wizard</span></h2>
+<dl class="cls-stats">
+<div><dt>系統</dt><dd>魔法職・隠密系</dd></div>
+<div><dt>転職</dt><dd>切り替わりのとき（定義八）。三十歳は目安にすぎず、それより早いこともある（第五法則）</dd></div>
+<div><dt>外見</dt><dd>ほかの人と同じ。外の目には、傘を持った人が立っているだけ</dd></div>
+<div><dt>呪文</dt><dd>「確認します」「お先に失礼します」</dd></div>
+<div><dt>見える成果</dt><dd class="num">0（いつも）</dd></div>
+</dl>
+<div class="cls-skills-wrap">
+<h3>スキル（パッシブ）</h3>
+<ul class="cls-skills">
+<li><b>多面</b><span>場面ごとに、向ける面を変える</span><i>第二法則</i></li>
+<li><b>保存</b><span>向けた負は消えず、溜まっていく</span><i>第三法則</i></li>
+<li><b>反転</b><span>負の蓄積が進めば、逆の面が正として顕れる</span><i>第四法則</i></li>
+<li><b>還元</b><span>成果は、出た瞬間に人の関係へ溶ける</span><i>第六法則</i></li>
+<li><b>秘匿</b><span>具体は記さない</span><i>第九法則</i></li>
+<li><b>長命</b><span>長く生きる。長く生きるのは大変</span><i>第十法則</i></li>
+</ul>
+</div>
+<p class="cls-status"><b>状態</b>泥沼：脳が止まらない（第八法則）</p>
+<p class="cls-note">ここで言うクラスは、ゲームの職業のたとえです。人を分ける区分ではなく、誰かを当てはめるものでもありません。上位職ではなく、ほかのクラスより強くも偉くもありません。</p>
+</section>`;
 
 /* 遊び場の部品。play.js が動かす。 */
 const PLAY = `<div class="play" id="play">
@@ -138,6 +164,11 @@ const PLAY = `<div class="play" id="play">
 </div>
 <script src="assets/play.js" defer></script>`;
 
+/* src の Markdown を、頁の中身にする。差し込みの部品もここで置く。 */
+function render(md) {
+  return statutes(markdown(md).replace('<!-- play -->', PLAY).replace('<!-- hero -->', HERO).replace('<!-- class -->', CLASS));
+}
+
 function page(file, title, body) {
   const nav = PAGES.filter((x) => x[3]).map(([, out, short]) => (out === file ? '<span aria-current="page">' + esc(short) + '</span>' : '<a href="' + out + '.html">' + esc(short) + '</a>')).join('\n');
   return `<!DOCTYPE html>
@@ -154,7 +185,7 @@ function page(file, title, body) {
 </head>
 <body class="p-${esc(file)}">
 <aside class="frame" aria-label="この頁の枠"><p><span class="tag">娯楽の枠</span><span class="say">${esc(FRAME)}</span></p></aside>
-<header><a class="site" href="index.html">${MARK}<span class="name">${esc(NAME)}</span><span class="sub">quiet wizard</span></a>
+<header><a class="site" href="index.html">${MARK}<span class="name">${esc(NAME)}</span><span class="sub">stealth wizard</span></a>
 <nav aria-label="頁">
 ${nav}
 </nav></header>
@@ -179,7 +210,7 @@ function build() {
   for (const [src, out] of PAGES) {
     const md = fs.readFileSync(path.join(ROOT, 'src', src + '.md'), 'utf8');
     const title = /^# (.+)$/m.exec(md)[1];
-    const body = statutes(markdown(md).replace('<!-- play -->', PLAY).replace('<!-- hero -->', HERO));
+    const body = render(md);
     fs.writeFileSync(path.join(OUT, out + '.html'), page(out, title, body));
   }
   fs.writeFileSync(path.join(OUT, '404.html'), page('404', '頁が見つかりません', '<h1>頁が見つかりません</h1>\n<p>この所在に頁はありません。第六法則のとおり、見えないだけかもしれませんが、たぶん本当にありません。</p>\n<p><a href="index.html">はじめに</a>へ戻れます。</p>'));
@@ -194,4 +225,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { FRAME, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
