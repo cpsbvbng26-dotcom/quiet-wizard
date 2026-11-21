@@ -16,7 +16,7 @@ const BASE = 'https://quiet-wizard.vercel.app/';
 const REPO = 'https://github.com/cpsbvbng26-dotcom/quiet-wizard';
 const NAME = 'ステルス・ウィザード';
 /* 頁の順。[元, 出力, 案内の短い名, 上の案内に出すか] 上に出さない頁は、下の欄からつなぐ。 */
-const PAGES = [['index', 'index', 'はじめに', true], ['canon', 'canon', '原典', true], ['strict', 'strict', '厳密版', true], ['guide', 'guide', '図鑑', true], ['play', 'play', '遊び場', true], ['faq', 'faq', '問い', true],
+const PAGES = [['index', 'index', 'はじめに', true], ['canon', 'canon', '原典', true], ['strict', 'strict', '原理', true], ['guide', 'guide', '図鑑', true], ['play', 'play', '遊び場', true], ['faq', 'faq', '問い', true],
   ['about', 'about', '断りと開示', false], ['terms', 'terms', '利用規約', false], ['privacy', 'privacy', '個人情報', false], ['requests', 'requests', '求めと連絡', false], ['legality', 'legality', '適法性の説明', false]];
 /* 適法性の説明が引く条文。e-Gov から取り寄せた文の写し（verification/statutes-texts.json）。手で書かない。 */
 const STATUTES = JSON.parse(fs.readFileSync(path.join(__dirname, 'verification', 'statutes-texts.json'), 'utf8'));
@@ -38,9 +38,13 @@ const CSP = META_CSP + "; frame-ancestors 'none'";
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-/* 行の中の書式：リンク、太字、コード。 */
+/* 行の中の書式：リンク、太字、コード。原理の頁の古典の体裁（〔ラテン語〕、原文の行、証明、Q.E.D.）もここで組む。 */
 function inline(s) {
   let t = esc(s);
+  t = t.replace(/〔([^〕]+)〕/g, '<span class="lat" lang="la">$1</span>');
+  t = t.replace(/^原文：(.*)$/, '<span class="orig"><span class="orig-k">原文</span>$1</span>');
+  t = t.replace(/^(証明|注)。/, '<span class="proof-k">$1</span>');
+  t = t.replace(/Q\.E\.D\.$/, '<span class="qed" lang="la">Q.E.D.</span>');
   t = t.replace(/`([^`]+)`/g, '<code>$1</code>');
   t = t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   t = t.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
@@ -111,10 +115,10 @@ ${fs.readFileSync(path.join(ROOT, 'src', 'hero.svg.part'), 'utf8').trim()}
 <p class="cap"><span class="cap-out">外の目：傘を持った人が、立っているだけ。</span><span class="cap-in">魔法使いの目：面が回り、負が溜まり、成果が人の関係へ溶けていく。</span></p>
 </section>`;
 /* 頁の題の下に置く英語の添え名（飾り。読み上げからは外す）と、上の案内の英語。 */
-const EN = { index: 'Stealth Wizard', canon: 'The Canon', strict: 'The Strict Edition', guide: 'Field Guide', play: 'Playground', faq: 'Questions',
+const EN = { index: 'Stealth Wizard', canon: 'The Canon', strict: 'Principia Magi Occulti', guide: 'Field Guide', play: 'Playground', faq: 'Questions',
   about: 'Disclaimers & Disclosure', terms: 'Terms of Use', privacy: 'Privacy', requests: 'Requests & Contact', legality: 'On Legality', 404: 'Not Found' };
 /* 頁の題の上に置く小さな見出し。 */
-const EYEBROW = { index: '三十歳魔法使い都市伝説から生まれた、遊びのクラス', canon: '原典　定義九・法則十', strict: '厳密版　記号と論理', guide: '図鑑　十の法則の地味な現れ', play: '遊び場　関係の上で働く法則', faq: '問いと答え',
+const EYEBROW = { index: '三十歳魔法使い都市伝説から生まれた、遊びのクラス', canon: '原典　定義九・法則十', strict: '原理　定義・要請・法則・定理', guide: '図鑑　十の法則の地味な現れ', play: '遊び場　関係の上で働く法則', faq: '問いと答え',
   about: '断りと開示', terms: '決まり', privacy: '決まり', requests: '決まり', legality: '決まり', 404: '迷子' };
 /* 小さな正二十面体のしるし。 */
 const MARK = '<svg class="mark" viewBox="-50 -50 100 100" aria-hidden="true"><polygon points="0,-46 40,-23 40,23 0,46 -40,23 -40,-23"/><polygon points="0,-24 21,12 -21,12"/><path d="M0,-46L0,-24M40,-23L0,-24M-40,-23L0,-24M40,-23L21,12M40,23L21,12M0,46L21,12M0,46L-21,12M-40,23L-21,12M-40,-23L-21,12"/></svg>';
@@ -173,7 +177,7 @@ function render(md) {
 }
 
 function page(file, title, body) {
-  const label = (out, short) => '<span class="ja">' + esc(short) + '</span><span class="en" lang="en" aria-hidden="true">' + esc(EN[out].replace(/^The /, '')) + '</span>';
+  const label = (out, short) => '<span class="ja">' + esc(short) + '</span><span class="en" lang="en" aria-hidden="true">' + esc(out === 'strict' ? 'Principia' : EN[out].replace(/^The /, '')) + '</span>';
   const nav = PAGES.filter((x) => x[3]).map(([, out, short]) => (out === file ? '<span aria-current="page">' + label(out, short) + '</span>' : '<a href="' + out + '.html">' + label(out, short) + '</a>')).join('\n');
   body = body.replace('</h1>', '</h1>\n<p class="en-title" lang="en" aria-hidden="true">' + esc(EN[file] || '') + '</p>');
   return `<!DOCTYPE html>
