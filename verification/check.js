@@ -64,6 +64,8 @@ const FRAME = 'これは運営者の学術的な活動とは別の、エンタ�
 const CLASS_NOTE = 'ここで言うクラスは、ゲームの職業のたとえです。人を分ける区分ではなく、誰かを当てはめるものでもありません。';
 /* 配る書体の指紋（Inter Tight を英字に絞り、許諾の欄を残した woff2）。差し替えたら、ここも同じ日に変える。 */
 const FONT_SHA = '775d0af912f596ab5ace2d458c00a5e8691b3d97270e0df70c7e8397c772c81e';
+/* 原理の定義・要請・法則の本文（文語）の指紋。中身を変えたら、原典より弱めていないか、補ったものを注解に書いたかを確かめ直し、ここも同じ日に変える。 */
+const STRICT_SHA = '70de33c4a270da49bab79eab3a90e8d61c25defdb94fd9283fa4e1f5c13a9e5a';
 const NOT_SCIENCE = { 'src/index.md': '科学の法則ではありません。', 'src/canon.md': '科学の法則ではありません。', 'src/guide.md': '科学の主張でもありません。', 'src/play.md': '何も測らず、何も占わず、何も記録しません。', 'src/faq.md': '原典の法則は、直観から書かれた文で、実験や調査で確かめたものではありません。', 'src/about.md': '科学の法則ではありません。' };
 const DISCLOSE = ['遊びの部分は Claude（Anthropic の言語モデル）が書きました。Claude は著者ではありません。', '文は CC BY 4.0、コードは MIT。'];
 /* 研究の系列と、ほかの遊びの国へはつながない。 */
@@ -125,6 +127,7 @@ function verdict(x) {
   if ((st.match(/^\*\*定義[一二三四五六七八九十]+　/mg) || []).length !== 10 || (st.match(/^\*\*要請[一二]　/mg) || []).length !== 2 || (st.match(/^\*\*第[一二三四五六七八九十]+法則　/mg) || []).length !== 10 || (st.match(/^\*\*定理[一二三四五六七]　/mg) || []).length !== 7) bad.push('原理の定義・要請・法則・定理の数');
   for (const [n, , d] of DEFS.concat(LAWS)) { const at = st.indexOf('**' + n + '　'); const line = at < 0 ? '' : st.slice(at).split('\n')[1]; if (line !== '原文：' + d) bad.push('原理の ' + n + ' の原文が、原典の文と同じでない'); }
   if ((st.match(/Q\.E\.D\.$/mg) || []).length !== 7) bad.push('原理の定理の証明が七つでない');
+  if (require('crypto').createHash('sha256').update(st.split('\n').filter((l) => /^\*\*(定義|要請|第[一二三四五六七八九十]+法則)/.test(l)).join('\n')).digest('hex') !== STRICT_SHA) bad.push('原理の本文が、確かめた文と違う');
   if (!st.includes('2²⁰ すなはち ' + (2 ** 20).toLocaleString('en-US') + ' 通り')) bad.push('原理の定理七の数');
   /* 条文：引いた条はすべて写しにあり、写しは手で変えておらず、頁に原文のまま出る。 */
   let S = {};
@@ -211,6 +214,7 @@ const breaks = [
   ['頁の条文を手で変える', mut('site/legality.html', '公然と人を侮辱した者は', '人を侮辱した者は')],
   ['原理の定理を一つ外す', mut('src/strict.md', '**定理六　', '定理六　')],
   ['原理の原文を一字変える', mut('src/strict.md', '原文：負は消えない。蓄積する。', '原文：負は消えない。')],
+  ['原理の第十法則を逆さにする', mut('src/strict.md', '長く生くるは難し。', '長く生くるは易し。')],
   ['原理の定理七の数を違える', mut('src/strict.md', '1,048,576 通り', '1,048,567 通り')],
   ['原理から値の要請を外す', mut('src/strict.md', '**要請二　値**　人の値は、魔法使ひたると否と、童貞たると否とに由らず。', '**要請二　値**　魔法使ひは尊し。')],
   ['厳密版を原典と称する', mut('src/strict.md', 'この版は、運営者の求めで Claude が書いたものです。原典ではありません。', 'この版が原典です。')],
