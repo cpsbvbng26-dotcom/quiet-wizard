@@ -1,6 +1,7 @@
 /* 地味な魔法使い：意匠。
  * 引き算で作る。罫も枠も塗りも少なく、余白と細い線で見せる。昼（外の目）と夜（魔法使いの目）の二つの世界、正多面体、三十の目盛り。
- * 書体は読み込まず、端末の明朝と角ゴシックを使う。 */
+ * 書体は読み込まず、端末の明朝と角ゴシックを使う。
+ * 枠の印（四隅の鉤）は、ここが運営者の学術的な活動とは別の、娯楽の枠であることの目印。 */
 :root {
   --bg: #f7f5f0; --ink: #1d1f23; --muted: #62676f; --hair: #dcd7cd; --accent: #23395b; --gold: #7a5c0c; --tint: #efece5;
   --serif: "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", "Noto Serif CJK JP", serif;
@@ -15,6 +16,13 @@
 html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 1rem; line-height: 2; letter-spacing: .03em; }
 ::selection { background: color-mix(in srgb, var(--gold) 30%, transparent); }
+
+/* 上の帯：娯楽の枠 */
+.frame { background: var(--tint); border-bottom: 1px solid var(--hair); }
+.frame p { max-width: calc(var(--measure) + 8rem); margin: 0 auto; padding-block: .5rem; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px));
+  display: flex; align-items: baseline; gap: .4rem .9rem; font-size: .74rem; line-height: 1.7; letter-spacing: .06em; color: var(--muted); }
+.frame .tag { flex: none; font-family: var(--serif); font-size: .68rem; letter-spacing: .24em; color: var(--gold); padding: .05rem .2rem .05rem .45rem; border: 1px solid currentColor; }
+h1, h2, h3, .eyebrow, header .name, nav, .frame .tag, th, .cap, figcaption { font-feature-settings: "palt"; }
 
 /* 頁の枠 */
 header, main, footer { max-width: calc(var(--measure) + 8rem); margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
@@ -57,6 +65,32 @@ blockquote { margin-top: 0; margin-bottom: 2.4rem; padding: 1rem 0 1rem 1.2rem; 
 blockquote p { margin: .15rem 0; }
 blockquote p:first-child { color: var(--ink); font-family: var(--serif); letter-spacing: .1em; }
 
+/* はじめにの断り：四隅の鉤で囲った札 */
+.p-index main > blockquote:first-of-type { --c: var(--gold); --l: 14px; position: relative; border: 0; padding: 1.8rem 1.8rem 1.6rem; display: grid; grid-template-columns: 1fr 1fr; gap: .55rem 2.2rem;
+  background: linear-gradient(var(--c), var(--c)) top left / var(--l) 1px, linear-gradient(var(--c), var(--c)) top left / 1px var(--l),
+    linear-gradient(var(--c), var(--c)) top right / var(--l) 1px, linear-gradient(var(--c), var(--c)) top right / 1px var(--l),
+    linear-gradient(var(--c), var(--c)) bottom left / var(--l) 1px, linear-gradient(var(--c), var(--c)) bottom left / 1px var(--l),
+    linear-gradient(var(--c), var(--c)) bottom right / var(--l) 1px, linear-gradient(var(--c), var(--c)) bottom right / 1px var(--l);
+  background-repeat: no-repeat; }
+.p-index main > blockquote:first-of-type::before { content: "断り"; position: absolute; top: -.62rem; left: 1.8rem; padding: 0 .7rem; background: var(--bg); font-family: var(--serif); font-size: .7rem; letter-spacing: .34em; color: var(--gold); }
+.p-index main > blockquote:first-of-type p { margin: 0; position: relative; padding-left: 1rem; font-size: .86rem; line-height: 1.85; }
+.p-index main > blockquote:first-of-type p::before { content: ""; position: absolute; left: 0; top: .78em; width: 5px; height: 5px; border: 1px solid var(--gold); transform: rotate(45deg); }
+.p-index main > blockquote:first-of-type p:first-child, .p-index main > blockquote:first-of-type p:nth-child(2) { grid-column: 1 / -1; padding-left: 0; }
+.p-index main > blockquote:first-of-type p:first-child::before, .p-index main > blockquote:first-of-type p:nth-child(2)::before { content: none; }
+.p-index main > blockquote:first-of-type p:first-child { font-size: 1.02rem; }
+.p-index main > blockquote:first-of-type p:nth-child(2) { color: var(--ink); padding-bottom: .9rem; margin-bottom: .3rem; border-bottom: 1px solid var(--hair); }
+
+/* はじめにの目次：番号と題と一行 */
+.p-index main > ul { list-style: none; padding: 0; margin-top: 1.4rem; border-top: 1px solid var(--ink); counter-reset: idx; }
+.p-index main > ul > li { counter-increment: idx; position: relative; display: grid; grid-template-columns: 2.2rem 7.2rem 1fr; align-items: baseline; gap: 0 1rem; margin: 0; padding: 1.05rem .4rem 1.05rem 0; border-bottom: 1px solid var(--hair); font-size: .88rem; line-height: 1.8; color: var(--muted); transition: background .25s; }
+.p-index main > ul > li::before { content: counter(idx, cjk-ideographic); font-family: var(--serif); font-size: .74rem; color: var(--gold); text-align: center; }
+.p-index main > ul > li > a { font-family: var(--serif); font-size: 1.04rem; letter-spacing: .14em; color: var(--ink); text-decoration: none; font-feature-settings: "palt"; }
+.p-index main > ul > li > a::after { content: ""; position: absolute; inset: 0; }
+.p-index main > ul > li:hover { background: var(--tint); }
+.p-index main > ul > li:hover > a { color: var(--gold); }
+.p-index main > ul > li:has(a:focus-visible) { outline: 2px solid var(--gold); outline-offset: 2px; }
+.p-index main > ul > li > a:focus-visible { outline: none; }
+
 /* 表：枠を描かず、細い罫だけ */
 .table { overflow-x: auto; margin-top: 1.2rem; margin-bottom: 1.2rem; }
 table { border-collapse: collapse; width: 100%; font-size: .93rem; }
@@ -66,7 +100,12 @@ td:first-child { white-space: nowrap; font-family: var(--serif); color: var(--go
 .p-canon td:nth-child(2) { font-family: var(--serif); white-space: nowrap; padding-right: 1.2rem; }
 
 /* 図 */
-.fig { margin-top: 1.6rem; margin-bottom: 2rem; }
+.fig { --c: var(--hair); --l: 12px; margin-top: 1.6rem; margin-bottom: 2rem; padding: 1.6rem 1.2rem 1.1rem;
+  background: linear-gradient(var(--c), var(--c)) top left / var(--l) 1px, linear-gradient(var(--c), var(--c)) top left / 1px var(--l),
+    linear-gradient(var(--c), var(--c)) top right / var(--l) 1px, linear-gradient(var(--c), var(--c)) top right / 1px var(--l),
+    linear-gradient(var(--c), var(--c)) bottom left / var(--l) 1px, linear-gradient(var(--c), var(--c)) bottom left / 1px var(--l),
+    linear-gradient(var(--c), var(--c)) bottom right / var(--l) 1px, linear-gradient(var(--c), var(--c)) bottom right / 1px var(--l);
+  background-repeat: no-repeat; }
 .fig svg { display: block; width: 100%; height: auto; max-width: 560px; margin: 0 auto; }
 .fig figcaption { text-align: center; font-size: .78rem; letter-spacing: .12em; color: var(--muted); margin-top: .6rem; }
 .s { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.4; }
@@ -140,6 +179,23 @@ footer { padding-block: 2.4rem 3rem; color: var(--muted); font-size: .78rem; lin
 footer p { margin: .5rem 0; max-width: var(--measure); }
 footer nav { margin-top: 1rem; font-size: .76rem; }
 
-@media (prefers-reduced-motion: reduce) { .drift { animation: none; } .scene .layer, .eye-switch .knob::after, .meter .fill { transition: none; } }
-@media (max-width: 34rem) { main { padding-block: 2rem 3rem; } td:first-child, .p-canon td:nth-child(2) { white-space: normal; } h2 { margin-top: 2.8rem; } }
+@media (prefers-reduced-motion: reduce) { .drift { animation: none; } .scene .layer, .eye-switch .knob::after, .meter .fill, .p-index main > ul > li { transition: none; } }
+@media (max-width: 34rem) {
+  main { padding-block: 2rem 3rem; } h2 { margin-top: 2.8rem; }
+  header nav { width: 100%; justify-content: space-between; gap: .2rem .6rem; letter-spacing: .06em; }
+  .frame p { flex-direction: column; gap: .2rem; padding-block: .55rem .6rem; }
+  /* 表は、行を積む。頭の行は隠し、一つめ（と二つめ）を見出しの行に、残りを下に置く。 */
+  .table tr:first-child { display: none; }
+  .table tr { display: grid; grid-template-columns: auto 1fr; gap: .1rem 1rem; padding: .9rem 0; border-bottom: 1px solid var(--hair); }
+  .table td { border: 0; padding: 0; white-space: normal; }
+  .table td:first-child { white-space: nowrap; }
+  .table td:nth-child(n+3) { grid-column: 1 / -1; padding-top: .3rem; }
+  .p-canon .table td:nth-child(2) { white-space: normal; font-weight: 600; }
+  .p-index main > blockquote:first-of-type { grid-template-columns: 1fr; padding: 1.6rem 1.2rem 1.3rem; }
+  .p-index main > blockquote:first-of-type::before { left: 1.2rem; }
+  .p-index main > ul > li { display: block; padding: 1rem .2rem 1rem 2.2rem; }
+  .p-index main > ul > li::before { position: absolute; left: 0; top: 1.15rem; width: 1.6rem; }
+  .p-index main > ul > li > a { display: block; margin-bottom: .15rem; }
+  .fig { padding: 1.2rem .4rem .9rem; }
+}
 p, li, h1, h2, h3, blockquote, figcaption, .cap, td { word-break: auto-phrase; line-break: strict; }

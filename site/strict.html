@@ -5,12 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
 <title>厳密版：定義と法則 | 地味な魔法使い</title>
-<meta name="description" content="これは遊びです。都市伝説を題材にした娯楽の頁で、科学の法則ではなく、誰の性経験も評価せず、特定の人を指しません。内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。選民思想ではなく、運営者は魔法使いの代表ではありません。">
+<meta name="description" content="これは遊びです。運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。都市伝説を題材にした娯楽の頁で、誰の性経験も評価せず、特定の人を指しません。内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。選民思想ではなく、運営者は魔法使いの代表ではありません。">
 <link rel="canonical" href="https://quiet-wizard.vercel.app/strict.html">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 </head>
 <body class="p-strict">
+<aside class="frame" aria-label="この頁の枠"><p><span class="tag">娯楽の枠</span><span class="say">これは運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。</span></p></aside>
 <header><a class="site" href="index.html"><svg class="mark" viewBox="-50 -50 100 100" aria-hidden="true"><polygon points="0,-46 40,-23 40,23 0,46 -40,23 -40,-23"/><polygon points="0,-24 21,12 -21,12"/><path d="M0,-46L0,-24M40,-23L0,-24M-40,-23L0,-24M40,-23L21,12M40,23L21,12M0,46L21,12M0,46L-21,12M-40,23L-21,12M-40,-23L-21,12"/></svg><span class="name">地味な魔法使い</span><span class="sub">quiet wizard</span></a>
 <nav aria-label="頁">
 <a href="index.html">はじめに</a>
@@ -27,7 +28,7 @@
 <p>この版は、原典の定義九つと法則十に、一つずつ対応します。<br>
 定義十′だけは原典に無く、この版で足しました。</p>
 <h2>記号</h2>
-<div class="table"><table><tr><th scope="col">記号</th><th scope="col">意味</th></tr><tr><td>x</td><td>人</td></tr><tr><td>t</td><td>時。年齢の年で数える</td></tr><tr><td>c</td><td>場面（時と場合の「場合」）</td></tr><tr><td>E(x)</td><td>x の要素の集まり。有限で、空ではない</td></tr><tr><td>P(e)</td><td>要素 e の形。正四面体・正六面体・正八面体・正十二面体・正二十面体のどれか</td></tr><tr><td>F(e)</td><td>e の面の集まり。面の数は順に 4・6・8・12・20</td></tr><tr><td>φ(e, t, c)</td><td>時 t、場面 c で、e が外へ向ける面</td></tr><tr><td>σ(u, t, c)</td><td>面か頂点 u が、時 t、場面 c で負（−）か正（+）か</td></tr><tr><td>N(x, t)</td><td>時 t までに、x の要素が負の面を向けた出来事の集まり</td></tr><tr><td>A(x, t)</td><td>N(x, t) の数。負の蓄積</td></tr><tr><td>κ(x)</td><td>x の閾</td></tr><tr><td>τ(x)</td><td>x の切り替わりが始まる時</td></tr><tr><td>θ</td><td>三十歳（定義九′）</td></tr></table></div>
+<div class="table"><table role="table"><tr role="row"><th scope="col" role="columnheader">記号</th><th scope="col" role="columnheader">意味</th></tr><tr role="row"><td role="cell">x</td><td role="cell">人</td></tr><tr role="row"><td role="cell">t</td><td role="cell">時。年齢の年で数える</td></tr><tr role="row"><td role="cell">c</td><td role="cell">場面（時と場合の「場合」）</td></tr><tr role="row"><td role="cell">E(x)</td><td role="cell">x の要素の集まり。有限で、空ではない</td></tr><tr role="row"><td role="cell">P(e)</td><td role="cell">要素 e の形。正四面体・正六面体・正八面体・正十二面体・正二十面体のどれか</td></tr><tr role="row"><td role="cell">F(e)</td><td role="cell">e の面の集まり。面の数は順に 4・6・8・12・20</td></tr><tr role="row"><td role="cell">φ(e, t, c)</td><td role="cell">時 t、場面 c で、e が外へ向ける面</td></tr><tr role="row"><td role="cell">σ(u, t, c)</td><td role="cell">面か頂点 u が、時 t、場面 c で負（−）か正（+）か</td></tr><tr role="row"><td role="cell">N(x, t)</td><td role="cell">時 t までに、x の要素が負の面を向けた出来事の集まり</td></tr><tr role="row"><td role="cell">A(x, t)</td><td role="cell">N(x, t) の数。負の蓄積</td></tr><tr role="row"><td role="cell">κ(x)</td><td role="cell">x の閾</td></tr><tr role="row"><td role="cell">τ(x)</td><td role="cell">x の切り替わりが始まる時</td></tr><tr role="row"><td role="cell">θ</td><td role="cell">三十歳（定義九′）</td></tr></table></div>
 <h2>定義</h2>
 <p><strong>定義一′ 魔法使い</strong>　x が時 t で魔法使いであるとは、t までのある能動 a が、負を向けた面と正を向けた面の両方を用い、成果 R(a) が空でないことをいう。二つの面は、同じ要素の、違う時の面でもよい。</p>
 <p><strong>定義二′ 童貞</strong>　V(x, t) とは、x に t まで性経験がないことをいう。</p>
@@ -67,7 +68,7 @@
 </main>
 <footer>
 <div class="ruler" aria-hidden="true"><span>0</span><span>十</span><span>二十</span><span>三十（目安）</span></div>
-<p>これは遊びです。都市伝説を題材にした娯楽の頁で、科学の法則ではなく、誰の性経験も評価せず、特定の人を指しません。内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。選民思想ではなく、運営者は魔法使いの代表ではありません。</p>
+<p>これは遊びです。運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。都市伝説を題材にした娯楽の頁で、誰の性経験も評価せず、特定の人を指しません。内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。選民思想ではなく、運営者は魔法使いの代表ではありません。</p>
 <p>原典は運営者の文で、遊びの部分は Claude（Anthropic の言語モデル）が書きました。Claude は著者ではありません。文は CC BY 4.0、コードは MIT。<a href="https://github.com/cpsbvbng26-dotcom/quiet-wizard" rel="noopener">リポジトリ</a></p>
 <nav aria-label="決まり"><a href="about.html">断りと開示</a>
 <a href="terms.html">利用規約</a>
