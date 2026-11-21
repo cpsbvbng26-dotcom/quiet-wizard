@@ -69,7 +69,7 @@ const AWAY = ['cpsbvbng26-dotcom.github.io', 'sophaxis', 'nusquama', 'zenodo.org
 
 function files() {
   const x = {};
-  for (const f of ['README.md', 'CLAUDE.md', 'build.js', 'assets/play.js', 'assets/style.css', 'verification/statutes-texts.json', ...B.PAGES.map(([s]) => 'src/' + s + '.md')]) x[f] = R(f);
+  for (const f of ['README.md', 'CLAUDE.md', 'build.js', 'assets/play.js', 'assets/style.css', 'assets/OFL-Cormorant.txt', 'verification/statutes-texts.json', ...B.PAGES.map(([s]) => 'src/' + s + '.md')]) x[f] = R(f);
   for (const f of fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(path.join(ROOT, 'site')) : []) if (/\.html$/.test(f)) x['site/' + f] = R('site/' + f);
   return x;
 }
@@ -84,6 +84,12 @@ function verdict(x) {
   for (const [f, says] of Object.entries(LEGAL)) for (const w of says) if (!x[f].includes(w)) bad.push(f + '：' + w.slice(0, 24));
   for (const f of ['src/index.md', 'src/about.md']) for (const w of CAUTION) if (!x[f].includes(w)) bad.push(f + '：' + w.slice(0, 20));
   if (B.FRAME !== FRAME) bad.push('上の帯の文が、決めた文と違う');
+  /* 配る書体は OFL の英字書体だけで、許諾の文を添え、断りと開示に書く。書体は自分のところからだけ読む。 */
+  const fonts = fs.readdirSync(path.join(ROOT, 'assets')).filter((f) => /\.(woff2?|ttf|otf)$/.test(f));
+  if (fonts.join(' ') !== 'cormorant-italic.woff2 cormorant.woff2') bad.push('配る書体が決めたものと違う：' + fonts.join(' '));
+  if (!x['assets/OFL-Cormorant.txt'].includes('SIL OPEN FONT LICENSE Version 1.1') || !x['assets/OFL-Cormorant.txt'].includes('Copyright 2015 the Cormorant Project Authors')) bad.push('書体の許諾の文');
+  if (!x['src/about.md'].includes('Cormorant Garamond（Copyright 2015 the Cormorant Project Authors、SIL Open Font License 1.1）')) bad.push('断りと開示：書体の許諾');
+  if (!/font-src 'self';/.test(B.META_CSP) || /@font-face[^}]*url\((?!cormorant(-italic)?\.woff2\))/.test(x['assets/style.css'])) bad.push('書体を自分のところ以外から読む');
   /* クラス表は build.js の CLASS から読む（頁の手直しは「生成物が元と同じ」が見る。ここは表の中身を見る）。 */
   const cls = (/const CLASS = `([\s\S]*?)`;/.exec(x['build.js']) || [, ''])[1];
   if (!cls.includes('<p class="cls-note">' + CLASS_NOTE + '上位職ではなく、ほかのクラスより強くも偉くもありません。</p>')) bad.push('クラス表：職業のたとえで、人を分ける区分ではなく、上位職でもないという断り');
@@ -216,6 +222,9 @@ const breaks = [
   ['転職の条件に第一法則を引く', mut('build.js', '切り替わりのとき（定義八）', '三十歳まで童貞のとき（第一法則）')],
   ['問いからクラスの断りを外す', mut('src/faq.md', CLASS_NOTE, '')],
   ['はじめにからクラス表を外す', mut('src/index.md', '<!-- class -->', '')],
+  ['書体の許諾の文を外す', mut('assets/OFL-Cormorant.txt', 'SIL OPEN FONT LICENSE Version 1.1', '')],
+  ['断りと開示から書体の許諾を外す', mut('src/about.md', 'Cormorant Garamond（Copyright 2015 the Cormorant Project Authors、SIL Open Font License 1.1）', 'Cormorant Garamond')],
+  ['書体を外から読む', mut('assets/style.css', 'src: url(cormorant.woff2)', 'src: url(https://fonts.example.com/x.woff2)')],
   ['README から別の枠だという断りを外す', mut('README.md', FRAME, '')],
   ['事件の属性を書く', mut('site/play.html', '<button type="button" id="scene">', '<button type="button" id="scene" onclick="x()">')],
 ];
