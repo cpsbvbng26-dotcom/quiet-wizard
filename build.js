@@ -29,7 +29,9 @@ function statutes(html) {
   }).join('\n') + '\n<p class="note">出どころ：e-Gov 法令 API（v1）から取り寄せ、運営者が ' + esc(STATUTES.recorded) + ' に記した文の写し。写したもとは、このリポジトリの verification/statutes-texts.json に書いてあります。</p>');
 }
 /* どの頁の下にも出す断り。 */
-const FOOT = 'これは遊びです。都市伝説を題材にした娯楽の頁で、科学の法則ではなく、誰の性経験も評価せず、特定の人を指しません。内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。選民思想ではなく、運営者は魔法使いの代表ではありません。';
+/* 運営者の学術的な活動とは別の枠であること（2026-11-21 に利用者が求めた）。どの頁の上の帯にも出す。 */
+const FRAME = 'これは運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。';
+const FOOT = 'これは遊びです。運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。都市伝説を題材にした娯楽の頁で、ここに書く法則は科学の法則ではなく、誰の性経験も評価せず、特定の人を指しません。内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。選民思想ではなく、運営者は魔法使いの代表ではありません。';
 const META_CSP = "default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'";
 /* frame-ancestors は meta では効かないので、配信のヘッダーにだけ足す。 */
 const CSP = META_CSP + "; frame-ancestors 'none'";
@@ -75,8 +77,9 @@ function markdown(src) {
       while (i < lines.length && lines[i].startsWith('|')) { rows.push(lines[i]); i++; }
       const cells = (r) => r.replace(/^\|\s*/, '').replace(/\s*\|$/, '').split(/\s*\|\s*/);
       const head = cells(rows[0]), body = rows.slice(2).map(cells);
-      out.push('<div class="table"><table><tr>' + head.map((c) => '<th scope="col">' + inline(c) + '</th>').join('') + '</tr>'
-        + body.map((r) => '<tr>' + r.map((c) => '<td>' + inline(c) + '</td>').join('') + '</tr>').join('') + '</table></div>');
+      /* 狭い画面では行を積んで見せるので、表の意味が読み上げで消えないよう、役割を書いておく。 */
+      out.push('<div class="table"><table role="table"><tr role="row">' + head.map((c) => '<th scope="col" role="columnheader">' + inline(c) + '</th>').join('') + '</tr>'
+        + body.map((r) => '<tr role="row">' + r.map((c, k) => '<td role="cell" data-col="' + esc(head[k] || '') + '">' + inline(c) + '</td>').join('') + '</tr>').join('') + '</table></div>');
       continue;
     }
     if (/^- /.test(l)) {
@@ -150,6 +153,7 @@ function page(file, title, body) {
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 </head>
 <body class="p-${esc(file)}">
+<aside class="frame" aria-label="この頁の枠"><p><span class="tag">娯楽の枠</span><span class="say">${esc(FRAME)}</span></p></aside>
 <header><a class="site" href="index.html">${MARK}<span class="name">${esc(NAME)}</span><span class="sub">quiet wizard</span></a>
 <nav aria-label="頁">
 ${nav}
@@ -190,4 +194,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { FRAME, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
