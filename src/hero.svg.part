@@ -1,0 +1,35 @@
+<svg class="layer outer" viewBox="0 0 640 360" aria-hidden="true">
+<rect class="d-bg" width="640" height="360"/>
+<g class="s d-mt"><rect x="40" y="140" width="64" height="160"/><rect x="118" y="104" width="48" height="196"/><rect x="486" y="122" width="58" height="178"/><rect x="556" y="168" width="56" height="132"/>
+<path d="M150 40l-6 18M214 22l-6 18M402 30l-6 18M470 60l-6 18M262 64l-6 18M548 36l-6 18M96 84l-6 18M360 92l-6 18"/></g>
+<line class="s d-ln" x1="24" y1="300" x2="616" y2="300"/>
+<g class="s d-ln">
+<circle cx="316" cy="168" r="13"/>
+<path d="M298 188h36l9 78h-54z"/>
+<path d="M306 266v32M326 266v32"/>
+<path d="M334 200h12"/>
+<path d="M346 202v-84"/>
+<path d="M294 120c10-34 94-34 104 0z"/>
+<path d="M294 120c8 6 18 6 26 0c8 6 18 6 26 0c8 6 18 6 26 0c8 6 18 6 26 0"/>
+</g>
+</svg>
+<svg class="layer inner" viewBox="0 0 640 360" aria-hidden="true">
+<rect class="n-bg" width="640" height="360"/>
+<g class="n-st"><circle cx="48" cy="34" r="1"/><circle cx="132" cy="74" r=".8"/><circle cx="226" cy="22" r="1.1"/><circle cx="430" cy="38" r=".8"/><circle cx="530" cy="84" r="1"/><circle cx="604" cy="28" r=".8"/><circle cx="580" cy="200" r=".8"/><circle cx="70" cy="200" r="1"/></g>
+<g class="s n-mt"><path d="M316 226L96 150M316 226L136 292M316 226L470 330" stroke-dasharray="4 6"/></g>
+<g class="s n-gd" stroke-width="1"><path d="M316 226L176 84M316 226L548 132M316 226L564 282"/></g>
+<g class="s n-gd" stroke-width="2.4"><path d="M96 150L176 84M548 132L564 282"/></g>
+<g class="s n-nd n-mask"><circle cx="96" cy="150" r="7"/><circle cx="136" cy="292" r="7"/><circle cx="176" cy="84" r="7"/><circle cx="548" cy="132" r="7"/><circle cx="564" cy="282" r="7"/><circle cx="470" cy="330" r="7"/></g>
+<g class="n-pt"><circle class="drift d1" cx="246" cy="155" r="3"/><circle class="drift d2" cx="430" cy="178" r="2.6"/><circle class="drift d3" cx="440" cy="254" r="2.2"/><circle cx="204" cy="118" r="1.8" opacity=".6"/></g>
+<g class="s n-gd" transform="translate(316 74)" stroke-width="1.1">
+<path d="M0-40L35-20V20L0 40L-35 20V-20Z"/>
+<path d="M0-20L18 10H-18Z"/>
+<path d="M0-40V-20M35-20L0-20M-35-20L0-20M35-20L18 10M35 20L18 10M0 40L18 10M0 40L-18 10M-35 20L-18 10M-35-20L-18 10"/>
+</g>
+<g class="s n-gd n-mask" stroke-width="1.6">
+<circle cx="316" cy="168" r="13"/>
+<path d="M298 188h36l9 78h-54z"/>
+<path d="M306 266v32M326 266v32"/>
+</g>
+<g transform="translate(572 44)"><rect class="s n-nd" width="28" height="80"/><rect class="n-jar" y="22" width="28" height="58"/><path class="s n-gd" d="M-6 22h40" stroke-dasharray="3 3"/></g>
+</svg>

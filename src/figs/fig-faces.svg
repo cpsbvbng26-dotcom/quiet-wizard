@@ -1,0 +1,6 @@
+<svg viewBox="0 0 480 200"><g class="s f-ln">
+<path d="M70 70l50-26l50 26l-50 26z"/><path d="M70 70v66l50 26v-66z"/><path d="M120 96l50-26v66l-50 26z" class="f-inkfill"/>
+<path d="M310 70l50-26l50 26l-50 26z" class="f-inkfill"/><path d="M310 70v66l50 26v-66z"/><path d="M360 96l50-26v66l-50 26z"/></g>
+<path class="s f-gd" d="M206 108h56m-10-8l10 8l-10 8"/>
+<g class="f-tx" font-size="13" text-anchor="middle"><text x="120" y="190">場面 A　負の面が外を向く</text><text x="360" y="190">場面 B　同じ要素が、別の面を向ける</text></g>
+</svg>

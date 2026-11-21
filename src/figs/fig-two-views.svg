@@ -1,0 +1,7 @@
+<svg viewBox="0 0 480 220"><rect class="n-bg" x="8" y="8" width="226" height="204"/><rect class="d-bg" x="246" y="8" width="226" height="204"/>
+<g class="s n-gd" stroke-width="1.2"><path d="M121 34l22 12v24l-22 12l-22-12v-24z"/></g>
+<g class="s n-mt"><path d="M121 140L40 110M121 140L44 180" stroke-dasharray="3 5"/></g><g class="s n-gd"><path d="M121 140L200 104M121 140L204 184"/></g>
+<g class="n-pt"><circle cx="164" cy="124" r="2.6"/><circle cx="182" cy="158" r="2"/></g><g class="s n-gd n-mask" stroke-width="1.2"><circle cx="121" cy="112" r="9"/><path d="M109 126h24l6 50h-36z"/></g>
+<g class="s d-ln" stroke-width="1.2"><circle cx="359" cy="112" r="9"/><path d="M347 126h24l6 50h-36z"/><path d="M380 128v-48"/><path d="M350 82c8-22 52-22 60 0z"/></g>
+<g font-size="12" text-anchor="middle"><text class="n-tx" x="121" y="202">魔法使いの目</text><text class="d-tx" x="359" y="202">外の目</text></g>
+</svg>
