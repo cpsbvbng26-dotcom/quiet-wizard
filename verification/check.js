@@ -58,6 +58,8 @@ const LEGAL = {
 const PAPER_LINK = '<a href="https://doi.org/10.5281/zenodo.23114131" rel="noopener">10.5281/zenodo.23114131</a>';
 /* 利用者が求めた断り（2026-11-21）。 */
 const CAUTION = ['これは内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。', '選民思想ではありません。', '運営者は、魔法使いの代表ではありません。'];
+/* 運営者の学術的な活動とは別の枠だという断り（2026-11-21 に利用者が求めた）。どの頁の上の帯と、はじめに・断りと開示・問い・README に置く。 */
+const FRAME = 'これは運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。';
 const NOT_SCIENCE = { 'src/index.md': '科学の法則ではありません。', 'src/canon.md': '科学の法則ではありません。', 'src/guide.md': '科学の主張でもありません。', 'src/play.md': '何も測らず、何も占わず、何も記録しません。', 'src/faq.md': '原典の法則は、直観から書かれた文で、実験や調査で確かめたものではありません。', 'src/about.md': '科学の法則ではありません。' };
 const DISCLOSE = ['遊びの部分は Claude（Anthropic の言語モデル）が書きました。Claude は著者ではありません。', '文は CC BY 4.0、コードは MIT。'];
 /* 研究の系列と、ほかの遊びの国へはつながない。 */
@@ -79,6 +81,8 @@ function verdict(x) {
   for (const [s] of B.PAGES) if (!PLAIN.includes(s) && !x['src/' + s + '.md'].includes(PLAYFUL)) bad.push('src/' + s + '.md：冒頭の「これは遊びです」');
   for (const [f, says] of Object.entries(LEGAL)) for (const w of says) if (!x[f].includes(w)) bad.push(f + '：' + w.slice(0, 24));
   for (const f of ['src/index.md', 'src/about.md']) for (const w of CAUTION) if (!x[f].includes(w)) bad.push(f + '：' + w.slice(0, 20));
+  if (B.FRAME !== FRAME) bad.push('上の帯の文が、決めた文と違う');
+  for (const f of ['src/index.md', 'src/about.md', 'src/faq.md', 'README.md']) if (!x[f].includes(FRAME)) bad.push(f + '：学術的な活動とは別の枠だという断り');
   if (!x['src/faq.md'].includes('選民思想ではありません。') || !x['src/terms.md'].includes('運営者は、魔法使いの代表ではありません。')) bad.push('問いか利用規約の断り');
   if (!(x['site/about.html'] || '').includes(PAPER_LINK) || (x['site/about.html'] || '').split('doi.org').length !== 2) bad.push('学術的な正文の DOI は、確かめた一つだけ');
   if (!x['src/about.md'].includes('その DOI は、ここには書いていません。確かめていないためです。')) bad.push('英語の版の DOI を確かめていないという断り');
@@ -104,6 +108,8 @@ function verdict(x) {
     const h = x[f];
     if (!h.includes('<meta http-equiv="Content-Security-Policy" content="' + B.META_CSP + '">')) bad.push(f + '：CSP');
     if (!h.includes(B.FOOT)) bad.push(f + '：下の欄の断り');
+    if (!h.includes('<span class="say">' + FRAME + '</span></p></aside>\n<header>')) bad.push(f + '：上の帯の断り');
+    if (!h.includes('運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。', h.indexOf('<footer>'))) bad.push(f + '：下の欄の、別の枠だという断り');
     for (const w of ['内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。', '選民思想ではなく、運営者は魔法使いの代表ではありません。']) if (!h.includes(w)) bad.push(f + '：下の欄の断り（' + w.slice(0, 8) + '）');
     for (const l of ['terms', 'privacy', 'requests', 'legality', 'about']) if (!h.includes('href="' + l + '.html"') && f !== 'site/' + l + '.html') bad.push(f + '：決まりの頁 ' + l + ' へのつなぎ');
     for (const d of DISCLOSE) if (!h.includes(d)) bad.push(f + '：開示');
@@ -173,6 +179,11 @@ const breaks = [
   ['研究の頁へ、正文の例外の外でつなぐ', mut('site/faq.html', '</main>', '<a href="https://doi.org/10.5281/zenodo.23114131">x</a></main>')],
   ['英語の版の DOI を確かめずに書く', mut('src/about.md', 'その DOI は、ここには書いていません。確かめていないためです。', 'DOI は 10.5281/zenodo.0 です。')],
   ['外の台本を読む', mut('site/play.html', '<script src="assets/play.js" defer></script>', '<script src="https://cdn.example.com/x.js"></script>')],
+  ['学術的な活動とは別の枠だという断りを外す', mut('src/index.md', FRAME, '')],
+  ['上の帯を外す', mut('site/strict.html', /<aside class="frame"[^\n]+\n/, '')],
+  ['上の帯の文を弱める', mut('site/terms.html', '<span class="say">' + FRAME, '<span class="say">これは娯楽です。')],
+  ['下の欄の、別の枠だという断りを外す', Object.assign({}, real, { 'site/faq.html': real['site/faq.html'].split('<footer>')[0] + '<footer>' + real['site/faq.html'].split('<footer>')[1].replace('運営者の学術的な活動とは別の、エンターテインメントの枠です。', '') })],
+  ['README から別の枠だという断りを外す', mut('README.md', FRAME, '')],
   ['事件の属性を書く', mut('site/play.html', '<button type="button" id="scene">', '<button type="button" id="scene" onclick="x()">')],
 ];
 const missed = breaks.filter(([, y]) => verdict(y).length === 0).map(([k]) => k);
