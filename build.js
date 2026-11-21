@@ -115,8 +115,10 @@ ${fs.readFileSync(path.join(ROOT, 'src', 'hero.svg.part'), 'utf8').trim()}
 <p class="cap"><span class="cap-out">外の目：傘を持った人が、立っているだけ。</span><span class="cap-in">魔法使いの目：面が回り、負が溜まり、成果が人の関係へ溶けていく。</span></p>
 </section>`;
 /* 頁の題の下に置く英語の添え名（飾り。読み上げからは外す）と、上の案内の英語。 */
-const EN = { index: 'Stealth Wizard', canon: 'The Canon', strict: 'Principia Magi Occulti', guide: 'Field Guide', play: 'Playground', faq: 'Questions',
+const EN = { index: 'Stealth Wizard', canon: 'The Canon', strict: 'Principia Magi Occulti', guide: 'Field Guide', play: 'Playground', faq: 'FAQ',
   about: 'Disclaimers & Disclosure', terms: 'Terms of Use', privacy: 'Privacy', requests: 'Requests & Contact', legality: 'On Legality', 404: 'Not Found' };
+/* 上の案内の英語。読み上げにも残す（見えている名と、読まれる名を揃える）。 */
+const NAV_EN = { index: 'Home', canon: 'Canon', strict: 'Principia', guide: 'Field Guide', play: 'Playground', faq: 'FAQ' };
 /* 頁の題の上に置く小さな見出し。 */
 const EYEBROW = { index: '三十歳魔法使い都市伝説から生まれた、遊びのクラス', canon: '原典　定義九・法則十', strict: '原理　定義・要請・法則・定理', guide: '図鑑　十の法則の地味な現れ', play: '遊び場　関係の上で働く法則', faq: '問いと答え',
   about: '断りと開示', terms: '決まり', privacy: '決まり', requests: '決まり', legality: '決まり', 404: '迷子' };
@@ -177,7 +179,7 @@ function render(md) {
 }
 
 function page(file, title, body) {
-  const label = (out, short) => '<span class="ja">' + esc(short) + '</span><span class="en" lang="en" aria-hidden="true">' + esc(out === 'strict' ? 'Principia' : EN[out].replace(/^The /, '')) + '</span>';
+  const label = (out, short) => '<span class="ja">' + esc(short) + '</span> <span class="en" lang="en">' + esc(NAV_EN[out]) + '</span>';
   const nav = PAGES.filter((x) => x[3]).map(([, out, short]) => (out === file ? '<span aria-current="page">' + label(out, short) + '</span>' : '<a href="' + out + '.html">' + label(out, short) + '</a>')).join('\n');
   body = body.replace('</h1>', '</h1>\n<p class="en-title" lang="en" aria-hidden="true">' + esc(EN[file] || '') + '</p>');
   return `<!DOCTYPE html>
@@ -194,7 +196,7 @@ function page(file, title, body) {
 </head>
 <body class="p-${esc(file)}">
 <aside class="frame" aria-label="この頁の枠"><p><span class="tag">娯楽の枠</span><span class="say">${esc(FRAME)}</span></p></aside>
-<header><a class="site" href="index.html">${MARK}<span class="name">${esc(NAME)}</span><span class="sub">stealth wizard</span></a>
+<header><a class="site" href="index.html">${MARK}<span class="name">${esc(NAME)}</span><span class="sub" lang="en" aria-hidden="true">stealth wizard</span></a>
 <nav aria-label="頁">
 ${nav}
 </nav></header>
