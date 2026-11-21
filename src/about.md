@@ -45,6 +45,7 @@
 
 - 文（原典を含む）：[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja)
 - コード：MIT
+- 英字の書体：Cormorant Garamond（Copyright 2015 the Cormorant Project Authors、SIL Open Font License 1.1）。英字だけに絞った写しを、許諾の文（assets/OFL-Cormorant.txt）と一緒に配っています。和文は、読む人の端末の書体です。
 
 ## 誤りの知らせ
 

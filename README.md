@@ -45,5 +45,6 @@ node verification/check.js
 
 - 文（原典を含む）：CC BY 4.0（`LICENSE`）
 - コード：MIT（`LICENSE-CODE`）
+- 英字の書体：Cormorant Garamond、SIL Open Font License 1.1（`assets/OFL-Cormorant.txt`）。英字だけに絞った写し
 
 運営者の研究とは別のもので、研究の頁とはつないでいません。
