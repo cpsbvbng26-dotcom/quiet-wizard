@@ -25,7 +25,8 @@
 | 書体の許諾の文 | `assets/OFL-InterTight.txt` | 書体に添えられた許諾の文 | SIL Open Font License 1.1 の文そのもの | 検査が、許諾の名と著作権の行を確かめる |
 | ファビコン | `assets/favicon.svg` | 運営者の求めで Claude が描いた。六角形の縁の中に、先の折れた帽子と星を置く | 図として CC BY 4.0 | 検査が、使う SVG の要素と、ほかのファイルを読まないことを確かめる |
 | 背景の印 | `assets/mark.svg` | 運営者の求めで Claude が描いた、正二十面体の線画 | 図として CC BY 4.0 | ファビコンと同じ |
-| 頁の上の印 | `build.js` の MARK | 運営者の求めで Claude が描いた、正二十面体の線画。頁の中に直に置く | 図として CC BY 4.0 | ファビコンと同じ |
+| 三つの紋 | `assets/emblem-crest.svg`、`assets/emblem-dial.svg`、`assets/emblem-seal.svg` | 運営者の求めで Claude が描いた。盾の中の、先の折れた帽子と星（クラスの紋。上の欄にも置く）、零から三十までの目盛り（三十の目盛り）、正二十面体の線画（原理の印）。はじめにの頁に並べる | 図として CC BY 4.0 | ファビコンと同じ |
+| 頁の下の印 | `build.js` の MARK | 運営者の求めで Claude が描いた、正二十面体の線画。頁の下の欄の名の前に、頁の中に直に置く | 図として CC BY 4.0 | ファビコンと同じ |
 | はじめにの場面 | `src/hero.svg.part` | 運営者の求めで Claude が描いた、外の目と魔法使いの目の二枚の線画 | 図として CC BY 4.0 | ファビコンと同じ |
 | 図 | `src/figs/fig-balance.svg`、`src/figs/fig-faces.svg`、`src/figs/fig-interface.svg`、`src/figs/fig-return.svg`、`src/figs/fig-stock.svg`、`src/figs/fig-switch.svg`、`src/figs/fig-two-views.svg` | 運営者の求めで Claude が描いた線画。遊び場と原理の頁に置く | 図として CC BY 4.0 | ファビコンと同じ |
 | GitHub で見る図 | `docs/figs/fig-balance.svg`、`docs/figs/fig-interface.svg` | `node build.js` が `src/figs` から作る生成物。色を書き込み、白い地を敷く。サイトではなく、リポジトリの PRINCIPIA.md が読む | 図として CC BY 4.0 | 検査が、元から作ったものと同じことを確かめる |
@@ -153,6 +154,7 @@ SVG は、svg、g、path、polygon、circle、ellipse、rect、line、text の�
 そのうえで、このサイトが見た目についてしていることのうち、検査が確かめている事柄を挙げます。
 
 - 文字の色（--ink、--muted、--accent、--gold）と地の色（--bg、--tint）の比は、明るい配色でも暗い配色でも 4.5 以上です。いちばん低いのは、明るい配色の --muted と --tint の 5.73 です。
+- 上の欄の文字の色（--mastink、--mastmuted、--mastgold）と地の色（--mastbg）の比も 4.5 以上です。上の欄は、どちらの配色でも同じ色です。
 - 動きを減らす設定（prefers-reduced-motion）のときは、style.css の animation をすべて止め、はじめにの場面の切り替えの移り変わりも止めます。遊び場の「自動で過ごす」は、一日の間を 800 ミリ秒から 1500 ミリ秒に延ばします。
 - 頁の中の画像には、代わりの文を付けています。img には alt を、図と場面と遊び場の網には aria-label を付け、飾りの SVG は aria-hidden で読み上げから外します。
 - キーボードで動かす部品には、フォーカスの輪（:focus-visible の 2px の線）を描きます。
