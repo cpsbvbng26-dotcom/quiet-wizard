@@ -17,16 +17,31 @@ const REPO = 'https://github.com/cpsbvbng26-dotcom/quiet-wizard';
 const NAME = 'ステルス・ウィザード';
 /* 頁の順。[元, 出力, 案内の短い名, 上の案内に出すか] 上に出さない頁は、下の欄からつなぐ。 */
 const PAGES = [['index', 'index', 'はじめに', true], ['canon', 'canon', '原典', true], ['strict', 'strict', '原理', true], ['guide', 'guide', '図鑑', true], ['play', 'play', '遊び場', true], ['faq', 'faq', '問い', true],
-  ['about', 'about', '断りと開示', false], ['terms', 'terms', '利用規約', false], ['privacy', 'privacy', '個人情報', false], ['requests', 'requests', '求めと連絡', false], ['legality', 'legality', '適法性の説明', false]];
-/* 適法性の説明が引く条文。e-Gov から取り寄せた文の写し（verification/statutes-texts.json）。手で書かない。 */
+  ['about', 'about', '断りと開示', false], ['terms', 'terms', '利用規約', false], ['privacy', 'privacy', '個人情報', false], ['requests', 'requests', '求めと連絡', false], ['legality', 'legality', '適法性の説明', false],
+  ['design', 'design', 'デザインに関する法的な扱い', false]];
+/* 適法性の説明と、デザインに関する法的な扱いが引く条文。e-Gov から取り寄せた文の写し（verification/statutes-texts.json）。手で書かない。 */
 const STATUTES = JSON.parse(fs.readFileSync(path.join(__dirname, 'verification', 'statutes-texts.json'), 'utf8'));
-/* <!-- 条文 A、B --> を、引いた条文の原文に置き換える。無い条を引けば止まる。 */
+/* <!-- 条文 A、B --> を、引いた条文の原文に置き換える。無い条を引けば止まる。
+ * <!-- 抜粋 条｜切り出した所｜文｜文 --> は、長い条から、頁の文が拠る項や号だけを置く。切り出した文が写しの文の一部でなければ止まる（2026-11-22）。
+ * 出どころの注は、頁の最後の条文の後に一度だけ置く。 */
 function statutes(html) {
-  return html.replace(/<!-- 条文 ([^>]+?) -->/g, (m, list) => list.split('、').map((k) => {
-    const text = STATUTES.texts[k.trim()];
-    if (!text) throw new Error('条文の写しに無い：' + k);
-    return '<h3>' + esc(k.trim()) + '</h3>\n<blockquote><p>' + esc(text) + '</p></blockquote>';
-  }).join('\n') + '\n<p class="note">出どころ：e-Gov 法令 API（v1）から取り寄せ、運営者が ' + esc(STATUTES.recorded) + ' に記した文の写し。写したもとは、このリポジトリの verification/statutes-texts.json に書いてあります。</p>');
+  const END = '\u0000';
+  const text = (k) => { const t = STATUTES.texts[k]; if (!t) throw new Error('条文の写しに無い：' + k); return t; };
+  let n = 0;
+  html = html.replace(/<!-- (条文|抜粋) ([^>]+?) -->/g, (m, kind, body) => {
+    n++;
+    if (kind === '条文') return body.split('、').map((k) => '<h3>' + esc(k.trim()) + '</h3>\n<blockquote><p>' + esc(text(k.trim())) + '</p></blockquote>').join('\n') + END;
+    const [k, where, ...pieces] = body.split('｜').map((x) => x.trim());
+    const all = text(k);
+    if (!where || !pieces.length) throw new Error('抜粋の形が違う：' + k);
+    for (const p of pieces) if (!all.includes(p)) throw new Error('抜粋が写しの文に無い：' + k + '：' + p.slice(0, 24));
+    return '<h3>' + esc(k) + '（' + esc(where) + '）</h3>\n<blockquote>' + pieces.map((p) => '<p>' + esc(p) + '</p>').join('') + '</blockquote>\n'
+      + '<p class="note">長い条なので、' + esc(where) + 'だけを、写しの文から一字一句そのまま切り出しています。ほかの項と号は省いています。</p>' + END;
+  });
+  if (!n) return html;
+  const last = html.lastIndexOf(END);
+  const note = '\n<p class="note">出どころ：e-Gov 法令 API（v1）から取り寄せ、運営者が ' + esc(STATUTES.recorded) + ' に記した文の写し（運営者の別のリポジトリの verification/statutes-texts.json、コミット ' + esc(STATUTES.from.commit.slice(0, 7)) + '）。写しは、このリポジトリの verification/statutes-texts.json にあります。</p>';
+  return (html.slice(0, last) + note + html.slice(last + 1)).split(END).join('');
 }
 /* どの頁の下にも出す断り。 */
 /* 運営者の学術的な活動とは別の枠であること（2026-11-21 に利用者が求めた）。どの頁の上の帯にも出す。 */
@@ -181,12 +196,12 @@ ${fs.readFileSync(path.join(ROOT, 'src', 'hero.svg.part'), 'utf8').trim()}
 </section>`;
 /* 頁の題の下に置く英語の添え名（飾り。読み上げからは外す）と、上の案内の英語。 */
 const EN = { index: 'Stealth Wizard', canon: 'The Canon', strict: 'Principia Magi Occulti', guide: 'Field Guide', play: 'Playground', faq: 'FAQ',
-  about: 'Disclaimers & Disclosure', terms: 'Terms of Use', privacy: 'Privacy', requests: 'Requests & Contact', legality: 'On Legality', 404: 'Not Found' };
+  about: 'Disclaimers & Disclosure', terms: 'Terms of Use', privacy: 'Privacy', requests: 'Requests & Contact', legality: 'On Legality', design: 'Legal Handling of the Design', 404: 'Not Found' };
 /* 上の案内の英語。読み上げにも残す（見えている名と、読まれる名を揃える）。 */
 const NAV_EN = { index: 'Home', canon: 'Canon', strict: 'Principia', guide: 'Field Guide', play: 'Playground', faq: 'FAQ' };
 /* 頁の題の上に置く小さな見出し。 */
 const EYEBROW = { index: '三十歳魔法使い都市伝説から生まれた、遊びのクラス', canon: '原典　定義九・法則十', strict: '原理　定義・要請・法則・定理', guide: '図鑑　十の法則の地味な現れ', play: '遊び場　関係の上で働く法則', faq: '問いと答え',
-  about: '断りと開示', terms: '決まり', privacy: '決まり', requests: '決まり', legality: '決まり', 404: '迷子' };
+  about: '断りと開示', terms: '決まり', privacy: '決まり', requests: '決まり', legality: '決まり', design: '決まり', 404: '迷子' };
 /* 小さな正二十面体のしるし。 */
 const MARK = '<svg class="mark" viewBox="-50 -50 100 100" aria-hidden="true"><polygon points="0,-46 40,-23 40,23 0,46 -40,23 -40,-23"/><polygon points="0,-24 21,12 -21,12"/><path d="M0,-46L0,-24M40,-23L0,-24M-40,-23L0,-24M40,-23L21,12M40,23L21,12M0,46L21,12M0,46L-21,12M-40,23L-21,12M-40,-23L-21,12"/></svg>';
 
@@ -368,4 +383,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };

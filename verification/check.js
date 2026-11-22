@@ -43,14 +43,17 @@ const LAWS = [
 const PREFACE = '本稿は論文とは別のものであり、著者の主体的な直観によるものである。';
 const PLAYFUL = '> これは遊びです。';
 /* 遊びと断る冒頭を持たない頁（原典と、決まりの頁）。 */
-const PLAIN = ['canon', 'about', 'terms', 'privacy', 'requests', 'legality'];
-/* 条文の写しの SHA-256。写しを手で書き換えれば落ちる。 */
-const STATUTES_SHA = '2b9c3d93789219ba70780df5d9bbb1492dfea4f9dd2f056fd3bb4f5e898c7e32';
+const PLAIN = ['canon', 'about', 'terms', 'privacy', 'requests', 'legality', 'design'];
+/* 条文の写しの SHA-256。写しを手で書き換えれば落ちる。
+ * 2026-11-22 に改めた。デザインに関する法的な扱いが引く十の条を、運営者の別のリポジトリのコミット 85dd680 の写しから足したため。
+ * もとからあった十の条は、その写しでも一字一句同じ。 */
+const STATUTES_SHA = '08669436f247be3f831dab1a491dc7f0bbefe0735d74b1e08833e728fd131670';
 const LEGAL = {
   'src/terms.md': ['この決まりは日本法に準拠します。', '話し合いで解決しない紛争は、法令の定める裁判所が管轄します。', 'この決まりは、法令が認める以上に運営者の責任を軽くしません。', 'このサイトは、誰からも料金を取りません。', '読む人に不利になる変更は、変える中身と効力の生じる日を、その日より前にこの頁で示します。', '同じ名や似た名の商標が登録されているかは、特許庁のデータベースで調べていません。', 'このサイトの文や図を、人の性経験を詮索したり、からかったり、責めたりする材料にすること。'],
   'src/privacy.md': ['サイトは、何も集めません。', '性経験・年齢・名前など、読む人についての何も尋ねません。', 'GitHub のアカウントを持たない人や、連絡先を公開しない人が、非公開で知らせる道は、いまはありません。'],
   'src/requests.md': ['運営者のほかの人が開いた issue の題と本文は、書いた人がその issue の中で同意したときだけ、言語モデルに渡します。', 'コメントは、言語モデルに渡しません。', '判断の前に、その記載をいまの版から外します。'],
   'src/legality.md': ['運営者の側の理解を書いたもので、読む人への法的な助言ではありません。', '弁護士の確認は受けていません。', '法令の文を記憶から書いてはいません。'],
+  'src/design.md': ['運営者の側の理解を書いたもので、読む人への法的な助言ではありません。', '弁護士の確認は受けていません。', '法令の文を記憶から書いてはいません。', 'この頁は、当たるとも当たらないとも決めません。', '許諾は、どれも変えていません。', '同じ名や似た名、似た形の商標や意匠が登録されているかは、特許庁のデータベースで調べていません。', '部品を変えるときは、この頁と検査を、同じ変更（同じ PR）で直します。'],
   'src/about.md': ['このサイトは、運営者を含め、誰の性経験についても何も述べません。'],
   'src/strict.md': ['この版は、運営者の求めで Claude が書いたものです。原典ではありません。', '「厳密」なのは言葉の運びのことで、中身が科学として正しいという意味ではありません。', '**定理四　この法則は、外より成果を観て反証するを得ず。**', '**定理九　十の法則は、互いに独立なり。いづれの一つも、他の九つと定義六とより導かれず。**', '注。この版は、第一巻の第十法則の注から、L を外より見えざるものと読む。', '**定理五　魔法使ひは、他の人に優るにあらず。**', '**要請二　値**　人の値は、魔法使ひたると否と、童貞たると否とに由らず。'],
 };
@@ -73,6 +76,53 @@ const DISCLOSE = ['遊びの部分は Claude（Anthropic の言語モデル）�
 /* 研究の系列と、ほかの遊びの国へはつながない。 */
 const AWAY = ['cpsbvbng26-dotcom.github.io', 'sophaxis', 'nusquama', 'zenodo.org', 'orcid.org', 'doi.org', 'researchmap', 'osf.io', 'ssrn', 'psyarxiv'];
 
+/* 配る書体（woff2）の名前表と、収める字。依存を足さずに読む（WOFF2 の表の並びを解き、Brotli を解いて、name と cmap の形式 4 を読む）。
+ * 2026-11-22 に、デザインに関する法的な扱いが書く事実（著作権と許諾の欄、名、版、商標の記載、字の数と範囲）を確かめるために足した。fontTools の読みと突き合わせてある。 */
+function woff2(buf) {
+  if (buf.toString('latin1', 0, 4) !== 'wOF2') throw new Error('woff2 でない');
+  const n = buf.readUInt16BE(12), csize = buf.readUInt32BE(20);
+  const TAGS = ['cmap', 'head', 'hhea', 'hmtx', 'maxp', 'name', 'OS/2', 'post'];
+  let p = 48;
+  const b128 = () => { let v = 0; for (let i = 0; i < 5; i++) { const b = buf[p++]; v = v * 128 + (b & 0x7f); if (!(b & 0x80)) return v; } throw new Error('UIntBase128'); };
+  const dir = [];
+  for (let i = 0; i < n; i++) {
+    const f = buf[p++], idx = f & 0x3f;
+    let tag = TAGS[idx] || '#' + idx;
+    if (idx === 0x3f) { tag = buf.toString('latin1', p, p + 4); p += 4; }
+    const orig = b128(), ver = f >> 6, transformed = (idx === 10 || idx === 11) ? ver === 0 : ver !== 0;
+    dir.push({ tag, len: transformed ? b128() : orig });
+  }
+  const data = require('zlib').brotliDecompressSync(buf.subarray(p, p + csize));
+  const t = {};
+  let o = 0;
+  for (const d of dir) { t[d.tag] = data.subarray(o, o + d.len); o += d.len; }
+  if (o !== data.length) throw new Error('表の長さが合わない');
+  const nm = t.name, names = {};
+  for (let i = 0, so = nm.readUInt16BE(4); i < nm.readUInt16BE(2); i++) {
+    const r = 6 + i * 12;
+    if (nm.readUInt16BE(r) !== 3) continue;
+    const s = nm.subarray(so + nm.readUInt16BE(r + 10), so + nm.readUInt16BE(r + 10) + nm.readUInt16BE(r + 8));
+    let str = '';
+    for (let k = 0; k < s.length; k += 2) str += String.fromCharCode(s.readUInt16BE(k));
+    names[nm.readUInt16BE(r + 6)] = str;
+  }
+  const cm = t.cmap, codes = [];
+  for (let i = 0; i < cm.readUInt16BE(2); i++) {
+    const r = 4 + i * 8, s = cm.readUInt32BE(r + 4);
+    if (cm.readUInt16BE(r) !== 3 || cm.readUInt16BE(r + 2) !== 1 || cm.readUInt16BE(s) !== 4) continue;
+    const seg = cm.readUInt16BE(s + 6) / 2, E = s + 14, S = E + seg * 2 + 2, D = S + seg * 2, RO = D + seg * 2;
+    for (let k = 0; k < seg; k++) {
+      const end = cm.readUInt16BE(E + k * 2), start = cm.readUInt16BE(S + k * 2), delta = cm.readInt16BE(D + k * 2), ro = cm.readUInt16BE(RO + k * 2);
+      for (let c = start; c <= end && c !== 0xffff; c++) {
+        let g = ro ? cm.readUInt16BE(RO + k * 2 + ro + (c - start) * 2) : c;
+        if (g) g = (g + delta) & 0xffff;
+        if (g) codes.push(c);
+      }
+    }
+  }
+  return { names, codes };
+}
+
 function files() {
   const x = {};
   for (const f of ['README.md', 'CLAUDE.md', 'PRINCIPIA.md', 'build.js', 'assets/play.js', 'assets/style.css', 'assets/OFL-InterTight.txt', 'verification/statutes-texts.json', ...B.PAGES.map(([s]) => 'src/' + s + '.md')]) x[f] = R(f);
@@ -81,6 +131,16 @@ function files() {
   const sha = (p) => { try { return require('crypto').createHash('sha256').update(fs.readFileSync(path.join(ROOT, p))).digest('hex'); } catch (e) { return ''; } };
   x['#assets'] = fs.readdirSync(path.join(ROOT, 'assets')).sort().map((f) => f + ' ' + sha('assets/' + f)).join('\n');
   x['#site-assets'] = fs.existsSync(path.join(ROOT, 'site', 'assets')) ? fs.readdirSync(path.join(ROOT, 'site', 'assets')).sort().map((f) => f + ' ' + sha('site/assets/' + f)).join('\n') : '';
+  /* デザインに関する法的な扱い（2026-11-22）が挙げる部品。SVG の元、見た目の部品のファイルの一覧、書体の名前表と字、リポジトリにあるラスターの画像。 */
+  for (const f of ['assets/favicon.svg', 'assets/mark.svg', 'src/hero.svg.part', 'src/design.md', 'src/terms.md', ...fs.readdirSync(path.join(ROOT, 'src', 'figs')).map((f) => 'src/figs/' + f)]) x[f] = R(f);
+  const ls = (d) => (fs.existsSync(path.join(ROOT, d)) ? fs.readdirSync(path.join(ROOT, d)).sort().map((f) => d + '/' + f) : []);
+  x['#parts'] = [...ls('assets'), 'src/hero.svg.part', ...ls('src/figs'), ...ls('docs/figs'), 'build.js'].sort().join('\n');
+  try { x['#font'] = JSON.stringify(woff2(fs.readFileSync(path.join(ROOT, 'assets', 'intertight.woff2')))); } catch (e) { x['#font'] = '{}'; }
+  const raster = [];
+  const walk = (d) => { for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) { if (e.name === '.git' || e.name === 'node_modules') continue; const q = d ? d + '/' + e.name : e.name; if (e.isDirectory()) walk(q); else if (/\.(png|jpe?g|gif|webp|ico|bmp|avif|tiff?|heic)$/i.test(e.name)) raster.push(q); } };
+  walk('');
+  x['#raster'] = raster.join('\n');
+  x['#pages'] = JSON.stringify(B.PAGES);
   return x;
 }
 
@@ -195,7 +255,7 @@ function verdict(x) {
     /* 下の欄の文は FOOT と比べるだけでは、FOOT ごと弱めても通る。決めた語を頁ごとに固める。 */
     for (const w of ['これは遊びです。', '科学の法則ではなく', '誰の性経験も評価せず', '特定の人を指しません。']) if (!foot.includes(w)) bad.push(f + '：下の欄の断り（' + w + '）');
     for (const w of ['内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。', '選民思想ではなく、運営者は魔法使いの代表ではありません。']) if (!h.includes(w)) bad.push(f + '：下の欄の断り（' + w.slice(0, 8) + '）');
-    for (const l of ['terms', 'privacy', 'requests', 'legality', 'about']) if (!h.includes('href="' + l + '.html"') && f !== 'site/' + l + '.html') bad.push(f + '：決まりの頁 ' + l + ' へのつなぎ');
+    for (const l of ['terms', 'privacy', 'requests', 'legality', 'about', 'design']) if (!h.includes('href="' + l + '.html"') && f !== 'site/' + l + '.html') bad.push(f + '：決まりの頁 ' + l + ' へのつなぎ');
     for (const d of DISCLOSE) if (!h.includes(d)) bad.push(f + '：開示');
     /* 外へ読みに行く要素。canonical は読みに行かないので除く。 */
     if (/<(script|img|link|iframe|source)\b(?![^>]*rel="canonical")[^>]*\s(src|href)="https?:/i.test(h)) bad.push(f + '：外へ読みに行く');
@@ -276,6 +336,153 @@ function principiaVerdict(x) {
   const want = ['定義', '要請', '法則', '定理', '系'].flatMap((k) => items.filter((it) => it.kind === k).map((it) => it.id));
   if (order.join() !== want.join()) bad.push('原理の索引が、すべての項を順に挙げていない');
   if (([...toc.matchAll(/<li><a href="#s\d+">第[一二三四五]巻/g)]).length !== 5) bad.push('原理の目次が五つの巻を挙げていない');
+  return bad;
+}
+
+/* デザインに関する法的な扱い（src/design.md、2026-11-22）。頁に書いた事実を、ファイルと照らして確かめる。
+ * 部品の表がファイルと過不足なく合うこと、配る書体と名指すだけの書体、書体の名前表と字、SVG の要素、ラスターの画像が無いこと、
+ * 文字の色の比、動きを減らす設定、代わりの文、フォーカスの輪、拡大、条文の抜粋と引用が写しの文と一字一句同じこと。 */
+const DESIGN_ELEMENTS = ['svg', 'g', 'path', 'polygon', 'circle', 'ellipse', 'rect', 'line', 'text'];
+const DESIGN_DRAWN = ['circle', 'line'];
+const DESIGN_CODES = 'U+00B7、U+2013、U+2014、U+2018、U+2019、U+201C、U+201D、U+2026';
+/* 頁の文が「」で引く、条文の語句。どれも写しの文の一部であること。 */
+const DESIGN_QUOTES = [
+  ['著作権法 第2条第1項第1号', '思想又は感情を創作的に表現したもの'],
+  ['著作権法 第19条', 'すでに著作者が表示しているところに従つて著作者名を表示することができる'],
+  ['意匠法 第2条', '機器の操作の用に供されるもの又は機器がその機能を発揮した結果として表示されるもの'],
+  ['意匠法 第23条', '業として'],
+  ['商標法 第25条', '指定商品又は指定役務について登録商標の使用をする権利を専有する'],
+  ['不正競争防止法 第2条第1項第1号・第2号', '商品等表示'],
+  ['不正競争防止法 第2条第1項第3号', '商品の形態'],
+  ['不正競争防止法 第2条第1項第3号', '模倣した商品'],
+  ['障害者差別解消法 第2条', '事業者'],
+  ['障害者差別解消法 第2条', '商業その他の事業を行う者'],
+  ['障害者差別解消法 第8条', '不当な差別的取扱い'],
+  ['障害者差別解消法 第8条', '必要かつ合理的な配慮'],
+];
+/* 頁が許諾の文から引く英語の文。空白の折り返しを詰めて、許諾の文の一部であること。 */
+const OFL_QUOTES = ['to use, study, copy, merge, embed, modify, redistribute, and sell modified and unmodified copies of the Font Software',
+  '"Modified Version" refers to any derivative made by adding to, deleting, or substituting -- in part or in whole -- any of the components of the Original Version'];
+function contrast(a, b) {
+  const L = (h) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  const x = L(a), y = L(b);
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+function designVerdict(x) {
+  const bad = [];
+  const md = x['src/design.md'] || '', h = x['site/design.html'] || '', css = (x['assets/style.css'] || '').replace(/\/\*[\s\S]*?\*\//g, '');
+  let pages = [];
+  try { pages = JSON.parse(x['#pages']); } catch (e) { /* 下で落ちる */ }
+  if (!pages.some(([s, out, , top]) => s === 'design' && out === 'design' && top === false)) bad.push('デザインに関する法的な扱いが、下の欄の決まりの頁にない');
+  if (!/^# デザインに関する法的な扱い$/m.test(md)) bad.push('頁の題');
+  /* 部品の表：ファイルの欄に挙げたファイルと、リポジトリにある部品のファイルが、過不足なく同じ。 */
+  const rows = md.split('\n').filter((l) => l.startsWith('| ') && !/^\| (部品|---)/.test(l));
+  const listed = rows.flatMap((l) => [...(l.split(' | ')[1] || '').matchAll(/`([^`]+)`/g)].map((m) => m[1])).sort();
+  const have = x['#parts'].split('\n').filter(Boolean);
+  if (listed.join('\n') !== have.join('\n')) bad.push('部品の表とファイルが合わない：表だけ ' + listed.filter((f) => !have.includes(f)).join(',') + ' / ファイルだけ ' + have.filter((f) => !listed.includes(f)).join(','));
+  if (new Set(listed).size !== listed.length) bad.push('部品の表に同じファイルが二度ある');
+  if (!rows.some((l) => l.includes('`build.js` の MARK')) || !(x['build.js'] || '').includes("const MARK = '<svg")) bad.push('頁の上の印（build.js の MARK）');
+  /* 許諾：利用規約のとおり。 */
+  if (!x['src/terms.md'].includes('文（原典を含む）と図は、CC BY 4.0 で使えます。コードは MIT です。')) bad.push('利用規約の、図とコードの許諾');
+  for (const l of rows) { const c = l.split(' | '); const f = c[1] || '', lic = c[3] || ''; const want = /\.woff2|OFL/.test(f) ? 'SIL Open Font License 1.1' : /\.(css|js)`/.test(f) && !/MARK/.test(f) ? 'コードとして MIT' : '図として CC BY 4.0'; if (!lic.includes(want)) bad.push('部品の表の許諾が違う：' + f.slice(0, 30)); }
+  /* 配る書体：@font-face は Inter Tight を自分のファイルから読む一つだけ。 */
+  const faces = [...css.matchAll(/@font-face\s*\{([^}]*)\}/g)].map((m) => m[1]);
+  if (faces.length !== 1 || !/font-family:\s*"Inter Tight"/.test(faces[0]) || !/src:\s*url\(intertight\.woff2\)/.test(faces[0])) bad.push('配る書体が Inter Tight 一つでない');
+  if (!md.includes('配る書体は Inter Tight だけです。')) bad.push('頁：配る書体');
+  /* 名指すだけの書体：style.css の書体の並びと、GitHub で見る図の指定から読む。 */
+  const stacks = [...css.matchAll(/(?:--display|--serif|--sans|font-family)\s*:\s*([^;}]+)/g), ...String(B.FIG_STYLE).matchAll(/font-family:([^;}]+)/g)].map((m) => m[1]).filter((v) => !/var\(/.test(v));
+  const names = [...new Set(stacks.flatMap((v) => v.split(',').map((t) => t.trim().replace(/^"|"$/g, ''))))].filter((t) => t !== 'Inter Tight');
+  const GENERIC = ['system-ui', '-apple-system', 'serif', 'sans-serif', 'monospace', 'cursive', 'fantasy', 'ui-sans-serif', 'ui-serif', 'ui-monospace'];
+  const fam = names.filter((t) => !GENERIC.includes(t)).sort(), gen = names.filter((t) => GENERIC.includes(t)).sort();
+  const line = (k) => ((new RegExp('^' + k + '：(.+)。$', 'm').exec(md) || [, ''])[1]).split('、').filter(Boolean).sort();
+  if (line('名指す書体').join() !== fam.join()) bad.push('名指す書体の並びが style.css と合わない：' + fam.join(','));
+  if (line('端末の標準の書体を指す語').join() !== gen.join()) bad.push('端末の標準の書体を指す語が style.css と合わない：' + gen.join(','));
+  /* 書体の名前表と字。 */
+  let F = {};
+  try { F = JSON.parse(x['#font']); } catch (e) { /* 下で落ちる */ }
+  const N = F.names || {}, codes = F.codes || [];
+  if (!String(N[0] || '').startsWith('Copyright 2022 The Inter Project Authors')) bad.push('書体の名前表：著作権の欄');
+  if (!String(N[13] || '').includes('SIL Open Font License, Version 1.1')) bad.push('書体の名前表：許諾の欄');
+  if (N[1] !== 'Inter Tight' || N[5] !== 'Version 3.004' || !md.includes('Inter Tight（Version 3.004）')) bad.push('書体の名前表：名と版');
+  if (!/trademark/.test(N[7] || '') || !/\bInter\b/.test(N[7] || '')) bad.push('書体の名前表：商標の記載');
+  const ascii = codes.filter((c) => c >= 0x20 && c <= 0x7e), rest = codes.filter((c) => c < 0x20 || c > 0x7e);
+  const u = (c) => 'U+' + c.toString(16).toUpperCase().padStart(4, '0');
+  if (!md.includes('収める字は ' + codes.length + ' 字です。') || codes.length !== 103) bad.push('書体の字の数が頁と違う：' + codes.length);
+  if (ascii.length !== 95 || !md.includes('ASCII の ' + ascii.length + ' 字（U+0020〜U+007E）と、記号の ' + rest.length + ' 字（' + rest.map(u).join('、') + '）です。') || rest.map(u).join('、') !== DESIGN_CODES) bad.push('書体の字の範囲が頁と違う');
+  if (codes.some((c) => c >= 0x3000)) bad.push('書体に、かなや漢字がある');
+  /* 許諾の文：予約された書体名の定めが無く、引いた文が許諾の文にある。 */
+  const ofl = x['assets/OFL-InterTight.txt'] || '';
+  if (/Reserved Font Name/.test(ofl.split('This Font Software is licensed')[0])) bad.push('許諾の文の著作権の行に、予約された書体名がある');
+  const flat = ofl.replace(/\s+/g, ' ');
+  for (const q of OFL_QUOTES) if (!flat.includes(q) || !md.includes('> ' + q)) bad.push('許諾の文の引用が違う：' + q.slice(0, 20));
+  if (!x['src/about.md'].includes('Inter Tight（Copyright 2022 The Inter Project Authors、')) bad.push('断りと開示の、書体の著作者名');
+  /* SVG：決めた要素だけで組み、ほかのファイルを参照しない。 */
+  const svgs = ['assets/favicon.svg', 'assets/mark.svg', 'src/hero.svg.part', ...Object.keys(x).filter((f) => /^src\/figs\/.+\.svg$/.test(f))].map((f) => [f, x[f] || '']).concat([['build.js の MARK', String(B.MARK)]]);
+  const used = new Set();
+  for (const [f, t] of svgs) {
+    if (!t) bad.push(f + ' が読めない');
+    for (const m of t.matchAll(/<([a-zA-Z][\w:-]*)/g)) used.add(m[1]);
+    if (/href|<image|<use|<foreignObject|base64|url\(|@import/i.test(t)) bad.push(f + '：ほかのファイルか画像を参照している');
+  }
+  if ([...used].sort().join() !== [...DESIGN_ELEMENTS].sort().join()) bad.push('SVG の要素が頁と違う：' + [...used].sort().join(','));
+  if (!md.includes('SVG は、' + DESIGN_ELEMENTS.join('、') + ' の要素だけで組んでいます。')) bad.push('頁：SVG の要素');
+  const drawn = [...new Set([...(x['assets/play.js'] || '').matchAll(/\bel\('([a-z]+)'/g)].map((m) => m[1]))].sort();
+  if (drawn.join() !== DESIGN_DRAWN.join() || /createElement(?!NS\(ns, name\))/.test(x['assets/play.js'] || '') || !md.includes('遊び場の台本が描く要素は、circle と line だけです。')) bad.push('遊び場の台本が描く要素：' + drawn.join(','));
+  if (x['#raster']) bad.push('ラスターの画像がある：' + x['#raster'].split('\n').join(','));
+  /* 文字の色の比：明るい配色と暗い配色の、四つの文字の色と二つの地の色。 */
+  const tok = (block) => Object.fromEntries([...block.matchAll(/--([a-z]+):\s*(#[0-9a-f]{6})/gi)].map((m) => [m[1], m[2]]));
+  const light = tok((/:root\s*\{([^}]*)\}/.exec(css) || [, ''])[1]);
+  const dark = tok((/@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^}]*)\}/.exec(css) || [, ''])[1]);
+  let low = null;
+  for (const [nm, set] of [['明るい配色', light], ['暗い配色', dark]]) for (const fg of ['ink', 'muted', 'accent', 'gold']) for (const bg of ['bg', 'tint']) {
+    if (!set[fg] || !set[bg]) { bad.push(nm + 'の --' + fg + ' か --' + bg + ' が読めない'); continue; }
+    const r = contrast(set[fg], set[bg]);
+    if (r < 4.5) bad.push(nm + 'の --' + fg + ' と --' + bg + ' の比が 4.5 より低い：' + r.toFixed(2));
+    if (!low || r < low.r) low = { r, at: nm + 'の --' + fg + ' と --' + bg };
+  }
+  if (!low || !md.includes('いちばん低いのは、' + low.at + ' の ' + low.r.toFixed(2) + ' です。')) bad.push('頁の、いちばん低い色の比が計算と違う：' + (low ? low.at + ' ' + low.r.toFixed(2) : ''));
+  /* 動きを減らす設定：animation を持つ規則は、どれも設定のときに止まる。場面の切り替えの移り変わりも止まる。 */
+  const rmBlocks = [...css.matchAll(/@media \(prefers-reduced-motion: reduce\)\s*\{((?:\s*[^{}]+\{[^{}]*\})*)\s*\}/g)].map((m) => m[1]);
+  const rules = (t) => [...t.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ sel: m[1].split(',').map((z) => z.trim()), body: m[2] }));
+  const rest2 = css.replace(/@media \(prefers-reduced-motion: reduce\)\s*\{((?:\s*[^{}]+\{[^{}]*\})*)\s*\}/g, '');
+  const stopA = new Set(rmBlocks.flatMap((b) => rules(b).filter((r) => /animation:\s*none/.test(r.body)).flatMap((r) => r.sel)));
+  const stopT = new Set(rmBlocks.flatMap((b) => rules(b).filter((r) => /transition:\s*none/.test(r.body)).flatMap((r) => r.sel)));
+  const animated = rules(rest2).filter((r) => /(^|;)\s*animation:\s*(?!none)/.test(r.body)).flatMap((r) => r.sel).filter((z) => !z.startsWith('@'));
+  if (!animated.length) bad.push('animation を持つ規則が見つからない（読み方の誤り）');
+  for (const z of animated) if (!stopA.has(z)) bad.push('動きを減らす設定で止まらない animation：' + z);
+  if (!stopT.has('.scene .layer')) bad.push('動きを減らす設定で、場面の切り替えの移り変わりが止まらない');
+  if (!/reduce \? 1500 : 800\)/.test(x['assets/play.js'] || '') || !md.includes('一日の間を 800 ミリ秒から 1500 ミリ秒に延ばします。')) bad.push('遊び場の、動きを減らす設定のときの間');
+  /* 代わりの文、フォーカスの輪、拡大。生成したすべての頁で。 */
+  for (const f of Object.keys(x).filter((k) => /^site\/.+\.html$/.test(k))) {
+    const t = x[f];
+    for (const m of t.matchAll(/<img\b[^>]*>/g)) if (!/\salt="[^"]+"/.test(m[0])) bad.push(f + '：alt の無い img');
+    for (const m of t.matchAll(/<svg\b[^>]*>/g)) if (!/aria-hidden="true"/.test(m[0]) && !(/role="img"/.test(m[0]) && /aria-label="[^"]+"/.test(m[0]))) bad.push(f + '：代わりの文も aria-hidden も無い svg');
+    const vp = (/<meta name="viewport" content="([^"]*)">/.exec(t) || [, null])[1];
+    if (vp === null || /maximum-scale|user-scalable|minimum-scale/.test(vp)) bad.push(f + '：拡大を止める viewport');
+  }
+  if (!/(^|\})\s*:focus-visible\s*\{\s*outline:\s*2px solid/.test(css) || /:focus-visible\s*\{[^}]*outline:\s*(none|0)/.test(css.replace('.p-index main > ul > li > a:focus-visible { outline: none; }', ''))) bad.push('フォーカスの輪');
+  if (!css.includes('.p-index main > ul > li:has(a:focus-visible) { outline: 2px solid')) bad.push('はじめにの目次で、フォーカスの輪を項に描いていない');
+  /* 条文：引いた条はすべて写しにあり、抜粋は写しの文の一部で、頁に原文のまま出る。出どころのコミットを書く。 */
+  let S = {};
+  try { S = JSON.parse(x['verification/statutes-texts.json']); } catch (e) { bad.push('条文の写しが読めない'); }
+  const T = S.texts || {};
+  const full = [...md.matchAll(/<!-- 条文 ([^>]+?) -->/g)].flatMap((m) => m[1].split('、').map((k) => k.trim()));
+  const ex = [...md.matchAll(/<!-- 抜粋 ([^>]+?) -->/g)].map((m) => m[1].split('｜').map((z) => z.trim()));
+  for (const k of full) { if (!T[k]) bad.push('写しに無い条：' + k); else if (!h.includes(B.inline(T[k]).replace(/<[^>]+>/g, ''))) bad.push('頁に原文が無い：' + k); }
+  for (const [k, where, ...ps] of ex) {
+    if (!T[k]) { bad.push('写しに無い条：' + k); continue; }
+    if (!where || !ps.length) bad.push('抜粋の形：' + k);
+    for (const q of ps) { if (!T[k].includes(q)) bad.push('抜粋が写しの文に無い：' + k); else if (!h.includes('<p>' + B.inline(q).replace(/<[^>]+>/g, '') + '</p>')) bad.push('頁に抜粋が無い：' + k); }
+    if (!h.includes('長い条なので、' + where + 'だけを、写しの文から一字一句そのまま切り出しています。')) bad.push('抜粋の断り：' + k);
+  }
+  const cited = new Set(full.concat(ex.map((e) => e[0])));
+  for (const k of ['著作権法 第2条第1項第1号', '著作権法 第10条第1項第4号', '著作権法 第19条', '著作権法 第20条', '意匠法 第2条', '意匠法 第23条', '商標法 第25条', '不正競争防止法 第2条第1項第1号・第2号', '不正競争防止法 第2条第1項第3号', '障害者差別解消法 第2条', '障害者差別解消法 第8条']) if (!cited.has(k)) bad.push('頁の文が拠る条を引いていない：' + k);
+  for (const [k, q] of DESIGN_QUOTES) if (!(T[k] || '').includes(q) || !md.includes('「' + q + '」')) bad.push('頁が「」で引く語句が写しと違う：' + q.slice(0, 16));
+  if ((h.match(/<p class="note">出どころ：/g) || []).length !== 1 || !h.includes('コミット ' + String((S.from || {}).commit || '').slice(0, 7) + '）') || String((S.from || {}).commit || '').slice(0, 7) !== '85dd680' || !h.includes('運営者が ' + S.recorded + ' に記した文の写し')) bad.push('条文の出どころ（コミットと記した日）');
+  const formal = '障害を理由とする差別の解消の推進に関する法律（障害者差別解消法）';
+  if (md.indexOf(formal) < 0 || md.indexOf('障害者差別解消法') < md.indexOf(formal)) bad.push('障害者差別解消法の正式の名を、初めに書いていない');
+  /* 研究の系列と、ほかの遊びの国の名を出さない（決めごと 4）。 */
+  for (const a of AWAY) if (md.toLowerCase().includes(a) || h.toLowerCase().includes(a)) bad.push('デザインの頁：' + a);
   return bad;
 }
 
@@ -366,6 +573,9 @@ const breaks = [
   ['PRINCIPIA.md から開示を外す', Object.assign({}, real, { 'PRINCIPIA.md': real['PRINCIPIA.md'].replace('Claude は著者ではありません。', '') })],
   ['README から別の枠だという断りを外す', mut('README.md', FRAME, '')],
   ['事件の属性を書く', mut('site/play.html', '<button type="button" id="scene">', '<button type="button" id="scene" onclick="x()">')],
+  ['デザインの頁から弁護士の断りを外す', mut('src/design.md', '弁護士の確認は受けていません。', '')],
+  ['デザインの頁へのつなぎを外す', mut('site/terms.html', '<a href="design.html">', '<a href="x.html">')],
+  ['デザインの頁を手で直す', mut('site/design.html', '配る書体は Inter Tight だけです。', '配る書体は二つです。')],
 ];
 const missed = breaks.filter(([, y]) => verdict(y).length === 0).map(([k]) => k);
 ok('壊して確かめる：原典の一字・法則・前書き・冒頭の断り・科学・性経験・下の欄・開示・外の画像・研究へのリンク・送る・残す・成果を数える・手で直す・style のどれでも落ちる（' + (breaks.length - missed.length) + ' / ' + breaks.length + '）', missed.length === 0, missed.join(' / '));
@@ -386,6 +596,46 @@ const pbreaks = [
 ];
 const pmissed = pbreaks.filter(([, y]) => principiaVerdict(y).length === 0).map(([k]) => k);
 ok('壊して確かめる：無い項・循環・後ろを引く・理由の断り・番号の飛び・飛び先・リンクの向き・索引のどれでも落ちる（' + (pbreaks.length - pmissed.length) + ' / ' + pbreaks.length + '）', pmissed.length === 0, pmissed.join(' / '));
+
+console.log('\n4. デザインに関する法的な扱い');
+const dv = designVerdict(real);
+ok('部品の表はファイルと過不足なく合い、配る書体と名指すだけの書体、書体の名前表と字、SVG の要素、ラスターの画像が無いこと、色の比、動きを減らす設定、代わりの文、フォーカスの輪、拡大、条文の抜粋と引用が、頁の文のとおり', dv.length === 0, dv.join(' / '));
+const dmut = (f, a, b) => Object.assign({}, real, { [f]: String(real[f]).replace(a, b) });
+const fontMut = (fn) => { const F = JSON.parse(real['#font']); fn(F); return Object.assign({}, real, { '#font': JSON.stringify(F) }); };
+const dbreaks = [
+  ['部品の表から一行外す', dmut('src/design.md', /\| ファビコン \|[^\n]+\n/, '')],
+  ['表に無い部品のファイルを足す', Object.assign({}, real, { '#parts': (real['#parts'] + '\nassets/og.svg').split('\n').sort().join('\n') })],
+  ['部品の表の許諾を変える', dmut('src/design.md', '| コードとして MIT | 検査が、色の比', '| 図として CC BY 4.0 | 検査が、色の比')],
+  ['名指す書体を一つ書き落とす', dmut('src/design.md', 'Helvetica Neue、Arial、', 'Helvetica Neue、')],
+  ['style.css で書体の名を一つ足す', dmut('assets/style.css', '"Noto Sans JP", sans-serif;', '"Noto Sans JP", Meiryo, sans-serif;')],
+  ['外の書体をもう一つ配る', dmut('assets/style.css', '@font-face {', '@font-face { font-family: "X"; src: url(x.woff2); }\n@font-face {')],
+  ['書体の名前表から許諾の欄を外す', fontMut((F) => { delete F.names[13]; })],
+  ['書体にかなを足す', fontMut((F) => { F.codes.push(0x3042); })],
+  ['頁の書体の字の数を違える', dmut('src/design.md', '収める字は 103 字です。', '収める字は 100 字です。')],
+  ['許諾の文に予約された書体名を足す', dmut('assets/OFL-InterTight.txt', '(https://github.com/rsms/inter-tight)', '(https://github.com/rsms/inter-tight), with Reserved Font Name "Inter".')],
+  ['許諾の文の引用を一語変える', dmut('src/design.md', '> to use, study, copy, merge, embed, modify,', '> to use, study, copy, merge, embed,')],
+  ['ファビコンに画像を埋める', dmut('assets/favicon.svg', '</svg>', '<image href="data:image/png;base64,AAAA" width="1" height="1"/></svg>')],
+  ['図に別の要素を足す', dmut('src/figs/fig-faces.svg', '</svg>', '<polyline points="0,0 1,1"/></svg>')],
+  ['遊び場の台本が別の要素を描く', dmut('assets/play.js', "el('line'", "el('rect'")],
+  ['ラスターの画像を置く', Object.assign({}, real, { '#raster': 'assets/og.png' })],
+  ['文字の色の比を下げる', dmut('assets/style.css', '--muted: #555b65;', '--muted: #9aa0a8;')],
+  ['頁の色の比の数を違える', dmut('src/design.md', 'の 5.73 です。', 'の 5.80 です。')],
+  ['動きを減らす設定から一つ外す', dmut('assets/style.css', '{ .drift { animation: none; }', '{ .drift-x { animation: none; }')],
+  ['場面の移り変わりを止めない', dmut('assets/style.css', '.scene .layer, .eye-switch .knob::after', '.eye-switch .knob::after')],
+  ['遊び場の間を延ばさない', dmut('assets/play.js', 'reduce ? 1500 : 800', '800')],
+  ['図の代わりの文を外す', dmut('site/play.html', /<svg role="img" aria-label="[^"]+" /, '<svg ')],
+  ['拡大を止める', dmut('site/design.html', 'initial-scale=1, viewport-fit=cover', 'initial-scale=1, maximum-scale=1, viewport-fit=cover')],
+  ['フォーカスの輪を消す', dmut('assets/style.css', ':focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }', ':focus-visible { outline: none; }')],
+  ['抜粋を写しに無い文にする', dmut('src/design.md', '第二十条 著作者は、その著作物及びその題号の同一性', '第二十条 著作者は、その著作物の同一性')],
+  ['頁の条文を手で変える', dmut('site/design.html', '業として登録意匠及びこれに類似する意匠', '登録意匠及びこれに類似する意匠')],
+  ['頁の文が拠る条を引かない', dmut('src/design.md', '<!-- 条文 障害者差別解消法 第8条 -->', '')],
+  ['「」で引く語句を一字変える', dmut('src/design.md', '「思想又は感情を創作的に表現したもの」', '「思想又は感情を創作的に表現したものの」')],
+  ['条文の出どころのコミットを外す', dmut('site/design.html', '、コミット 85dd680）', '）')],
+  ['障害者差別解消法の正式の名を外す', dmut('src/design.md', '障害を理由とする差別の解消の推進に関する法律（障害者差別解消法）', '障害者差別解消法')],
+  ['決まりの頁の一覧から外す', Object.assign({}, real, { '#pages': JSON.stringify(B.PAGES.filter(([k]) => k !== 'design')) })],
+];
+const dmissed = dbreaks.filter(([, y]) => designVerdict(y).length === 0).map(([k]) => k);
+ok('壊して確かめる：部品の表・許諾・書体の名・書体の名前表と字・許諾の文・SVG の要素・ラスター・色の比・動き・代わりの文・拡大・フォーカス・条文の抜粋と引用と出どころ・正式の名のどれでも落ちる（' + (dbreaks.length - dmissed.length) + ' / ' + dbreaks.length + '）', dmissed.length === 0, dmissed.join(' / '));
 
 console.log('\n' + '-'.repeat(48));
 if (fails.length) { console.log(pass + ' 件が通り、' + fails.length + ' 件が通りませんでした。'); process.exit(1); }

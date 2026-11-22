@@ -32,7 +32,7 @@
 
 ## 決まり
 
-[利用規約](terms.html)、[個人情報の取り扱い](privacy.html)、[求めと連絡](requests.html)、[適法性の説明](legality.html)があります。
+[利用規約](terms.html)、[個人情報の取り扱い](privacy.html)、[求めと連絡](requests.html)、[適法性の説明](legality.html)、[デザインに関する法的な扱い](design.html)があります。
 
 ## 集めるもの
 
