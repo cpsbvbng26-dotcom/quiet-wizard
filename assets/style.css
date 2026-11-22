@@ -151,6 +151,13 @@ td { padding: .8rem .8rem .8rem 0; border-bottom: 1px solid var(--hair); vertica
 td:first-child { white-space: nowrap; font-family: var(--head); color: var(--gold); padding-right: 1.2rem; }
 .p-canon td:nth-child(2) { font-family: var(--head); white-space: nowrap; padding-right: 1.2rem; }
 
+/* デザインの法的な扱いの部品の表は欄が五つあるので、どの幅でも行を積む。頭の行は見た目だけ隠し（読み上げには残す）、二つめからは欄の名を添える。 */
+.p-design .table tr:first-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.p-design .table tr { display: grid; grid-template-columns: minmax(0, 1fr); gap: .1rem 1rem; padding: .9rem 0; border-bottom: 1px solid var(--hair); }
+.p-design .table td { border: 0; padding: 0; white-space: normal; }
+.p-design .table td:nth-child(n+2) { padding-top: .35rem; }
+.p-design .table td:nth-child(n+2)::before { content: attr(data-col); display: block; font-size: .68rem; letter-spacing: .24em; color: var(--muted); }
+
 /* 図 */
 .fig { --c: var(--muted); --l: 12px; margin-top: 1.6rem; margin-bottom: 2rem; padding: 1.6rem 1.2rem 1.1rem;
   background: linear-gradient(var(--c), var(--c)) top left / var(--l) 1px, linear-gradient(var(--c), var(--c)) top left / 1px var(--l),
