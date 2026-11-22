@@ -13,6 +13,8 @@ const path = require('path');
 const ROOT = __dirname;
 const OUT = path.join(ROOT, 'site');
 const BASE = 'https://quiet-wizard.vercel.app/';
+/* Google Search Console の所有の確認（HTML タグの方式）。運営者が Search Console で受け取った値（2026-11-22）。外へは何も読みに行かない。 */
+const GSC = 'UEPpX5mfnLlhOBTBTETu-PmRO_Y4L2SmjEiaq_U1Zf8';
 const REPO = 'https://github.com/cpsbvbng26-dotcom/quiet-wizard';
 const NAME = 'ステルス・ウィザード';
 /* 頁の順。[元, 出力, 案内の短い名, 上の案内に出すか] 上に出さない頁は、下の欄からつなぐ。 */
@@ -278,6 +280,7 @@ function page(file, title, body) {
 <meta http-equiv="Content-Security-Policy" content="${META_CSP}">
 <title>${esc(title === NAME ? NAME + '（遊び）' : title + ' | ' + NAME)}</title>
 <meta name="description" content="${esc(FOOT)}">
+<meta name="google-site-verification" content="${GSC}">
 <link rel="canonical" href="${BASE}${file === 'index' ? '' : file + '.html'}">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -389,4 +392,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { GSC, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
