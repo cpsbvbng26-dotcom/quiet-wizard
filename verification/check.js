@@ -251,6 +251,8 @@ function verdict(x) {
     if (!h.includes('<meta http-equiv="Content-Security-Policy" content="' + B.META_CSP + '">')) bad.push(f + '：CSP');
     if (!h.includes(B.FOOT)) bad.push(f + '：下の欄の断り');
     if (!h.includes('<span class="say">' + FRAME + '</span></p></aside>\n<header>')) bad.push(f + '：上の帯の断り');
+    /* Search Console の所有の確認（2026-11-22）。運営者が受け取った値を、どの頁の head にも一つだけ置く。 */
+    if ((h.match(/<meta name="google-site-verification" content="([^"]*)">/g) || []).join() !== '<meta name="google-site-verification" content="UEPpX5mfnLlhOBTBTETu-PmRO_Y4L2SmjEiaq_U1Zf8">' || h.indexOf('google-site-verification') > h.indexOf('</head>')) bad.push(f + '：Search Console の確認の値');
     /* 上の欄（2026-11-22）：クラスの紋と名とラテン語の添え名。紋は自分の assets から読み、代わりの文を持つ。 */
     if (!h.includes('<header><div class="mast"><a class="site" href="index.html"><img class="crest" src="assets/emblem-crest.svg" alt="クラスの紋" width="34" height="40"><span class="titles"><span class="name">' + B.NAME + '</span><span class="sub" lang="la" aria-hidden="true">Magus Occultus</span></span></a></div>')) bad.push(f + '：上の欄の紋と名と添え名');
     const foot = h.indexOf('<footer>') < 0 ? '' : h.slice(h.indexOf('<footer>'));
@@ -587,6 +589,8 @@ const breaks = [
   ['PRINCIPIA.md から開示を外す', Object.assign({}, real, { 'PRINCIPIA.md': real['PRINCIPIA.md'].replace('Claude は著者ではありません。', '') })],
   ['README から別の枠だという断りを外す', mut('README.md', FRAME, '')],
   ['事件の属性を書く', mut('site/play.html', '<button type="button" id="scene">', '<button type="button" id="scene" onclick="x()">')],
+  ['Search Console の確認の値を変える', mut('site/terms.html', 'UEPpX5mfnLlhOBTBTETu-PmRO_Y4L2SmjEiaq_U1Zf8', 'x')],
+  ['Search Console の確認を外す', mut('site/index.html', /<meta name="google-site-verification"[^>]*>\n/, '')],
   ['上の欄から紋を外す', mut('site/guide.html', '<img class="crest" src="assets/emblem-crest.svg" alt="クラスの紋" width="34" height="40">', '')],
   ['上の欄の添え名を変える', mut('site/faq.html', '>Magus Occultus</span>', '>Stealth Wizard</span>')],
   ['はじめにから紋を一つ外す', mut('site/index.html', '<img src="assets/emblem-dial.svg"', '<img src="assets/missing.svg"')],
