@@ -132,7 +132,7 @@ function files() {
   x['#assets'] = fs.readdirSync(path.join(ROOT, 'assets')).sort().map((f) => f + ' ' + sha('assets/' + f)).join('\n');
   x['#site-assets'] = fs.existsSync(path.join(ROOT, 'site', 'assets')) ? fs.readdirSync(path.join(ROOT, 'site', 'assets')).sort().map((f) => f + ' ' + sha('site/assets/' + f)).join('\n') : '';
   /* デザインに関する法的な扱い（2026-11-22）が挙げる部品。SVG の元、見た目の部品のファイルの一覧、書体の名前表と字、リポジトリにあるラスターの画像。 */
-  for (const f of ['assets/favicon.svg', 'assets/mark.svg', 'src/hero.svg.part', 'src/design.md', 'src/terms.md', ...fs.readdirSync(path.join(ROOT, 'src', 'figs')).map((f) => 'src/figs/' + f)]) x[f] = R(f);
+  for (const f of ['src/hero.svg.part', 'src/design.md', 'src/terms.md', ...fs.readdirSync(path.join(ROOT, 'assets')).filter((f) => /\.svg$/.test(f)).map((f) => 'assets/' + f), ...fs.readdirSync(path.join(ROOT, 'src', 'figs')).map((f) => 'src/figs/' + f)]) x[f] = R(f);
   const ls = (d) => (fs.existsSync(path.join(ROOT, d)) ? fs.readdirSync(path.join(ROOT, d)).sort().map((f) => d + '/' + f) : []);
   x['#parts'] = [...ls('assets'), 'src/hero.svg.part', ...ls('src/figs'), ...ls('docs/figs'), 'build.js'].sort().join('\n');
   try { x['#font'] = JSON.stringify(woff2(fs.readFileSync(path.join(ROOT, 'assets', 'intertight.woff2')))); } catch (e) { x['#font'] = '{}'; }
@@ -185,7 +185,8 @@ function verdict(x) {
   if (!x['src/faq.md'].includes(CLASS_NOTE) || !x['README.md'].includes(CLASS_NOTE)) bad.push('問いか README：クラスは人を分ける区分ではないという断り');
   if (!x['src/index.md'].includes('<!-- class -->')) bad.push('はじめにのクラス表');
   /* はじめにの断りの二行目は、札で目立たせる行（style.css の nth-child(2)）。別の枠だという断りがそこにあること。 */
-  if ((/^# .+\n\n> [^\n]+\n> ([^\n]+)/.exec(x['src/index.md']) || [])[1] !== FRAME) bad.push('はじめにの断りの二行目が、別の枠だという断りでない');
+  /* 2026-11-22 から、題と断りのあいだに一文と三つの紋を置く。見るのは、頁で最初の断りの二行目。 */
+  if ((/^> [^\n]+\n> ([^\n]+)/m.exec(x['src/index.md']) || [])[1] !== FRAME) bad.push('はじめにの断りの二行目が、別の枠だという断りでない');
   /* 上の帯を、見た目で消していないこと。 */
   if (/\.frame\b[^{]*\{[^}]*(display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0[;}\s])/.test(x['assets/style.css'])) bad.push('style.css が上の帯を隠している');
   for (const f of ['src/index.md', 'src/about.md', 'src/faq.md', 'README.md']) if (!x[f].includes(FRAME)) bad.push(f + '：学術的な活動とは別の枠だという断り');
@@ -250,6 +251,8 @@ function verdict(x) {
     if (!h.includes('<meta http-equiv="Content-Security-Policy" content="' + B.META_CSP + '">')) bad.push(f + '：CSP');
     if (!h.includes(B.FOOT)) bad.push(f + '：下の欄の断り');
     if (!h.includes('<span class="say">' + FRAME + '</span></p></aside>\n<header>')) bad.push(f + '：上の帯の断り');
+    /* 上の欄（2026-11-22）：クラスの紋と名とラテン語の添え名。紋は自分の assets から読み、代わりの文を持つ。 */
+    if (!h.includes('<header><div class="mast"><a class="site" href="index.html"><img class="crest" src="assets/emblem-crest.svg" alt="クラスの紋" width="34" height="40"><span class="titles"><span class="name">' + B.NAME + '</span><span class="sub" lang="la" aria-hidden="true">Magus Occultus</span></span></a></div>')) bad.push(f + '：上の欄の紋と名と添え名');
     const foot = h.indexOf('<footer>') < 0 ? '' : h.slice(h.indexOf('<footer>'));
     if (!foot.includes('運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。')) bad.push(f + '：下の欄の、別の枠だという断り');
     /* 下の欄の文は FOOT と比べるだけでは、FOOT ごと弱めても通る。決めた語を頁ごとに固める。 */
@@ -264,6 +267,9 @@ function verdict(x) {
     const hh = f === 'site/about.html' ? h.split(PAPER_LINK).join('') : h;
     for (const a of AWAY) if (hh.toLowerCase().includes(a)) bad.push(f + '：' + a + ' につないでいる');
   }
+  /* はじめにの三つの紋（2026-11-22）：決めた三つの img が、どれも代わりの文を持ち、自分の assets から読む。 */
+  const emb = [...B.EMBLEMS.matchAll(/<img\b[^>]*src="assets\/(emblem-[a-z]+\.svg)"[^>]*alt="([^"]+)"/g)];
+  if (emb.length !== 3 || !(x['site/index.html'] || '').includes(B.EMBLEMS) || emb.some(([, f]) => !x['#assets'].split('\n').some((l) => l.startsWith(f + ' ')))) bad.push('はじめにの三つの紋');
   const js = x['assets/play.js'];
   if (/fetch\(|XMLHttpRequest|localStorage|sessionStorage|indexedDB|document\.cookie|sendBeacon|WebSocket|innerHTML/.test(js)) bad.push('play.js が外へ送るか、残すか、innerHTML を使う');
   if (!js.includes('第六法則') || !/\$\('deeds'\)\.textContent = '0'/.test(js)) bad.push('play.js：見える成果がいつも 0 でない');
@@ -417,7 +423,7 @@ function designVerdict(x) {
   for (const q of OFL_QUOTES) if (!flat.includes(q) || !md.includes('> ' + q)) bad.push('許諾の文の引用が違う：' + q.slice(0, 20));
   if (!x['src/about.md'].includes('Inter Tight（Copyright 2022 The Inter Project Authors、')) bad.push('断りと開示の、書体の著作者名');
   /* SVG：決めた要素だけで組み、ほかのファイルを参照しない。 */
-  const svgs = ['assets/favicon.svg', 'assets/mark.svg', 'src/hero.svg.part', ...Object.keys(x).filter((f) => /^src\/figs\/.+\.svg$/.test(f))].map((f) => [f, x[f] || '']).concat([['build.js の MARK', String(B.MARK)]]);
+  const svgs = ['src/hero.svg.part', ...Object.keys(x).filter((f) => /^assets\/.+\.svg$/.test(f) || /^src\/figs\/.+\.svg$/.test(f))].map((f) => [f, x[f] || '']).concat([['build.js の MARK', String(B.MARK)]]);
   const used = new Set();
   for (const [f, t] of svgs) {
     if (!t) bad.push(f + ' が読めない');
@@ -440,6 +446,14 @@ function designVerdict(x) {
     if (r < 4.5) bad.push(nm + 'の --' + fg + ' と --' + bg + ' の比が 4.5 より低い：' + r.toFixed(2));
     if (!low || r < low.r) low = { r, at: nm + 'の --' + fg + ' と --' + bg };
   }
+  /* 上の欄（2026-11-22）：どちらの配色でも同じ夜の黒の地に、三つの文字の色。 */
+  for (const fg of ['mastink', 'mastmuted', 'mastgold']) {
+    if (!light[fg] || !light.mastbg || dark[fg] || dark.mastbg) { bad.push('上の欄の --' + fg + ' か --mastbg が読めないか、暗い配色で変えている'); continue; }
+    const r = contrast(light[fg], light.mastbg);
+    if (r < 4.5) bad.push('上の欄の --' + fg + ' と --mastbg の比が 4.5 より低い：' + r.toFixed(2));
+    if (r < low.r) low = { r, at: '上の欄の --' + fg + ' と --mastbg' };
+  }
+  if (!md.includes('上の欄の文字の色（--mastink、--mastmuted、--mastgold）と地の色（--mastbg）の比も 4.5 以上です。')) bad.push('頁：上の欄の色の比');
   if (!low || !md.includes('いちばん低いのは、' + low.at + ' の ' + low.r.toFixed(2) + ' です。')) bad.push('頁の、いちばん低い色の比が計算と違う：' + (low ? low.at + ' ' + low.r.toFixed(2) : ''));
   /* 動きを減らす設定：animation を持つ規則は、どれも設定のときに止まる。場面の切り替えの移り変わりも止まる。 */
   const rmBlocks = [...css.matchAll(/@media \(prefers-reduced-motion: reduce\)\s*\{((?:\s*[^{}]+\{[^{}]*\})*)\s*\}/g)].map((m) => m[1]);
@@ -573,6 +587,10 @@ const breaks = [
   ['PRINCIPIA.md から開示を外す', Object.assign({}, real, { 'PRINCIPIA.md': real['PRINCIPIA.md'].replace('Claude は著者ではありません。', '') })],
   ['README から別の枠だという断りを外す', mut('README.md', FRAME, '')],
   ['事件の属性を書く', mut('site/play.html', '<button type="button" id="scene">', '<button type="button" id="scene" onclick="x()">')],
+  ['上の欄から紋を外す', mut('site/guide.html', '<img class="crest" src="assets/emblem-crest.svg" alt="クラスの紋" width="34" height="40">', '')],
+  ['上の欄の添え名を変える', mut('site/faq.html', '>Magus Occultus</span>', '>Stealth Wizard</span>')],
+  ['はじめにから紋を一つ外す', mut('site/index.html', '<img src="assets/emblem-dial.svg"', '<img src="assets/missing.svg"')],
+  ['はじめにの紋の代わりの文を消す', Object.assign({}, real, { 'site/index.html': real['site/index.html'].replace('alt="原理の印：正二十面体の線画"', 'alt=""') })],
   ['デザインの頁から弁護士の断りを外す', mut('src/design.md', '弁護士の確認は受けていません。', '')],
   ['デザインの頁へのつなぎを外す', mut('site/terms.html', '<a href="design.html">', '<a href="x.html">')],
   ['デザインの頁を手で直す', mut('site/design.html', '配る書体は Inter Tight だけです。', '配る書体は二つです。')],
@@ -614,6 +632,9 @@ const dbreaks = [
   ['頁の書体の字の数を違える', dmut('src/design.md', '収める字は 103 字です。', '収める字は 100 字です。')],
   ['許諾の文に予約された書体名を足す', dmut('assets/OFL-InterTight.txt', '(https://github.com/rsms/inter-tight)', '(https://github.com/rsms/inter-tight), with Reserved Font Name "Inter".')],
   ['許諾の文の引用を一語変える', dmut('src/design.md', '> to use, study, copy, merge, embed, modify,', '> to use, study, copy, merge, embed,')],
+  ['上の欄の文字を暗くする', dmut('assets/style.css', '--mastmuted: #a9afb9;', '--mastmuted: #3a3f48;')],
+  ['頁から上の欄の色の比を外す', dmut('src/design.md', '- 上の欄の文字の色（--mastink、--mastmuted、--mastgold）と地の色（--mastbg）の比も 4.5 以上です。', '-')],
+  ['三つの紋の一つに画像を埋める', dmut('assets/emblem-seal.svg', '</svg>', '<image href="data:image/png;base64,AAAA" width="1" height="1"/></svg>')],
   ['ファビコンに画像を埋める', dmut('assets/favicon.svg', '</svg>', '<image href="data:image/png;base64,AAAA" width="1" height="1"/></svg>')],
   ['図に別の要素を足す', dmut('src/figs/fig-faces.svg', '</svg>', '<polyline points="0,0 1,1"/></svg>')],
   ['遊び場の台本が別の要素を描く', dmut('assets/play.js', "el('line'", "el('rect'")],
