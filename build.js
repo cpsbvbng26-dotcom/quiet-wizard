@@ -194,8 +194,14 @@ ${fs.readFileSync(path.join(ROOT, 'src', 'hero.svg.part'), 'utf8').trim()}
 </div>
 <p class="cap"><span class="cap-out">外の目：傘を持った人が、立っているだけ。</span><span class="cap-in">魔法使いの目：面が回り、負が溜まり、成果が人の関係へ溶けていく。</span></p>
 </section>`;
+/* はじめにの三つの紋（2026-11-22）。原理の印、クラスの紋、三十の目盛り。どれも assets の SVG で、外へは読みに行かない。 */
+const EMBLEMS = `<figure class="emblems"><div class="emb">
+<img src="assets/emblem-seal.svg" alt="原理の印：正二十面体の線画" width="200" height="160">
+<img class="emb-crest" src="assets/emblem-crest.svg" alt="クラスの紋：盾の中の、先の折れた帽子と星" width="160" height="190">
+<img src="assets/emblem-dial.svg" alt="三十の目盛り：零から三十までの目盛りと、三十の手前を指す針" width="200" height="160">
+</div><figcaption>原理の印、クラスの紋、三十の目盛り。目盛りの針は、三十の手前を指しています。三十歳は目安にすぎません（第五法則）。紋の帽子はクラスの印で、魔法使いの見た目ではありません。見た目には、杖も帽子もありません。</figcaption></figure>`;
 /* 頁の題の下に置く英語の添え名（飾り。読み上げからは外す）と、上の案内の英語。 */
-const EN = { index: 'Stealth Wizard', canon: 'The Canon', strict: 'Principia Magi Occulti', guide: 'Field Guide', play: 'Playground', faq: 'FAQ',
+const EN = { index: 'Magus Occultus', canon: 'The Canon', strict: 'Principia Magi Occulti', guide: 'Field Guide', play: 'Playground', faq: 'FAQ',
   about: 'Disclaimers & Disclosure', terms: 'Terms of Use', privacy: 'Privacy', requests: 'Requests & Contact', legality: 'On Legality', design: 'Legal Handling of the Design', 404: 'Not Found' };
 /* 上の案内の英語。読み上げにも残す（見えている名と、読まれる名を揃える）。 */
 const NAV_EN = { index: 'Home', canon: 'Canon', strict: 'Principia', guide: 'Field Guide', play: 'Playground', faq: 'FAQ' };
@@ -255,7 +261,7 @@ const PLAY = `<div class="play" id="play">
 
 /* src の Markdown を、頁の中身にする。差し込みの部品もここで置く。 */
 function render(md) {
-  let html = statutes(markdown(md).replace('<!-- play -->', PLAY).replace('<!-- hero -->', HERO).replace('<!-- class -->', CLASS));
+  let html = statutes(markdown(md).replace('<!-- play -->', PLAY).replace('<!-- hero -->', HERO).replace('<!-- class -->', CLASS).replace('<!-- emblems -->', EMBLEMS));
   if (html.includes('<!-- index -->')) { html = crossref(html, principiaItems(md)); html = html.replace('<!-- index -->', principiaIndex(md, html)); }
   return html;
 }
@@ -278,7 +284,7 @@ function page(file, title, body) {
 </head>
 <body class="p-${esc(file)}">
 <aside class="frame" aria-label="この頁の枠"><p><span class="tag">娯楽の枠</span><span class="say">${esc(FRAME)}</span></p></aside>
-<header><a class="site" href="index.html">${MARK}<span class="name">${esc(NAME)}</span><span class="sub" lang="en" aria-hidden="true">stealth wizard</span></a>
+<header><div class="mast"><a class="site" href="index.html"><img class="crest" src="assets/emblem-crest.svg" alt="クラスの紋" width="34" height="40"><span class="titles"><span class="name">${esc(NAME)}</span><span class="sub" lang="la" aria-hidden="true">Magus Occultus</span></span></a></div>
 <nav aria-label="頁">
 ${nav}
 </nav></header>
@@ -287,7 +293,7 @@ ${nav}
 ${body}
 </main>
 <footer>
-<p class="wordmark" lang="en" aria-hidden="true">Stealth Wizard</p>
+<p class="wordmark" lang="en" aria-hidden="true">${MARK}Stealth Wizard</p>
 <div class="ruler" aria-hidden="true"><span>0</span><span>十</span><span>二十</span><span>三十（目安）</span></div>
 <p>${esc(FOOT)}</p>
 <p>原典は運営者の文で、遊びの部分は Claude（Anthropic の言語モデル）が書きました。Claude は著者ではありません。文は CC BY 4.0、コードは MIT。<a href="${REPO}" rel="noopener">リポジトリ</a></p>
@@ -383,4 +389,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
