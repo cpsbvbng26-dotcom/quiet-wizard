@@ -843,6 +843,10 @@ function legalEnVerdict(x) {
   if (!r || !de.includes('The lowest is the ' + (sch === '明るい' ? 'light' : 'dark') + " scheme's " + fg + ' against ' + bg + ', at ' + r + '.')) bad.push('design.en：いちばん低い色の比が日本語の頁と違う');
   const [eye, c1, c2, r2] = get(/遊び場の網で、いちばん低いのは、(魔法使いの目|外の目)の (#[0-9a-f]+) と地の (#[0-9a-f]+) の ([\d.]+) です。/);
   if (!r2 || !de.includes("The lowest in the playground's network is the " + (eye === '外の目' ? 'outside view' : "wizard's view") + "'s " + c1 + ' against the ground ' + c2 + ', at ' + r2 + '.')) bad.push('design.en：遊び場の網の色の比が日本語の頁と違う');
+  const [grounds] = get(/と、地と面の色（([^）]+)）の比は/);
+  if (!grounds || !de.includes('and the ground and surface colours (' + grounds.split('、').join(', ') + ') is at least 4.5')) bad.push('design.en：地と面の色の並びが日本語の頁と違う');
+  const [lv] = get(/高さは(.)つの段/);
+  if (!lv || !de.includes('Height is shown in ' + enWord(KANJI_N.indexOf(lv)) + ' levels (ground, surface, raised surface, front).')) bad.push('design.en：高さの段の数が日本語の頁と違う');
   const [ms1, ms2] = get(/一日の間を (\d+) ミリ秒から (\d+) ミリ秒に延ばします/);
   if (!ms1 || !de.includes('lengthens each day from ' + ms1 + ' milliseconds to ' + ms2 + ' milliseconds.')) bad.push('design.en：遊び場の間が日本語の頁と違う');
   const nr = x['#raster'].split('\n').filter((f) => f && !f.startsWith('site/')).length;
@@ -1032,7 +1036,10 @@ function designVerdict(x) {
   const light = tok((/:root\s*\{([^}]*)\}/.exec(css) || [, ''])[1]);
   const dark = tok((/@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^}]*)\}/.exec(css) || [, ''])[1]);
   let low = null;
-  for (const [nm, set] of [['明るい配色', light], ['暗い配色', dark]]) for (const fg of ['ink', 'muted', 'accent', 'gold']) for (const bg of ['bg', 'tint']) {
+  /* 地の色に、面の色（2026-11-23。奥行きの段の面と、その左上と右下の端の色）を加える。文字は面の上にも載る。 */
+  const GROUNDS = ['bg', 'tint', 'paper', 'sheen', 'shade'];
+  if (!md.includes('文字の色（--ink、--muted、--accent、--gold）と、地と面の色（' + GROUNDS.map((g) => '--' + g).join('、') + '）の比は、明るい配色でも暗い配色でも 4.5 以上です。')) bad.push('頁：文字の色と比べる地と面の色の並び');
+  for (const [nm, set] of [['明るい配色', light], ['暗い配色', dark]]) for (const fg of ['ink', 'muted', 'accent', 'gold']) for (const bg of GROUNDS) {
     if (!set[fg] || !set[bg]) { bad.push(nm + 'の --' + fg + ' か --' + bg + ' が読めない'); continue; }
     const r = contrast(set[fg], set[bg]);
     if (r < 4.5) bad.push(nm + 'の --' + fg + ' と --' + bg + ' の比が 4.5 より低い：' + r.toFixed(2));
@@ -1061,6 +1068,49 @@ function designVerdict(x) {
   if (!rmBlocks.some((b) => rules(b).some((r) => ['*', '*::before', '*::after'].every((z) => r.sel.includes(z)) && /animation:\s*none !important/.test(r.body) && /transition:\s*none !important/.test(r.body)))) bad.push('動きを減らす設定で、どの要素の animation と transition も止める規則が無い');
   if (!md.includes('style.css の animation と transition をすべて止めます。')) bad.push('頁：動きを減らす設定で transition も止めること');
   if (!/reduce \? 1500 : 800\)/.test(x['assets/play.js'] || '') || !md.includes('一日の間を 800 ミリ秒から 1500 ミリ秒に延ばします。')) bad.push('遊び場の、動きを減らす設定のときの間');
+  /* 奥行き（2026-11-23）。高さの段の影のトークン（--sh1〜）は、明るい配色と暗い配色の両方にあり、段の数は頁の文のとおり。
+   * 光は左上の一方向から来る：rgba で描く影は、内側の明かり（白）も外の影も、右下へずれる（x と y が負でない）。暗い配色の縁には、白の明かりがある。
+   * 触れて浮く部品（:hover・:focus・:active で transform を持つ規則）は、動きを減らす設定で transform: none に戻る。印刷では影と浮きを外し、面のグラデーションを外す。 */
+  const shOf = (block) => Object.fromEntries([...block.matchAll(/--(sh\d|bevel):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+  const lightBlock = (/:root\s*\{([^}]*)\}/.exec(css) || [, ''])[1], darkBlock = (/@media \(prefers-color-scheme: dark\)\s*\{\s*:root\s*\{([^}]*)\}/.exec(css) || [, ''])[1];
+  const shL = shOf(lightBlock), shD = shOf(darkBlock);
+  const levels = Object.keys(shL).filter((k) => /^sh\d$/.test(k)).sort();
+  if (!levels.length || levels.some((k, i) => k !== 'sh' + (i + 1)) || levels.join() !== Object.keys(shD).filter((k) => /^sh\d$/.test(k)).sort().join() || !shL.bevel || !shD.bevel) bad.push('高さの段の影のトークンが、明るい配色と暗い配色で揃わない：' + levels.join(',') + ' / ' + Object.keys(shD).join(','));
+  for (const k of levels) if (!css.includes('var(--' + k + ')')) bad.push('高さの段 --' + k + ' を使う部品が無い');
+  if (!md.includes('高さは' + KANJI_N[levels.length + 1] + 'つの段（地・面・浮いた面・最前面）で表します。')) bad.push('頁：高さの段の数が style.css と違う：' + (levels.length + 1));
+  if (!/inset 1px 1px 0 rgba\(255, 255, 255, [.\d]+\)/.test(shD.bevel || '')) bad.push('暗い配色の縁に、左上の白の明かりが無い');
+  const shadowsIn = (v) => v.split(/,(?![^(]*\))/).map((t) => t.trim());
+  const lights = [...css.matchAll(/(?:box-shadow|--sh\d|--bevel)\s*:\s*([^;}]+)/g), ...css.matchAll(/drop-shadow\(([^()]*(?:\([^()]*\))?[^()]*)\)/g)].flatMap((m) => shadowsIn(m[1]));
+  for (const t of lights) {
+    const col = /rgba\((\d+), (\d+), (\d+), [.\d]+\)/.exec(t);
+    if (!col) continue;
+    const [ox, oy] = t.replace(/^inset\s+/, '').split(/\s+/).map((z) => parseFloat(z));
+    const white = +col[1] > 200 && +col[2] > 200 && +col[3] > 200, inset = /^inset\b/.test(t);
+    if ((!inset || white) && (ox < 0 || oy < 0)) bad.push('影か明かりが、左上の光の向きとそろわない：' + t);
+  }
+  if (!md.includes('影と縁の明かりは、どれも左上から来る光の向きにそろえています。')) bad.push('頁：光の向き');
+  const rmAll = new Set(rmBlocks.flatMap((b) => rules(b).filter((r) => /transform:\s*none/.test(r.body)).flatMap((r) => r.sel)));
+  const prints = [...css.matchAll(/@media print\s*\{((?:\s*[^{}]+\{[^{}]*\})*)\s*\}/g)].map((m) => m[1]);
+  const rest3 = rest2.replace(/@media print\s*\{((?:\s*[^{}]+\{[^{}]*\})*)\s*\}/g, '');
+  const lifted = rules(rest3).filter((r) => /transform:\s*translate/.test(r.body)).flatMap((r) => r.sel).filter((z) => /:(hover|focus|active)/.test(z));
+  if (!lifted.length) bad.push('触れて浮く部品が見つからない（読み方の誤り）');
+  for (const z of lifted) if (!rmAll.has(z)) bad.push('動きを減らす設定で、触れたときの浮きが止まらない：' + z);
+  if (!md.includes('触れられる部品は、触れると少し浮きます。動きを減らす設定のときは浮かせず、影の差だけを残します。')) bad.push('頁：触れて浮く部品と動きを減らす設定');
+  const printRules = prints.flatMap((b) => rules(b));
+  if (!printRules.some((r) => ['*', '*::before', '*::after'].every((z) => r.sel.includes(z)) && /box-shadow:\s*none !important/.test(r.body) && /transform:\s*none !important/.test(r.body) && /filter:\s*none !important/.test(r.body))) bad.push('印刷で、影と浮きを外していない');
+  const faced = rules(rest3).filter((r) => /var\(--face\)/.test(r.body)).flatMap((r) => r.sel).filter((z) => !/:(hover|focus|active|has)/.test(z) && z !== ':root');
+  const unfaced = new Set(printRules.filter((r) => /background-image:\s*none !important/.test(r.body)).flatMap((r) => r.sel));
+  for (const z of faced) if (!unfaced.has(z)) bad.push('印刷で、面のグラデーションを外さない：' + z);
+  if (!md.includes('影とグラデーションも外し、平らに戻します。')) bad.push('頁：印刷で平らに戻すこと');
+  /* 四隅の鉤（背景で描く 1px の線）は、内側の影（inset）を重ねると覆われて消える（2026-11-23 まで、クラス表の金の鉤が見えていなかった）。
+   * 鉤を描く背景が最後の背景である部品には、inset の影を置かない。 */
+  const all3 = rules(rest3);
+  for (const z of new Set(all3.filter((r) => r.body.includes('top left / var(--l) 1px')).flatMap((r) => r.sel))) {
+    const mine = all3.filter((r) => r.sel.includes(z));
+    const lastBg = mine.filter((r) => /(^|;)\s*background:/.test(r.body)).pop();
+    if (lastBg && lastBg.body.includes('top left / var(--l) 1px') && mine.some((r) => /box-shadow:[^;]*\binset\b/.test(r.body) || /box-shadow:[^;]*var\(--bevel\)/.test(r.body))) bad.push('四隅の鉤を、内側の影が覆う：' + z);
+  }
+  if (!md.includes('四隅の鉤は、内側の影で覆いません。')) bad.push('頁：四隅の鉤と内側の影');
   /* 代わりの文、フォーカスの輪、拡大。生成したすべての頁で。 */
   for (const f of Object.keys(x).filter((k) => /^site\/.+\.html$/.test(k))) {
     const t = x[f];
@@ -1339,6 +1389,22 @@ const dbreaks = [
   ['頁から書体で作った文書の許諾の引用を外す', dmut('src/design.md', '> The requirement for fonts to remain under this license does not apply to any document created using the Font Software', '>')],
   ['部品の表からカードを描くスクリプトを外す', dmut('src/design.md', /\| カードとアイコンを描くスクリプト \|[^\n]+\n/, '')],
   ['頁から印刷の文を外す', dmut('src/design.md', '印刷では、上の帯と上の欄とクラス表を、白地の黒字にします。', '')],
+  /* 奥行き（2026-11-23）の壊し方。 */
+  ['面の色を暗くして文字の比を下げる', dmut('assets/style.css', '--sheen: #1b1e24;', '--sheen: #6a707a;')],
+  ['頁の地と面の色の並びから面を一つ外す', dmut('src/design.md', '--paper、--sheen、--shade）の比は', '--paper、--sheen）の比は')],
+  ['暗い配色で高さの段の影を一つ書き落とす', dmut('assets/style.css', '    --sh2: 2px 6px 18px -8px rgba(0, 0, 0, .6);\n', '')],
+  ['高さの段を一つ足して頁と違える', dmut('assets/style.css', '  --bevel: inset 1px 1px 0 rgba(255, 255, 255, .9)', '  --sh4: 0 1px 2px rgba(0, 0, 0, .1); --bevel: inset 1px 1px 0 rgba(255, 255, 255, .9)')],
+  ['高さの段の影を使う部品を無くす', dmut('assets/style.css', /var\(--sh3\)/g, 'var(--sh2)')],
+  ['影を右上から落とす', dmut('assets/style.css', '6px 16px 34px -12px rgba(13, 15, 19, .18)', '6px -16px 34px -12px rgba(13, 15, 19, .18)')],
+  ['縁の明かりを右下に置く', dmut('assets/style.css', '--bevel: inset 1px 1px 0 rgba(255, 255, 255, .07)', '--bevel: inset -1px -1px 0 rgba(255, 255, 255, .07)')],
+  ['頁から光の向きの文を外す', dmut('src/design.md', '影と縁の明かりは、どれも左上から来る光の向きにそろえています。', '')],
+  ['動きを減らす設定で、ボタンの浮きを止めない', dmut('assets/style.css', '.play button:hover, .play button:focus-visible, .play button:active, header .lang:hover { transform: none; }', '.play button:focus-visible, .play button:active, header .lang:hover { transform: none; }')],
+  ['頁から触れて浮く部品の文を外す', dmut('src/design.md', '触れられる部品は、触れると少し浮きます。動きを減らす設定のときは浮かせず、影の差だけを残します。', '')],
+  ['印刷で影を残す', dmut('assets/style.css', '*, *::before, *::after { box-shadow: none !important; text-shadow: none !important;', '*, *::before, *::after { text-shadow: none !important;')],
+  ['印刷で目次の面のグラデーションを残す', dmut('assets/style.css', 'body, header, .frame, .toc, ', 'body, header, .frame, ')],
+  ['頁の高さの段の数を違える', dmut('src/design.md', '高さは四つの段', '高さは三つの段')],
+  ['図の四隅の鉤を縁の明かりで覆う', dmut('assets/style.css', '.fig { background-color: var(--paper); border-radius: var(--r1); box-shadow: var(--sh1); }', '.fig { background-color: var(--paper); border-radius: var(--r1); box-shadow: var(--sh1), var(--bevel); }')],
+  ['クラス表の四隅の鉤を内側の線で覆う', dmut('assets/style.css', '.class-sheet { border: 1px solid;', '.class-sheet { box-shadow: inset 0 0 0 1px #262b33; border: 1px solid;')],
 ];
 const dmissed = dbreaks.filter(([, y]) => designVerdict(y).length === 0).map(([k]) => k);
 ok('壊して確かめる：部品の表・許諾・書体の名・書体の名前表と字・許諾の文・SVG の要素・ラスター・色の比・動き・代わりの文・拡大・フォーカス・条文の抜粋と引用と出どころ・正式の名のどれでも落ちる（' + (dbreaks.length - dmissed.length) + ' / ' + dbreaks.length + '）', dmissed.length === 0, dmissed.join(' / '));
@@ -1461,6 +1527,8 @@ const ebreaks = [
   ['英語の部品の表から一行外す', emut('src/design.en.md', /\| Favicon \|[^\n]+\n/, '')],
   ['英語の部品の表のカードの SHA-256 を違える', emut('src/design.en.md', /(\| `assets\/card\.png` \|[^|]*SHA-256 is )[0-9a-f]{64}/, '$1' + '0'.repeat(64))],
   ['英語の部品の表の許諾を変える', emut('src/design.en.md', '| MIT, as code | The check confirms the contrast ratios', '| CC BY 4.0, as a figure | The check confirms the contrast ratios')],
+  ['英語のデザインの頁で、地と面の色を一つ書き落とす', emut('src/design.en.md', '--paper, --sheen, --shade) is at least 4.5', '--paper, --sheen) is at least 4.5')],
+  ['英語のデザインの頁で、高さの段の数を違える', emut('src/design.en.md', 'Height is shown in four levels', 'Height is shown in three levels')],
   ['英語の書体の字の数を違える', emut('src/design.en.md', 'It holds 103 characters.', 'It holds 100 characters.')],
   ['英語の色の比の数を違える', emut('src/design.en.md', ', at 5.73.', ', at 5.80.')],
   ['英語の遊び場の網の色の比を違える', emut('src/design.en.md', ', at 3.12.', ', at 3.20.')],

@@ -12,14 +12,33 @@
   --serif: "Hiragino Mincho ProN", "Yu Mincho", YuMincho, "Noto Serif JP", "Noto Serif CJK JP", serif;
   --sans: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", sans-serif;
   --measure: 40rem;
+  /* 奥行き（2026-11-23）：高さの四つの段。光は左上の一方向から来る。地（--bg、影なし）、面（--paper と --sh1）、浮いた面（--face と --sh2）、最前面（上の欄と --sh3）。
+   * 面は左上の --sheen から右下の --shade へ、ごくわずかに暗くなる。縁は、左上を明るく、右下を暗くする（--bevel）。 */
+  --sheen: #ffffff; --shade: #f6f7f9;
+  --sh1: 1px 1px 0 rgba(13, 15, 19, .05), 2px 4px 10px -4px rgba(13, 15, 19, .12);
+  --sh2: 1px 2px 2px rgba(13, 15, 19, .05), 4px 10px 24px -10px rgba(13, 15, 19, .20), 10px 24px 48px -26px rgba(13, 15, 19, .18);
+  --sh3: 1px 2px 3px rgba(13, 15, 19, .06), 6px 16px 34px -12px rgba(13, 15, 19, .18), 14px 34px 70px -30px rgba(13, 15, 19, .22);
+  --bevel: inset 1px 1px 0 rgba(255, 255, 255, .9), inset -1px -1px 0 rgba(13, 15, 19, .05);
+  --glow: rgba(255, 255, 255, .75);
+  --face: linear-gradient(160deg, var(--sheen), var(--paper) 45%, var(--shade));
+  /* 余白の段と角丸の段。角は建築の図面のように、ほとんど丸めない。 */
+  --sp1: .5rem; --sp2: 1rem; --sp3: 1.6rem; --sp4: 2.4rem; --sp5: 3.6rem;
+  --r1: 2px; --r2: 4px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #0a0b0e; --ink: #eceef2; --muted: #9aa1ac; --hair: #22262d; --accent: #a8bedc; --gold: #cdb47e; --tint: #111318; --paper: #121418; color-scheme: dark; }
+  :root { --bg: #0a0b0e; --ink: #eceef2; --muted: #9aa1ac; --hair: #22262d; --accent: #a8bedc; --gold: #cdb47e; --tint: #111318; --paper: #121418; color-scheme: dark;
+    /* 暗い配色では影を弱め、面の明るさの差と、上の縁の 1px の明かりで高さを出す。 */
+    --sheen: #1b1e24; --shade: #101216;
+    --sh1: 1px 2px 6px -2px rgba(0, 0, 0, .45);
+    --sh2: 2px 6px 18px -8px rgba(0, 0, 0, .6);
+    --sh3: 4px 14px 36px -14px rgba(0, 0, 0, .7);
+    --bevel: inset 1px 1px 0 rgba(255, 255, 255, .07), inset -1px -1px 0 rgba(0, 0, 0, .35);
+    --glow: rgba(168, 190, 220, .06); }
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body { position: relative; margin: 0; background: radial-gradient(70rem 36rem at 88% -10rem, color-mix(in srgb, var(--accent) 10%, transparent), transparent 62%) no-repeat, var(--bg); color: var(--ink); font-family: var(--sans); font-size: 1rem; line-height: 2; letter-spacing: .03em; }
+body { position: relative; margin: 0; background: radial-gradient(56rem 34rem at -8rem -6rem, var(--glow), transparent 70%) no-repeat, radial-gradient(70rem 36rem at 88% -10rem, color-mix(in srgb, var(--accent) 10%, transparent), transparent 62%) no-repeat, var(--bg); color: var(--ink); font-family: var(--sans); font-size: 1rem; line-height: 2; letter-spacing: .03em; }
 body::before { content: ""; position: absolute; z-index: -1; top: 4.5rem; right: max(0px, calc(50% - 44rem)); width: min(34rem, 70vw); height: min(34rem, 70vw); background: var(--gold); opacity: .08;
   -webkit-mask: url(mark.svg) no-repeat center / contain; mask: url(mark.svg) no-repeat center / contain; pointer-events: none; }
 body:not(.p-index)::before { opacity: .05; }
@@ -221,7 +240,7 @@ main > .class-sheet { max-width: calc(var(--measure) + 8rem); }
     linear-gradient(var(--c), var(--c)) bottom left / var(--l) 1px, linear-gradient(var(--c), var(--c)) bottom left / 1px var(--l),
     linear-gradient(var(--c), var(--c)) bottom right / var(--l) 1px, linear-gradient(var(--c), var(--c)) bottom right / 1px var(--l),
     linear-gradient(125deg, #171a20 0%, #0c0d10 46%, #14171c 62%, #0b0c0f 100%);
-  background-repeat: no-repeat; box-shadow: inset 0 0 0 1px #262b33, 0 30px 60px -30px rgba(0, 0, 0, .45); }
+  background-repeat: no-repeat; }
 .class-sheet > * { min-width: 0; }
 .cls-kind { grid-column: 1 / -1; margin: 0; font-size: .7rem; letter-spacing: .36em; color: #cdb47e; }
 .class-sheet .cls-name { grid-column: 1 / -1; counter-increment: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem 1.1rem; margin: -.6rem 0 .2rem; font-size: clamp(1.6rem, 4.6vw, 2.4rem); letter-spacing: .1em; color: #ece8df; }
@@ -390,3 +409,47 @@ html:lang(en) .p-canon td:nth-child(2) { white-space: normal; }
 .summary { margin-top: .4rem; font-size: .9rem; color: var(--muted); }
 .sum-k { display: inline-block; margin-right: .7rem; font-family: var(--display); font-size: .66rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
 .langnote { padding: .6rem .9rem; border: 1px solid var(--hair); background: var(--tint); font-size: .86rem; }
+
+/* 奥行き（2026-11-23）。平らな面を、光の向き（左上）のそろった四つの段に分ける。
+ * 地：頁の地と、格子と、左上からの淡い光。面：目次、図、紋の札、寄せた場面。浮いた面：はじめにの断り、場面、遊び場の目、クラス表、触れたときの札。最前面：上の欄。
+ * 触れられる部品（はじめにの目次の項、遊び場のボタン、言葉の切り替え）は、触れると少し浮く。動きを減らす設定では動かさず、影の差だけにする。印刷では平らに戻す。 */
+header { box-shadow: 0 3px 0 var(--bg), 0 6px 0 var(--mastgold), var(--sh3); background: linear-gradient(180deg, #15181e, var(--mastbg) 70%); }
+.frame { background: linear-gradient(180deg, #111318, #0b0c0f); }
+header .lang { border-radius: var(--r1); background: linear-gradient(160deg, #1a1d23, #0f1115); box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .08), inset -1px -1px 0 rgba(0, 0, 0, .5), 1px 2px 4px -1px rgba(0, 0, 0, .6); transition: transform .2s, box-shadow .2s, border-color .2s; }
+header .lang:hover { transform: translateY(-1px); box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .1), inset -1px -1px 0 rgba(0, 0, 0, .5), 2px 5px 10px -3px rgba(0, 0, 0, .8); }
+h2, h3 { text-wrap: balance; }
+
+/* 面 */
+.toc { padding: 1.3rem 1.4rem 1.1rem; background: var(--face); border: 1px solid var(--hair); border-top: 2px solid var(--ink); border-radius: 0 0 var(--r1) var(--r1); box-shadow: var(--sh1), var(--bevel); }
+/* 図とクラス表の四隅の鉤は、縁の内側の明かり（inset の影）に覆われるので、縁は border の明暗で描く。 */
+.fig { background-color: var(--paper); border-radius: var(--r1); box-shadow: var(--sh1); }
+.emb img:not(.emb-crest) { border-radius: var(--r1); box-shadow: var(--sh2); }
+.emb .emb-crest { filter: drop-shadow(3px 8px 10px rgba(0, 0, 0, .28)); }
+blockquote.entry { padding: var(--sp2) var(--sp3); background: var(--face); border: 1px solid var(--hair); border-left: 2px solid var(--gold); border-radius: 0 var(--r1) var(--r1) 0; box-shadow: var(--sh1), var(--bevel); }
+.langnote { border-radius: var(--r1); box-shadow: var(--bevel); }
+
+/* 浮いた面 */
+.p-index main > blockquote:first-of-type { background: var(--face); border-radius: 0 0 var(--r2) var(--r2); box-shadow: var(--sh2), var(--bevel); }
+.scene { border: 1px solid var(--hair); border-radius: var(--r1); box-shadow: var(--sh2); }
+.views { border-radius: var(--r1); box-shadow: var(--sh2); }
+.eye.inner { background-image: linear-gradient(160deg, rgba(255, 255, 255, .035), transparent 55%); box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .06); }
+.eye.outer { background-image: linear-gradient(160deg, rgba(255, 255, 255, .7), transparent 55%); box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .9); }
+.class-sheet { border: 1px solid; border-color: #333a44 #20252c #1b1f25 #2c323b; border-radius: var(--r2); box-shadow: 2px 4px 6px -2px rgba(0, 0, 0, .25), 8px 24px 48px -18px rgba(0, 0, 0, .45), 18px 46px 90px -40px rgba(0, 0, 0, .4); }
+
+/* 触れられる部品 */
+.p-index main > ul > li { border-radius: var(--r1); transition: background .25s, transform .25s, box-shadow .25s; }
+.p-index main > ul > li:hover, .p-index main > ul > li:has(a:focus-visible) { z-index: 1; background: var(--face); transform: translateY(-2px); box-shadow: var(--sh2), var(--bevel); }
+.play button { border-radius: var(--r1); background: var(--face); box-shadow: var(--sh1), var(--bevel); transition: background .2s, color .2s, transform .2s, box-shadow .2s; }
+.play button:hover, .play button:focus-visible { transform: translateY(-1px); box-shadow: var(--sh2), var(--bevel); }
+.play button:hover { background: var(--ink); color: var(--bg); }
+.play button:active { transform: translateY(1px); box-shadow: inset 1px 2px 4px rgba(0, 0, 0, .25); }
+.play .row { box-shadow: 0 10px 12px -12px rgba(0, 0, 0, .25); }
+@media (prefers-reduced-motion: reduce) { .p-index main > ul > li:hover, .p-index main > ul > li:has(a:focus-visible), .play button:hover, .play button:focus-visible, .play button:active, header .lang:hover { transform: none; } }
+
+/* 狭い画面：上の欄の名を一行に収める（幅 390 で「ド」だけが次の行に落ちていた）。 */
+@media (max-width: 34rem) { header .name { font-size: 1.02rem; letter-spacing: .14em; white-space: nowrap; } header .crest { width: 30px; height: 35px; } }
+/* 英語の行の長さを、およそ 70 字にする。 */
+html:lang(en) { --measure: 36rem; }
+
+/* 印刷では、影とグラデーションと浮きを外して平らに戻す。 */
+@media print { *, *::before, *::after { box-shadow: none !important; text-shadow: none !important; filter: none !important; transform: none !important; } body, header, .frame, .toc, .p-index main > blockquote:first-of-type, blockquote.entry, .play button, .eye.inner, .eye.outer { background-image: none !important; } body::before, body::after { display: none; } }
