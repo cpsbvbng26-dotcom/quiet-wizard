@@ -367,3 +367,21 @@ main > .emblems { animation: rise .9s cubic-bezier(.2, .7, .2, 1) .2s both; }
   .p-index main > blockquote:first-of-type { padding: 2.5rem 1.2rem 1.3rem; }
   .p-index main > blockquote:first-of-type::before { left: 1.2rem; }
 }
+
+/* 英語の頁と、言葉の切り替え（2026-11-23）。英語の頁の本文は Inter Tight で組み、字間と行間を英文に合わせる。頁の中の日本語（lang="ja"）は、端末の角ゴシックに戻す。
+ * 言葉の切り替えは、上の欄の右に置く。もう一つの言葉の同じ頁へ飛ぶ。 */
+html:lang(en) { --sans: "Inter Tight", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif; --serif: "Inter Tight", "Helvetica Neue", Arial, sans-serif; }
+html:lang(en) body { letter-spacing: .005em; line-height: 1.75; }
+html:lang(en) h1, html:lang(en) h2, html:lang(en) h3 { letter-spacing: .01em; }
+html:lang(en) [lang="ja"] { font-family: system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", sans-serif; letter-spacing: .03em; }
+html:lang(en) .p-index main > blockquote:first-of-type::before { content: "Notice"; letter-spacing: .3em; }
+html:lang(en) header .name { letter-spacing: .14em; }
+header .lang { margin-left: auto; padding: .15rem .6rem; border: 1px solid var(--mastline); color: var(--mastink); font-size: .76rem; letter-spacing: .08em; line-height: 1.6; text-decoration: none; white-space: nowrap; }
+header .lang:hover { border-color: var(--mastgold); }
+header .mast { gap: 1rem; }
+/* 英語のクラス表は、スキルの名が長いので、名の欄を広げる。 */
+html:lang(en) .cls-skills li { grid-template-columns: 6.6rem minmax(0, 1fr) auto; }
+html:lang(en) .cls-skills b, html:lang(en) .cls-stats dt { letter-spacing: .04em; }
+@media (max-width: 34rem) { html:lang(en) .cls-skills li { grid-template-columns: 6.6rem minmax(0, 1fr); } }
+html:lang(en) .p-strict main > p > strong:first-child { letter-spacing: .02em; }
+html:lang(en) .p-canon td:nth-child(2) { white-space: normal; }
