@@ -145,7 +145,8 @@ function principiaItems(md) {
   }
   return items;
 }
-const CITE = /(定義|要請|定理)([一二三四五六七八九十]+)(?!つ)|第([一二三四五六七八九十]+)法則/g;
+/* 引き合い。系は「系の」の形だけを引き合いと読む（「体系の」は除く）。「第十法則の注」「系の後の注」のような注の引き合いは、注の持ち主の項を引くものとして読む（2026-11-23）。 */
+const CITE = /(定義|要請|定理)([一二三四五六七八九十]+)(?!つ)|第([一二三四五六七八九十]+)法則|(?<!体)(系)(?=の)/g;
 function crossref(html, items) {
   const byLabel = new Map(items.map((it) => [it.label, it]));
   /* 項の段に飛び先を付ける。 */
@@ -153,8 +154,6 @@ function crossref(html, items) {
     const it = byLabel.get(lab);
     return it ? '<p id="' + it.id + '"><strong>' + lab + '　' : m;
   });
-  let h2 = 0;
-  html = html.replace(/<h2>/g, () => '<h2 id="s' + (++h2) + '">');
   /* 本文の引き合いをリンクにする。見出し・項の名・原文・既にあるリンクの中は変えない。 */
   const SKIP = /^<(strong|a|h[1-6]|span class="orig"|span class="lat")\b/;
   let depth = 0, stackTag = [];
@@ -166,16 +165,33 @@ function crossref(html, items) {
       return tok;
     }
     if (depth) return tok;
-    return tok.replace(CITE, (m, k, num, lawNum) => {
-      const it = byLabel.get(k ? k + num : '第' + lawNum + '法則');
+    return tok.replace(CITE, (m, k, num, lawNum, cor) => {
+      const it = byLabel.get(cor ? '系' : k ? k + num : '第' + lawNum + '法則');
       return it ? '<a class="xref" href="#' + it.id + '">' + m + '</a>' : m;
     });
   }).join('');
 }
+/* 見出しに飛び先を付ける。h2 は s1, s2, …、h3 はその下に s1-1, s1-2, … と振る（2026-11-23 に、原理だけでなく目次を置く頁のすべてへ広げた）。 */
+function headIds(html) {
+  let h2 = 0, h3 = 0;
+  return html.replace(/<h([23])>/g, (m, lv) => (lv === '2' ? '<h2 id="s' + (++h2, h3 = 0, h2) + '">' : '<h3 id="s' + h2 + '-' + (++h3) + '">'));
+}
+/* 頁の中の目次。見出しを二段の入れ子にする。top が真の h2 を上の段に、ほかの h2 と h3 を、その前の上の段の下に置く。
+ * 原理では、巻と総注解を上の段に、巻の中の要請・法則・定理・注解などを下の段に置く（2026-11-23）。 */
+const headText = (h) => h.replace(/<span class="lat"[^>]*>[^<]*<\/span>/g, '').replace(/<[^>]+>/g, '').trim();
+function tocList(html, top) {
+  const groups = [];
+  for (const m of html.matchAll(/<h([23]) id="(s[\d-]+)">(.+?)<\/h\1>/g)) {
+    const e = { id: m[2], text: headText(m[3]) };
+    if ((m[1] === '2' && top(e.text)) || !groups.length) groups.push({ e, kids: [] }); else groups[groups.length - 1].kids.push(e);
+  }
+  return groups.map(({ e, kids }) => '<li><a href="#' + e.id + '">' + esc(e.text) + '</a>'
+    + (kids.length ? '<ol>' + kids.map((k) => '<li><a href="#' + k.id + '">' + esc(k.text) + '</a></li>').join('') + '</ol>' : '') + '</li>').join('');
+}
+const pageToc = (html) => '<nav class="toc" aria-label="この頁の目次"><p class="toc-h">目次</p><ol class="toc-books">' + tocList(html, () => true) + '</ol></nav>';
 function principiaIndex(md, html) {
   const items = principiaItems(md);
-  const books = [...html.matchAll(/<h2 id="(s\d+)">(.+?)<\/h2>/g)].filter((m) => /^第[一二三四五六七八九十]+巻/.test(m[2].replace(/<[^>]+>/g, '')))
-    .map((m) => '<li><a href="#' + m[1] + '">' + m[2].replace(/<span class="lat"[^>]*>[^<]*<\/span>/g, '').trim() + '</a></li>');
+  const books = [tocList(html, (t) => /^(第[一二三四五六七八九十]+巻|総注解)/.test(t))];
   const group = (kinds, name) => {
     const xs = items.filter((it) => kinds.includes(it.kind));
     return '<div class="idx-g"><p class="idx-h">' + name + '</p><p class="idx-l">'
@@ -241,37 +257,48 @@ const CLASS = `<section class="class-sheet" aria-labelledby="cls-kind cls-name">
 
 /* 遊び場の部品。play.js が動かす。 */
 const PLAY = `<div class="play" id="play">
-<div class="row"><button type="button" id="scene">① 場面を変える</button><button type="button" id="live">② 一日を過ごす</button><button type="button" id="auto">④ 自動で過ごす</button></div>
+<div class="row"><button type="button" id="scene">場面を変える</button><button type="button" id="live">一日を過ごす</button><button type="button" id="auto">自動で過ごす</button></div>
 <div class="views">
 <section class="eye inner" aria-labelledby="eye-in"><h3 id="eye-in">魔法使いの目</h3>
 <svg id="inner" class="net-svg" viewBox="0 0 300 240" role="img" aria-label="魔法使いの目"></svg>
 <ul class="legend"><li><span class="k k-me"></span>魔法使い（自分）</li><li><span class="k k-neg"></span>負の面を向けている線</li><li><span class="k k-pos"></span>正の面を向けている線</li><li><span class="k k-gold"></span>負の逆が光った線・成果が入った関係</li></ul>
 <div class="meter" id="meter" role="meter" aria-label="負の蓄積" aria-valuemin="0" aria-valuemax="36" aria-valuenow="0"><div class="fill" id="fill"></div></div>
 <p>日 <b id="day">0</b>　蓄積 <b id="stock">0</b>　負を向けている人 <b id="negs">0</b></p>
-<p>③ 切り替わり <b id="state">まだ</b></p>
+<p>切り替わり <b id="state">まだ</b></p>
 </section>
 <section class="eye outer" aria-labelledby="eye-out"><h3 id="eye-out">外の目</h3>
 <svg id="outer" class="net-svg" viewBox="0 0 300 240" role="img" aria-label="外の目"></svg>
 <p>魔法使いの見える成果 <b id="deeds">0</b></p>
 <p>関係の太さの合計 <b id="total">0</b></p>
-<p class="small">8 人と、隣り合う人どうしの関係の線だけが見えます。どれが魔法使いかも、誰のおかげで線が太くなったかも、見えません。</p>
+<p class="small">8 人と、隣り合う人どうしの関係の線だけが見えます。点はみな同じに描かれ、太くなった線の一本からは、誰のおかげかは分かりません。</p>
 </section>
 </div>
 <p class="note" id="note" aria-live="polite"></p>
 </div>
 <script src="assets/play.js" defer></script>`;
 
-/* src の Markdown を、頁の中身にする。差し込みの部品もここで置く。 */
-function render(md) {
-  let html = statutes(markdown(md).replace('<!-- play -->', PLAY).replace('<!-- hero -->', HERO).replace('<!-- class -->', CLASS).replace('<!-- emblems -->', EMBLEMS));
-  if (html.includes('<!-- index -->')) { html = crossref(html, principiaItems(md)); html = html.replace('<!-- index -->', principiaIndex(md, html)); }
+/* 最終更新の行（「最終更新：YYYY-MM-DD。」だけの段）に、その頁の元のファイルの変更の記録へのリンクを添える（2026-11-23）。 */
+function updated(html, src) {
+  return html.replace(/<p>最終更新：(\d{4}-\d{2}-\d{2})。<\/p>/g, (m, d) => '<p class="updated">最終更新：<time datetime="' + d + '">' + d + '</time>'
+    + (src ? '（<a href="' + REPO + '/commits/main/src/' + src + '.md" rel="noopener">変更の記録</a>）' : '') + '。</p>');
+}
+/* src の Markdown を、頁の中身にする。差し込みの部品もここで置く。src は元のファイルの名（変更の記録へのリンクに使う）。 */
+function render(md, src) {
+  let html = updated(statutes(markdown(md).replace('<!-- play -->', PLAY).replace('<!-- hero -->', HERO).replace('<!-- class -->', CLASS).replace('<!-- emblems -->', EMBLEMS)), src);
+  if (html.includes('<!-- index -->')) { html = crossref(headIds(html), principiaItems(md)); html = html.replace('<!-- index -->', principiaIndex(md, html)); }
+  if (html.includes('<!-- toc -->')) { html = headIds(html); html = html.replace('<!-- toc -->', pageToc(html)); }
   return html;
 }
 
+/* 頁を組む。404 の頁は、どのディレクトリの存在しない所在でも出るので、頁の中のつなぎと素材を根からの所在（/assets/…）で書き、
+ * canonical を出さず、検索に載せない（2026-11-23）。ほかの頁は、頁のある所からの所在で書く。 */
 function page(file, title, body) {
+  const up = file === '404' ? '/' : '';
+  const href = (out) => up + (out === 'index' && up ? '' : out + '.html');
   const label = (out, short) => '<span class="ja">' + esc(short) + '</span> <span class="en" lang="en">' + esc(NAV_EN[out]) + '</span>';
-  const nav = PAGES.filter((x) => x[3]).map(([, out, short]) => (out === file ? '<span aria-current="page">' + label(out, short) + '</span>' : '<a href="' + out + '.html">' + label(out, short) + '</a>')).join('\n');
+  const nav = PAGES.filter((x) => x[3]).map(([, out, short]) => (out === file ? '<span aria-current="page">' + label(out, short) + '</span>' : '<a href="' + href(out) + '">' + label(out, short) + '</a>')).join('\n');
   body = body.replace('</h1>', '</h1>\n<p class="en-title" lang="en" aria-hidden="true">' + esc(EN[file] || '') + '</p>');
+  const where = file === '404' ? '<meta name="robots" content="noindex">' : '<link rel="canonical" href="' + BASE + (file === 'index' ? '' : file + '.html') + '">';
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -281,17 +308,18 @@ function page(file, title, body) {
 <title>${esc(title === NAME ? NAME + '（遊び）' : title + ' | ' + NAME)}</title>
 <meta name="description" content="${esc(FOOT)}">
 <meta name="google-site-verification" content="${GSC}">
-<link rel="canonical" href="${BASE}${file === 'index' ? '' : file + '.html'}">
-<link rel="stylesheet" href="assets/style.css">
-<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+${where}
+<link rel="stylesheet" href="${up}assets/style.css">
+<link rel="icon" href="${up}assets/favicon.svg" type="image/svg+xml">
 </head>
 <body class="p-${esc(file)}">
+<a class="skip" href="#main">本文へ</a>
 <aside class="frame" aria-label="この頁の枠"><p><span class="tag">娯楽の枠</span><span class="say">${esc(FRAME)}</span></p></aside>
-<header><div class="mast"><a class="site" href="index.html"><img class="crest" src="assets/emblem-crest.svg" alt="クラスの紋" width="34" height="40"><span class="titles"><span class="name">${esc(NAME)}</span><span class="sub" lang="la" aria-hidden="true">Magus Occultus</span></span></a></div>
+<header><div class="mast"><a class="site" href="${href('index')}"><img class="crest" src="${up}assets/emblem-crest.svg" alt="クラスの紋" width="34" height="40"><span class="titles"><span class="name">${esc(NAME)}</span><span class="sub" lang="la" aria-hidden="true">Magus Occultus</span></span></a></div>
 <nav aria-label="頁">
 ${nav}
 </nav></header>
-<main>
+<main id="main">
 <p class="eyebrow">${esc(EYEBROW[file] || '')}</p>
 ${body}
 </main>
@@ -300,12 +328,21 @@ ${body}
 <div class="ruler" aria-hidden="true"><span>0</span><span>十</span><span>二十</span><span>三十（目安）</span></div>
 <p>${esc(FOOT)}</p>
 <p>原典は運営者の文で、遊びの部分は Claude（Anthropic の言語モデル）が書きました。Claude は著者ではありません。文は CC BY 4.0、コードは MIT。<a href="${REPO}" rel="noopener">リポジトリ</a></p>
-<nav aria-label="決まり">${PAGES.filter((x) => !x[3]).map(([, out, short]) => (out === file ? '<span aria-current="page">' + esc(short) + '</span>' : '<a href="' + out + '.html">' + esc(short) + '</a>')).join('\n')}</nav>
+<nav aria-label="決まり">${PAGES.filter((x) => !x[3]).map(([, out, short]) => (out === file ? '<span aria-current="page">' + esc(short) + '</span>' : '<a href="' + href(out) + '">' + esc(short) + '</a>')).join('\n')}</nav>
 </footer>
 </body>
 </html>
 `;
 }
+/* 404 の頁の中身。所在は根から書く。 */
+const NOT_FOUND = '<h1>頁が見つかりません</h1>\n<p>この所在に頁はありません。第六法則のとおり、見えないだけかもしれませんが、たぶん本当にありません。</p>\n<p><a href="/">はじめに</a>へ戻れます。</p>';
+/* 配信の決まり（vercel.json）、robots.txt、sitemap.xml。検査が、置いたファイルとこれらが同じことを確かめる。 */
+const VERCEL = JSON.stringify({ cleanUrls: false, headers: [{ source: '/(.*)', headers: [
+  { key: 'Content-Security-Policy', value: CSP }, { key: 'X-Content-Type-Options', value: 'nosniff' }, { key: 'Referrer-Policy', value: 'no-referrer' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()' }] }] }, null, 2) + '\n';
+const ROBOTS = 'User-agent: *\nAllow: /\nSitemap: ' + BASE + 'sitemap.xml\n';
+const SITEMAP = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+  + PAGES.map(([, out]) => '<url><loc>' + BASE + (out === 'index' ? '' : out + '.html') + '</loc></url>').join('\n') + '\n</urlset>\n';
 
 /* GitHub で読む原理の全文（PRINCIPIA.md）と、GitHub でも色の付く図（docs/figs/*.svg）。
  * src/strict.md から作る。手で直さない。GitHub の Markdown に合わせ、〔ラテン語〕は小さく、原文は引用、証明と注は斜体の見出し、
@@ -373,17 +410,14 @@ function build() {
   for (const [src, out] of PAGES) {
     const md = fs.readFileSync(path.join(ROOT, 'src', src + '.md'), 'utf8');
     const title = /^# (.+)$/m.exec(md)[1];
-    const body = render(md);
+    const body = render(md, src);
     fs.writeFileSync(path.join(OUT, out + '.html'), page(out, title, body));
   }
-  fs.writeFileSync(path.join(OUT, '404.html'), page('404', '頁が見つかりません', '<h1>頁が見つかりません</h1>\n<p>この所在に頁はありません。第六法則のとおり、見えないだけかもしれませんが、たぶん本当にありません。</p>\n<p><a href="index.html">はじめに</a>へ戻れます。</p>'));
+  fs.writeFileSync(path.join(OUT, '404.html'), page('404', '頁が見つかりません', NOT_FOUND));
   for (const f of fs.readdirSync(path.join(ROOT, 'assets'))) fs.copyFileSync(path.join(ROOT, 'assets', f), path.join(OUT, 'assets', f));
-  fs.writeFileSync(path.join(OUT, 'robots.txt'), 'User-agent: *\nAllow: /\nSitemap: ' + BASE + 'sitemap.xml\n');
-  fs.writeFileSync(path.join(OUT, 'sitemap.xml'), '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-    + PAGES.map(([, out]) => '<url><loc>' + BASE + (out === 'index' ? '' : out + '.html') + '</loc></url>').join('\n') + '\n</urlset>\n');
-  fs.writeFileSync(path.join(OUT, 'vercel.json'), JSON.stringify({ cleanUrls: false, headers: [{ source: '/(.*)', headers: [
-    { key: 'Content-Security-Policy', value: CSP }, { key: 'X-Content-Type-Options', value: 'nosniff' }, { key: 'Referrer-Policy', value: 'no-referrer' },
-    { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' }] }] }, null, 2) + '\n');
+  fs.writeFileSync(path.join(OUT, 'robots.txt'), ROBOTS);
+  fs.writeFileSync(path.join(OUT, 'sitemap.xml'), SITEMAP);
+  fs.writeFileSync(path.join(OUT, 'vercel.json'), VERCEL);
   const pr = principia();
   fs.writeFileSync(path.join(ROOT, 'PRINCIPIA.md'), pr.md);
   fs.mkdirSync(path.join(ROOT, 'docs', 'figs'), { recursive: true });
@@ -392,4 +426,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { GSC, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { NOT_FOUND, VERCEL, ROBOTS, SITEMAP, headIds, tocList, CITE, GSC, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
