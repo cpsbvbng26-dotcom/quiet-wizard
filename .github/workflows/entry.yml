@@ -2,12 +2,14 @@ name: みんなの図鑑の受付
 
 # みんなの図鑑（2026-11-23）。読む人が issue の様式（.github/ISSUE_TEMPLATE/entry.yml）で寄せた場面の、欄と印を確かめる。
 # ラベル entry の付いた issue が開かれるか、編集されるか、開き直されたときに、intake/entry.js が確かめ、
-# ラベル（entry: complete か entry: incomplete）と、決まった文のコメント一つを付ける。前に付けたコメントがあれば、それを書き換える。
+# ラベル（entry: complete か entry: incomplete か entry: not accepted）と、決まった文のコメント一つを付ける。前に付けたコメントがあれば、それを書き換える。
+# 寄せの数の上限（2026-12-08 から開いた issue に当てる）：同じアカウントが前に開いたラベル entry の issue を GitHub の公開の一覧から数え、
+# 3 件以上あれば受けない。選んだ法則の場面が、checkout した data/entries.json に 5 件あれば受けない。名も数も残さない。
 # どの issue も閉じず、鍵を掛けず、消さない。題も本文も書き換えない。何も頁に載せない。載せるのは、運営者が data/entries.json を直す PR だけ。
 # issue の題と本文は、式にも、環境の変数にも、シェルにも渡さない。スクリプトは、事件のファイル（GITHUB_EVENT_PATH）から番号だけを読み、
 # 本文を API から読む。ログに出すのは、issue の番号と決まった語だけ（run の記録は、step の環境の変数を写すため）。
 # PR と push では、作り物の本文と作り物の API で、落ちるべきものを落とし、閉じず・鍵を掛けず・消さないことを確かめる（--self-test）。
-# main への push と手で起こしたときは、様式と受付が使う三つのラベルが無ければ作る（様式のラベルは、在るときだけ issue に付くため）。
+# main への push と手で起こしたときは、様式と受付が使う四つのラベルが無ければ作る（様式のラベルは、在るときだけ issue に付くため）。
 on:
   issues:
     types: [opened, edited, reopened]

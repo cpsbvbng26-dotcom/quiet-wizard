@@ -31,7 +31,8 @@ const fileOf = (out, lang) => (lang === 'en' ? out + '.en' : out);
 const urlOf = (out, lang) => BASE + (out === 'index' && lang !== 'en' ? '' : fileOf(out, lang) + '.html');
 const NAME_EN = 'Stealth Wizard';
 /* みんなの図鑑（2026-11-23）。読む人が GitHub の issue の様式で寄せ、運営者が読んで選んだ場面を、data/entries.json から頁にする。
- * 受付と様式と、場面の形の確かめは intake/entry.js にある。頁そのものは何も受け取らない。様式へのつなぎは、ふつうのリンク。 */
+ * 受付と様式と、場面の形の確かめは intake/entry.js にある。頁そのものは何も受け取らない。様式へのつなぎは、ふつうのリンク。
+ * 場面には、寄せた人の名も issue の番号も出さない（2026-11-23 に運営者が決めた）。場面が上限の数だけ載った法則は、頁の初めに挙げる。 */
 const E = require('./intake/entry.js');
 const ENTRIES_FILE = path.join(ROOT, 'data', 'entries.json');
 const today = () => new Date().toISOString().slice(0, 10);
@@ -47,11 +48,11 @@ function entriesHtml(data, lang) {
   const es = data.entries.slice().sort((a, b) => a.law - b.law || a.accepted.localeCompare(b.accepted) || a.issue - b.issue);
   if (!es.length) return '<p class="entries-none">' + (en ? 'No scene has been added yet.' : 'まだ、載せた場面はありません。') + '</p>';
   const out = ['<p class="entries-count">' + (en ? (es.length === 1 ? '1 scene has been added.' : es.length + ' scenes have been added.') : '載せた場面は ' + es.length + ' 件です。') + '</p>'];
+  if (E.fullLaws(data).length) out.push('<p class="entries-full">' + (en ? 'Laws with ' + E.LAW_CAP + ' scenes, which take no more: ' + esc(E.fullLawText(data, 'en')) + '.' : '場面が ' + E.LAW_CAP + ' 件載り、寄せを受けない法則：' + esc(E.fullLawText(data, 'ja')) + '。') + '</p>');
   let law = 0;
   for (const e of es) {
     if (e.law !== law) { law = e.law; const [n, w, we] = E.LAWS[law - 1]; out.push('<h3>' + (en ? 'Law ' + law + ' ' + esc(we) : esc(n + ' ' + w)) + '</h3>'); }
-    const by = e.credit ? (en ? 'Contributor: <a href="' + REPO + '/issues/' + e.issue + '" rel="noopener">' + esc(e.credit) + '</a>.' : '寄せた人：<a href="' + REPO + '/issues/' + e.issue + '" rel="noopener">' + esc(e.credit) + '</a>。')
-      : (en ? "The contributor's name is not shown." : '寄せた人の名は出していません。');
+    const by = en ? "The contributor's name is not shown." : '寄せた人の名は出していません。';
     const said = en ? (e.lang === 'en' ? 'Written in English.' : 'Written in Japanese and shown untranslated.') : (e.lang === 'ja' ? '日本語で寄せられた場面です。' : '英語で寄せられた場面で、訳していません。');
     const edited = e.edited ? (en ? ' The operator edited it (length, notation, or words that did not fit the rules).' : '運営者が手を入れました（長さ・表記・決めに合わない語）。') : '';
     out.push('<blockquote class="entry" lang="' + e.lang + '"><p>' + esc(e.title) + '</p><p>' + esc(e.text) + '</p></blockquote>',
@@ -712,7 +713,7 @@ function build() {
   fs.writeFileSync(path.join(OUT, 'vercel.json'), VERCEL);
   /* みんなの図鑑の様式（2026-11-23）。intake/entry.js の FORM から作る。 */
   fs.mkdirSync(path.join(ROOT, '.github', 'ISSUE_TEMPLATE'), { recursive: true });
-  fs.writeFileSync(path.join(ROOT, '.github', 'ISSUE_TEMPLATE', 'entry.yml'), E.form());
+  fs.writeFileSync(path.join(ROOT, '.github', 'ISSUE_TEMPLATE', 'entry.yml'), E.form(loadEntries(fs.readFileSync(ENTRIES_FILE, 'utf8'))));
   fs.writeFileSync(path.join(ROOT, '.github', 'ISSUE_TEMPLATE', 'config.yml'), E.config());
   const pr = principia();
   fs.writeFileSync(path.join(ROOT, 'PRINCIPIA.md'), pr.md);

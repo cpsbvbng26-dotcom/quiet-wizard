@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Last updated: 2026-11-23.
+Last updated: 2026-11-24.
 
 ## Who handles information
 
@@ -42,11 +42,12 @@ What is handled is the GitHub username of the person who opened the issue and wh
 The form asks nothing about the sender, such as sexual experience or real name. On age, there is only the box for being 18 or older.
 The only purposes are to read the scene, to decide whether to add it, to add it, and to answer requests.
 The intake (GitHub Actions) checks the fields and boxes of the body inside GitHub, and adds a label and a comment of fixed wording. It sends the body nowhere and writes it to no log.
-For a scene that is added, the title, text, language, law number, issue number, date added, whether it was edited, and the credit box are recorded in `data/entries.json` in the repository, and shown on the page.
-The issue number appears on the page only for scenes that show a name, as the link from the name to the issue.
-The GitHub username is written on the page and in `data/entries.json` only when the "Credit" box was ticked on the form.
-GitHub holds the issue under its own rules.
-On request, an added scene and its name are removed promptly from the current version of the page and of `data/entries.json`. Requests to edit the body of an issue, or to delete the issue, are also met.
+To check the limit on the number of scenes, the intake counts, from GitHub's public list, the issues sending scenes that the same account opened earlier in this repository. Neither the account name nor the count is kept anywhere other than the label and the comment, and neither is written to a log.
+For a scene that is added, the title, text, language, law number, issue number, date added, and whether it was edited are recorded in `data/entries.json` in the repository.
+Of these, only the title, text, language, law, date added, and whether it was edited are shown on the page.
+The GitHub username is written neither on the page nor in `data/entries.json`. The issue number is not shown on the page either. It is kept in `data/entries.json` to meet requests for removal.
+GitHub holds the issue under its own rules. The issue itself stays public with the GitHub username of the person who opened it. The operator cannot stop anyone from tracing an issue from the text of a scene.
+On request, an added scene is removed promptly from the current version of the page and of `data/entries.json`. Requests to edit the body of an issue, or to delete the issue, are also met.
 
 ## Giving issues to a language model
 

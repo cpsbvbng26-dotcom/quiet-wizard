@@ -2,8 +2,8 @@
 /* みんなの図鑑の受付（2026-11-23）。読む人が GitHub の issue の様式で寄せた場面の、欄と印を確かめる。
  *
  *   node intake/entry.js               issue の事件のファイル（GITHUB_EVENT_PATH）から issue の番号を読み、API で issue を読み直して確かめ、
- *                                      ラベル（entry: complete か entry: incomplete）と、決まった文のコメント一つを付ける
- *   node intake/entry.js --labels      様式と受付が使う三つのラベルが無ければ作る（main への push のとき）
+ *                                      ラベル（entry: complete か entry: incomplete か entry: not accepted）と、決まった文のコメント一つを付ける
+ *   node intake/entry.js --labels      様式と受付が使う四つのラベルが無ければ作る（main への push のとき）
  *   node intake/entry.js --self-test   作り物の issue の本文と、作り物の API で、落ちるべきものを落とし、閉じず・鍵を掛けず・消さないことを確かめる
  *
  * ここに置く理由：tools/ は見た目の部品の置き場で、変えればデザインに関する法的な扱いの表に載る（決めごと 20）。これは部品ではない。
@@ -14,6 +14,12 @@
  *   issue は事件のファイルから番号だけを読み、本文は API から読む（事件のファイルの本文は、開いた時のもので古いことがある）。
  * - 呼んでよい API は、下の ALLOWED に挙げたものだけ。ほかを呼ぼうとすれば、送る前に止まる。
  * - コメントは一つだけ。前に付けたコメント（印 MARK で始まる、機械のもの）があれば、それを書き換える。同じ文なら何もしない。
+ * - 寄せの数の上限（2026-11-23 に運営者が決めた。EFFECTIVE の日から開いた issue に当てる）。
+ *   一つのアカウントから ACCOUNT_CAP 件まで：このリポジトリで同じアカウント（GitHub の利用者の id で見る）がこの issue より前に開いた、
+ *   ラベル entry の付いた issue を、開いているか閉じたかを問わずに数える。読むのは GitHub の公開の一覧だけで、名も数も残さず、ログにもコメントにも出さない。
+ *   一つの法則に LAW_CAP 件まで：data/entries.json に、その法則の場面が LAW_CAP 件あれば受けない。
+ *   上限に当たれば、ラベル entry: not accepted と、そのことを言うコメントを付ける。閉じない。
+ * - 載せる場面には、寄せた人の名を出さない（2026-11-23 に運営者が決めた）。様式に名の表示の欄は無く、data/entries.json にも名の欄は無い。
  *
  * 様式（.github/ISSUE_TEMPLATE/entry.yml と config.yml）は、この台の FORM から build.js が作る生成物。手で直さない。 */
 'use strict';
@@ -30,6 +36,16 @@ const lawOption = (n) => LAWS[n - 1][0] + ' ' + LAWS[n - 1][1] + ' / Law ' + n +
 const LIMITS = { title: { ja: [1, 30], en: [1, 80] }, text: { ja: [10, 200], en: [20, 600] } };
 const len = (s) => [...String(s).replace(/\r?\n/g, '')].length;
 const LANG_OPTIONS = { ja: '日本語 / Japanese', en: '英語 / English' };
+/* 寄せの数の上限（2026-11-23）。図鑑の全体は、多くて LAWS.length × LAW_CAP 件。日は日本時間で、issue を開いた日で見る。 */
+const ACCOUNT_CAP = 3;
+const LAW_CAP = 5;
+const EFFECTIVE = '2026-12-08';
+const ANNOUNCED = '2026-11-24';
+const jstDay = (iso) => { const t = Date.parse(iso); return Number.isFinite(t) ? new Date(t + 9 * 3600e3).toISOString().slice(0, 10) : null; };
+/* 開いた日が読めなければ、上限を当てる側に倒す。 */
+const limitsApply = (createdAt) => { const d = jstDay(createdAt); return d === null || d >= EFFECTIVE; };
+const lawCounts = (data) => LAWS.map((x, i) => ((data && Array.isArray(data.entries)) ? data.entries : []).filter((e) => e && e.law === i + 1).length);
+const fullLaws = (data) => lawCounts(data).map((c, i) => [c, i + 1]).filter(([c]) => c >= LAW_CAP).map(([, n]) => n);
 const JA_CHARS = /[぀-ヿ一-鿿ｦ-ﾟ]/;
 
 /* 必須の印。id、短い名（コメントに出す）、様式の文。 */
@@ -40,10 +56,9 @@ const BOXES = [
   ['nosex', '性経験に触れない', '誰の性経験にも触れていません。性的な描写もありません。 / It says nothing about anyone\'s sexual experience, and has no sexual content.'],
   ['nowizard', '魔法使いと言わない', '自分やほかの誰かを、魔法使いだと言っていません。 / It does not claim that I or anyone else is a wizard.'],
   ['play', '遊びの文', '遊びの文で、科学でも助言でもありません。 / It is play, not science or advice.'],
-  ['licence', '許諾と名の表示', 'この文を CC BY 4.0 で許諾します。名の表示は「名の表示」の欄の印のとおりで、印が無ければ名を出しません。運営者は、載せないことも、載せた後で外すこともあります。 / I license this text under CC BY 4.0. Credit follows the box under "Credit"; without it, no name is shown. The operator may decline the text, or remove it later.'],
+  ['licence', '許諾と名を出さないこと', 'この文を CC BY 4.0 で許諾します。頁では名を出さないことを選び、名の表示を求めません。運営者は、載せないことも、載せた後で外すこともあります。 / I license this text under CC BY 4.0, and choose to have no name shown on the site: I do not ask for credit. The operator may decline the text, or remove it later.'],
   ['edits', '手を入れることへの同意', '載せるときに、運営者が次の三つに限って手を入れることに同意します。長さを詰めること。表記（字、句読点、かなと漢字）をそろえること。このサイトの決めに合わない語を替えること。意味の変わる直しは、この issue で尋ねてからにします。 / I agree that, when adding the text, the operator may change it in these three ways only: shortening it, making the notation consistent (characters, punctuation, kana and kanji), and replacing words that do not fit the rules of this site. A change of meaning is asked about in this issue first.'],
 ];
-const CREDIT_BOX = 'GitHub の名を、寄せた人として頁に出してよい。 / My GitHub username may be shown on the site as the contributor.';
 /* 決めごと 12 の同意の文。運営者の別のリポジトリの誤りの知らせの様式と、同じ文にしてある。 */
 const CONSENT_JA = 'この issue の題と本文を、運営者が Claude（Anthropic、米国）に渡すことに同意します。';
 const CONSENT_EN = 'I consent to the operator giving the title and text of this issue to Claude (Anthropic, United States).';
@@ -54,16 +69,17 @@ const PUBLIC_EN = 'An issue is public on GitHub from the moment it is opened, be
 
 const SITE = 'https://quiet-wizard.vercel.app/';
 const REPO = 'cpsbvbng26-dotcom/quiet-wizard';
-const LABEL = { entry: 'entry', complete: 'entry: complete', incomplete: 'entry: incomplete' };
+const LABEL = { entry: 'entry', complete: 'entry: complete', incomplete: 'entry: incomplete', declined: 'entry: not accepted' };
 const LABEL_META = {
   entry: ['c9a227', 'みんなの図鑑に寄せた場面 / A scene sent to the Field Guide by Visitors'],
   complete: ['2c7a4b', '様式の欄と印がそろっている（intake/entry.js） / The fields and boxes of the form are complete'],
   incomplete: ['b0563a', '様式の欄か印が足りない（intake/entry.js） / A field or box of the form is missing'],
+  declined: ['6b6f76', '寄せの数の上限に当たり、受けない（intake/entry.js） / Not accepted: a limit on the number of scenes applies'],
 };
 
 /* 様式の欄。[種類, id, 見出し, 説明, 中身]。見出しは、GitHub が本文に「### 見出し」として書く。 */
 const FIELDS = [
-  ['dropdown', 'law', '法則 / Law', 'どの法則の場面か / The law the scene shows', { options: LAWS.map((x, i) => lawOption(i + 1)), required: true }],
+  ['dropdown', 'law', '法則 / Law', 'どの法則の場面か。図鑑に場面が ' + LAW_CAP + ' 件載った法則の寄せは、受けません（' + EFFECTIVE + ' から） / The law the scene shows. A law with ' + LAW_CAP + ' scenes in the guide takes no more (from ' + EFFECTIVE + ')', { options: LAWS.map((x, i) => lawOption(i + 1)), required: true }],
   ['input', 'title', '題 / Title', '短い題。日本語は ' + LIMITS.title.ja[1] + ' 字まで、英語は ' + LIMITS.title.en[1] + ' 文字まで / A short title: up to ' + LIMITS.title.ja[1] + ' characters in Japanese, ' + LIMITS.title.en[1] + ' in English', { required: true }],
   ['textarea', 'text', '場面 / Scene',
     '一つか二つの文。日本語は ' + LIMITS.text.ja[0] + ' 字から ' + LIMITS.text.ja[1] + ' 字まで、英語は ' + LIMITS.text.en[0] + ' 文字から ' + LIMITS.text.en[1] + ' 文字まで。空白も一字に数え、改行は数えません。実在の人、誰のことか分かる人、GitHub の名（@ で始まる名）、リンクは、場面に入れない決めです。' + PUBLIC_JA
@@ -72,7 +88,6 @@ const FIELDS = [
   ['dropdown', 'lang', '言葉 / Language', '場面を書いた言葉。訳さずに、書いた言葉のまま載せます / The language the scene is written in. It is shown as written, without translation', { options: [LANG_OPTIONS.ja, LANG_OPTIONS.en], required: true }],
   ['checkboxes', 'checks', '確かめ / Checks', 'どれも印が要ります。印の無い欄があれば、受付の機械がそのことをコメントで知らせます / Every box is needed. If one is left empty, the intake says so in a comment',
     { boxes: BOXES.map(([, , t]) => [t, true]) }],
-  ['checkboxes', 'credit', '名の表示 / Credit', '任意です。印が無ければ、頁にも data/entries.json にも名を書きません / Optional. Without it, no name is written on the site or in data/entries.json', { boxes: [[CREDIT_BOX, false]] }],
   ['checkboxes', 'consent', '言語モデルに渡ること / Use of a language model',
     '運営者は、このリポジトリの手入れを、言語モデル Claude（Anthropic、米国）の手を借りて行います。この欄に印があれば、その作業のあいだ、この issue の題と本文が Claude に渡ることがあります。運営者は、これを個人情報保護法第 28 条の外国にある第三者への提供として扱います。米国の制度と Anthropic の措置は、[個人情報の取り扱い](' + SITE + 'privacy.html)の「言語モデルに渡すこと」にあります。印は任意です。印が無ければ、運営者が自分で読み、題と本文を言語モデルに渡しません。コメントは、印があっても渡しません。同意は、この issue で、いつでも撤回できます。'
     + '\nThe operator maintains this repository with the help of Claude, the language model of Anthropic (United States). If this box is ticked, the title and text of this issue may be given to Claude during that work. The operator treats this as a provision of personal data to a third party in a foreign country under Article 28 of Japan\'s Act on the Protection of Personal Information. The system of the United States and Anthropic\'s measures are set out in the section "Giving issues to a language model" of the [privacy policy](' + SITE + 'privacy.en.html). The box is optional. Without it, the operator reads the issue in person and gives its title and text to no language model. Comments are not given to it even with the box. The consent can be withdrawn at any time in this issue.',
@@ -82,24 +97,36 @@ const INTRO = [
   'これは遊びです。科学ではありません。',
   '寄せるのは、原典の十の法則のどれかが、暮らしの中で地味に現れる場面です。作り話か、誰にでもありそうな場面です。[図鑑](' + SITE + 'guide.html)の「十の法則の、地味な現れ」と同じ種類の文です。',
   PUBLIC_JA,
-  'サイトに載るのは、運営者が読んで選んだ場面だけです。受付の機械は、欄と印を確かめてラベルとコメントを付けるだけで、何も載せず、issue を閉じません。',
-  '載せた場面を外すこと、名を隠すこと、この issue を直すか消すことは、いつでも求められます（[求めと連絡](' + SITE + 'requests.html)）。寄せた場面の決まりは[利用規約](' + SITE + 'terms.html)の「寄せた場面」に、扱う情報は[個人情報の取り扱い](' + SITE + 'privacy.html)にあります。',
+  'サイトに載るのは、運営者が読んで選んだ場面だけです。頁には、寄せた人の名を出しません。受付の機械は、欄と印と寄せの数を確かめてラベルとコメントを付けるだけで、何も載せず、issue を閉じません。',
+  '寄せは、一つの GitHub のアカウントにつき ' + ACCOUNT_CAP + ' 件までです。選ばれなかった寄せも、取り下げた寄せも数えます。図鑑に場面が ' + LAW_CAP + ' 件載った法則の寄せは、受けません。どちらも ' + EFFECTIVE + ' から開いた issue に当てます。',
+  '載せた場面を外すこと、この issue を直すか消すことは、いつでも求められます（[求めと連絡](' + SITE + 'requests.html)）。寄せた場面の決まりは[利用規約](' + SITE + 'terms.html)の「寄せた場面」に、扱う情報は[個人情報の取り扱い](' + SITE + 'privacy.html)にあります。',
   '',
   'This is a play, not science.',
   'What is sent here is a scene in which one of the ten laws of the canon quietly shows up in daily life: a made-up scene, or one that could happen to anyone. It is the same kind of text as "How the ten laws quietly show" in the [field guide](' + SITE + 'guide.en.html).',
   PUBLIC_EN,
-  'Only scenes that the operator has read and chosen appear on the site. The intake only checks the fields and boxes and adds a label and a comment; it publishes nothing and closes no issue.',
-  'Removing an added scene, hiding the name, and editing or deleting this issue can be asked for at any time ([requests and contact](' + SITE + 'requests.en.html)). The rules for scenes are in "Scenes sent in" of the [terms of use](' + SITE + 'terms.en.html), and the information handled is in the [privacy policy](' + SITE + 'privacy.en.html).',
+  'Only scenes that the operator has read and chosen appear on the site. No name of the sender is shown there. The intake only checks the fields, the boxes and the number of scenes sent, and adds a label and a comment; it publishes nothing and closes no issue.',
+  'Each GitHub account can send ' + ACCOUNT_CAP + ' scenes at most, counting scenes not chosen and scenes withdrawn. A law with ' + LAW_CAP + ' scenes in the guide takes no more. Both apply to issues opened from ' + EFFECTIVE + '.',
+  'Removing an added scene, and editing or deleting this issue, can be asked for at any time ([requests and contact](' + SITE + 'requests.en.html)). The rules for scenes are in "Scenes sent in" of the [terms of use](' + SITE + 'terms.en.html), and the information handled is in the [privacy policy](' + SITE + 'privacy.en.html).',
 ];
 
-/* YAML は、一行の値を JSON の文字列で書く（YAML の二重引用の文字列として読める）。長い文は「|」の塊にする。 */
-function form() {
+/* 場面が LAW_CAP 件載った法則の名。様式の法則の欄の説明と、みんなの図鑑の頁に出す。選択肢そのものは十のまま置く
+ * （GitHub の様式は選択肢の無い欄を受けず、受付は選択肢の文で法則を読むため。閉じた法則を選んだ寄せは、受付が知らせる）。 */
+const fullLawText = (data, lang) => {
+  const f = fullLaws(data);
+  if (lang === 'en') return f.length ? f.map((n) => 'Law ' + n + ' ' + LAWS[n - 1][2]).join(', ') : 'none';
+  return f.length ? f.map((n) => LAWS[n - 1][0] + ' ' + LAWS[n - 1][1]).join('、') : 'なし';
+};
+/* YAML は、一行の値を JSON の文字列で書く（YAML の二重引用の文字列として読める）。長い文は「|」の塊にする。
+ * 法則の欄の説明は、載せた場面（data/entries.json）から作る。場面を足したら node build.js で作り直す。 */
+function form(data) {
+  if (!data || !Array.isArray(data.entries)) throw new Error('様式を作るには、載せた場面（data/entries.json）が要る');
   const q = JSON.stringify;
   const block = (t, ind) => t.split('\n').map((l) => (l ? ind + l : '')).join('\n');
   const out = ['# 生成物：intake/entry.js の FORM から node build.js が作る。手で直さない。', 'name: ' + q('みんなの図鑑に場面を寄せる / Send a scene to the Field Guide by Visitors'),
     'description: ' + q('十の法則が暮らしの中で地味に現れる場面を寄せる / A made-up everyday scene in which one of the ten laws quietly shows'),
     'title: ' + q('みんなの図鑑: '), 'labels: [' + q(LABEL.entry) + ']', 'body:', '  - type: markdown', '    attributes:', '      value: |', block(INTRO.join('\n\n').replace(/\n\n\n\n/, '\n\n'), '        ')];
-  for (const [type, id, label, desc, o] of FIELDS) {
+  for (const [type, id, label, d0, o] of FIELDS) {
+    const desc = id === 'law' ? d0.replace(' / ', '。いま ' + LAW_CAP + ' 件載っている法則：' + fullLawText(data, 'ja') + ' / ') + '. Laws with ' + LAW_CAP + ' now: ' + fullLawText(data, 'en') : d0;
     out.push('  - type: ' + type, '    id: ' + id, '    attributes:', '      label: ' + q(label));
     if (desc.includes('\n')) out.push('      description: |', block(desc, '        ')); else out.push('      description: ' + q(desc));
     if (o.options) out.push('      options:', ...o.options.map((x) => '        - ' + q(x)));
@@ -113,7 +140,7 @@ function config() {
   const q = JSON.stringify;
   return ['# 生成物：intake/entry.js から node build.js が作る。手で直さない。', 'blank_issues_enabled: true', 'contact_links:',
     '  - name: ' + q('求めと連絡 / Requests and contact'), '    url: ' + q(SITE + 'requests.html'),
-    '    about: ' + q('誤りの知らせ、記載や場面を外す求め、名を隠す求めは、白紙の issue で受けます / Error reports and requests to remove an entry or a scene, or to hide a name, are received as blank issues')].join('\n') + '\n';
+    '    about: ' + q('誤りの知らせと、記載や場面を外す求めは、白紙の issue で受けます / Error reports and requests to remove an entry or a scene are received as blank issues')].join('\n') + '\n';
 }
 
 /* 載せない決めの語（2026-11-23）。控えめな一覧で、はっきりした形だけを拾う。ここに当たらなくても、運営者が読んで決める。
@@ -158,7 +185,7 @@ function verdict(body) {
   if (lang === 'en' && JA_CHARS.test(title + text)) miss.push('lang-mismatch');
   for (const [id, , label] of BOXES) if (!ticked(v.checks, label)) miss.push('box:' + id);
   if (forbidden(title + '\n' + text).length) miss.push('words');
-  return { complete: miss.length === 0, miss, entry: { law, lang, title, text, credit_allowed: ticked(v.credit, CREDIT_BOX), consent: ticked(v.consent, CONSENT_BOX) } };
+  return { complete: miss.length === 0, miss, entry: { law, lang, title, text, consent: ticked(v.consent, CONSENT_BOX) } };
 }
 /* コメントの文。決まった語だけでできていて、issue の題や本文を写さない。 */
 const MARK = '<!-- entry-intake -->';
@@ -174,8 +201,20 @@ const MISS_TEXT = {
   words: ['題か場面に、載せない決めの語に当たる語があります。一覧は intake/entry.js の FORBIDDEN です（性経験の語、人を魔法使いと呼ぶ形、@ で始まる名、リンク）。', 'The title or the scene contains a word that this site does not publish. The list is FORBIDDEN in intake/entry.js (words for sexual experience, calling a person a wizard, names starting with @, links).'],
 };
 for (const [id, short, label] of BOXES) MISS_TEXT['box:' + id] = ['「' + short + '」の印がありません。', 'The box "' + label.split(' / ')[1] + '" is not ticked.'];
-function comment(v) {
+/* 上限に当たったときの文。アカウントの名も、数えた issue の番号も書かない。法則は、十の法則の決まった名だけを書く。 */
+function limitText(k, law) {
+  if (k === 'account-full') return ['このアカウントが前に開いた寄せの issue が、すでに ' + ACCOUNT_CAP + ' 件以上あります。寄せは一つのアカウントにつき ' + ACCOUNT_CAP + ' 件までで、選ばれなかった寄せも、取り下げた寄せも数えます。',
+    'This account has already opened ' + ACCOUNT_CAP + ' or more issues sending scenes. Each account can send ' + ACCOUNT_CAP + ' scenes at most, counting scenes not chosen and scenes withdrawn.'];
+  if (k === 'law-full') return ['選んだ法則（' + LAWS[law - 1][0] + ' ' + LAWS[law - 1][1] + '）には、図鑑に場面が ' + LAW_CAP + ' 件載っています。' + LAW_CAP + ' 件載った法則の寄せは、受けません。',
+    'The chosen law (Law ' + law + ' ' + LAWS[law - 1][2] + ') already has ' + LAW_CAP + ' scenes in the guide. A law with ' + LAW_CAP + ' scenes takes no more.'];
+  throw new Error('知らない上限：' + k);
+}
+function comment(v, lim) {
   const tail = ['この issue は閉じず、鍵も掛けず、消しません。', 'This issue is not closed, locked or deleted.'];
+  if (lim && lim.length) return [MARK, 'みんなの図鑑の寄せの数の上限に当たるので、この寄せは受けません。', ...lim.map((k) => '- ' + limitText(k, v.entry.law)[0]),
+    '上限は、利用規約の「寄せた場面」にあり、' + EFFECTIVE + ' から開いた issue に当てます。', tail[0], '',
+    'This scene is not accepted, because a limit on the number of scenes for the Field Guide by Visitors applies.', ...lim.map((k) => '- ' + limitText(k, v.entry.law)[1]),
+    'The limits are in "Scenes sent in" of the terms of use, and apply to issues opened from ' + EFFECTIVE + '.', tail[1]].join('\n');
   if (v.complete) return [MARK, 'みんなの図鑑の様式の欄と印が、そろっています。受付の機械が確かめたのは、法則、題、場面の長さ、言葉、確かめの印だけです。',
     '載せるかどうかは、運営者が読んで決めます。載せるときは、運営者が data/entries.json に足す変更を作ります。機械は何も載せません。', tail[0], '',
     'The fields and boxes of the form for the Field Guide by Visitors are complete. The intake checked only the law, the title, the length of the scene, the language and the boxes.',
@@ -184,8 +223,9 @@ function comment(v) {
     'Something is missing from the fields or boxes of the form for the Field Guide by Visitors.', ...v.miss.map((k) => '- ' + MISS_TEXT[k][1]), 'Editing the body makes the intake check again.', tail[1]].join('\n');
 }
 
-/* 載せた場面（data/entries.json）の形。build.js と check.js が使う。足りなければ、決まった語で返す。 */
-const ENTRY_KEYS = ['issue', 'law', 'title', 'text', 'lang', 'credit', 'credit_allowed', 'edited', 'accepted'];
+/* 載せた場面（data/entries.json）の形。build.js と check.js が使う。足りなければ、決まった語で返す。
+ * 寄せた人の名の欄は持たない（2026-11-23。頁に名を出さないため）。一つの法則の場面は LAW_CAP 件まで。 */
+const ENTRY_KEYS = ['issue', 'law', 'title', 'text', 'lang', 'edited', 'accepted'];
 const USERNAME = /^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$/;
 function validateData(d, today) {
   const bad = [];
@@ -208,18 +248,17 @@ function validateData(d, today) {
       const w = forbidden(e.title + '\n' + e.text);
       if (w.length) bad.push(at + '載せない決めの語に当たる（' + w.join(',') + '）');
     }
-    if (typeof e.credit_allowed !== 'boolean' || typeof e.edited !== 'boolean') bad.push(at + 'credit_allowed か edited が真偽でない');
-    if (e.credit !== null && !(typeof e.credit === 'string' && USERNAME.test(e.credit))) bad.push(at + 'credit が null でも GitHub の名の形でもない');
-    if (e.credit !== null && e.credit_allowed !== true) bad.push(at + '名を出してよいという印が無いのに、credit がある');
+    if (typeof e.edited !== 'boolean') bad.push(at + 'edited が真偽でない');
     const ok = typeof e.accepted === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.accepted) && new Date(e.accepted + 'T00:00:00Z').toISOString().slice(0, 10) === e.accepted;
     if (!ok) bad.push(at + '載せた日が日付でない'); else if (today && e.accepted > today) bad.push(at + '載せた日が今日より後');
   });
+  lawCounts(d).forEach((c, i) => { if (c > LAW_CAP) bad.push('法則 ' + (i + 1) + ' の場面が ' + c + ' 件で、' + LAW_CAP + ' 件を超える'); });
   return bad;
 }
 
 /* GitHub の API。呼んでよいものだけを通す。閉じる・鍵を掛ける・消す・題や本文を変える呼び出しは、ここで止まる。 */
 /* [方法, 所在, 送ってよい欄]。GET と DELETE は何も送らない。 */
-const ALLOWED = [['GET', /^\/issues\/\d+$/, null], ['GET', /^\/issues\/\d+\/comments\?per_page=100&page=\d+$/, null], ['POST', /^\/labels$/, ['name', 'color', 'description']],
+const ALLOWED = [['GET', /^\/issues\/\d+$/, null], ['GET', /^\/issues\/\d+\/comments\?per_page=100&page=\d+$/, null], ['GET', /^\/issues\?state=all&creator=[A-Za-z0-9-]+&labels=entry&per_page=100&page=\d+$/, null], ['POST', /^\/labels$/, ['name', 'color', 'description']],
   ['POST', /^\/issues\/\d+\/labels$/, ['labels']], ['DELETE', /^\/issues\/\d+\/labels\/[^/]+$/, null], ['POST', /^\/issues\/\d+\/comments$/, ['body']], ['PATCH', /^\/issues\/comments\/\d+$/, ['body']]];
 function guard(method, url, body) {
   const a = ALLOWED.find(([m, re]) => m === method && re.test(url));
@@ -242,17 +281,42 @@ function client(token, fetchImpl, repo) {
 async function ensureLabels(gh, keys) {
   for (const k of keys) await gh('POST', '/labels', { name: LABEL[k], color: LABEL_META[k][0], description: LABEL_META[k][1] });
 }
-/* 一つの issue を確かめる。log には番号と決まった語だけを渡す。 */
-async function run(gh, n, log) {
+/* 同じアカウントが、この issue より前に開いた寄せ（ラベル entry の issue）の数。開いているか閉じたかを問わない。
+ * アカウントは利用者の id で見る（名を変えても同じに数える）。名は一覧を引くためにだけ使い、残さず、ログにも出さない。消された issue は一覧に出ないので数えられない。 */
+async function priorEntries(gh, i) {
+  const login = i.user && i.user.login, id = i.user && i.user.id;
+  if (typeof login !== 'string' || !USERNAME.test(login) || !Number.isInteger(id)) throw new Error('issue を開いたアカウントが読めない');
+  let count = 0;
+  for (let page = 1; page <= 30; page++) {
+    const list = await gh('GET', '/issues?state=all&creator=' + login + '&labels=entry&per_page=100&page=' + page);
+    if (!Array.isArray(list)) throw new Error('issue の一覧が一覧でない');
+    count += list.filter((x) => x && !x.pull_request && Number.isInteger(x.number) && x.number < i.number && x.user && x.user.id === id
+      && (x.labels || []).some((l) => (typeof l === 'string' ? l : l && l.name) === LABEL.entry)).length;
+    if (list.length < 100) break;
+  }
+  return count;
+}
+/* 上限。EFFECTIVE より前に開いた issue には当てない。 */
+async function limits(gh, i, v, data) {
+  if (!limitsApply(i.created_at)) return [];
+  const lim = [];
+  if (v.entry.law && lawCounts(data)[v.entry.law - 1] >= LAW_CAP) lim.push('law-full');
+  if (await priorEntries(gh, i) >= ACCOUNT_CAP) lim.push('account-full');
+  return lim;
+}
+/* 一つの issue を確かめる。log には番号と決まった語だけを渡す。data は載せた場面（data/entries.json）。 */
+async function run(gh, n, log, data) {
+  if (!data || !Array.isArray(data.entries)) throw new Error('載せた場面（data/entries.json）が要る');
   const i = await gh('GET', '/issues/' + n);
   if (!i || i.pull_request || i.state !== 'open') return log('#' + n + '：開いた issue でないので、何もしません。');
   const names = (i.labels || []).map((l) => (typeof l === 'string' ? l : l.name));
   if (!names.includes(LABEL.entry)) return log('#' + n + '：ラベル entry が無いので、何もしません。');
-  const v = verdict(i.body), want = v.complete ? LABEL.complete : LABEL.incomplete, other = v.complete ? LABEL.incomplete : LABEL.complete;
-  await ensureLabels(gh, ['complete', 'incomplete']);
-  if (!names.includes(want)) await gh('POST', '/issues/' + n + '/labels', { labels: [want] });
-  if (names.includes(other)) await gh('DELETE', '/issues/' + n + '/labels/' + encodeURIComponent(other));
-  const text = comment(v);
+  const v = verdict(i.body), lim = await limits(gh, i, v, data);
+  const state = lim.length ? 'declined' : v.complete ? 'complete' : 'incomplete';
+  await ensureLabels(gh, ['complete', 'incomplete', 'declined']);
+  if (!names.includes(LABEL[state])) await gh('POST', '/issues/' + n + '/labels', { labels: [LABEL[state]] });
+  for (const k of ['complete', 'incomplete', 'declined']) if (k !== state && names.includes(LABEL[k])) await gh('DELETE', '/issues/' + n + '/labels/' + encodeURIComponent(LABEL[k]));
+  const text = comment(v, lim);
   let mine = null;
   for (let page = 1; page <= 30 && !mine; page++) {
     const list = await gh('GET', '/issues/' + n + '/comments?per_page=100&page=' + page);
@@ -262,7 +326,7 @@ async function run(gh, n, log) {
   }
   if (!mine) await gh('POST', '/issues/' + n + '/comments', { body: text });
   else if (mine.body !== text) await gh('PATCH', '/issues/comments/' + mine.id, { body: text });
-  log('#' + n + '：' + (v.complete ? 'そろっている' : '足りない（' + v.miss.join(',') + '）') + '。ラベルとコメントを改めました。');
+  log('#' + n + '：' + (lim.length ? '受けない（' + lim.join(',') + '）' : v.complete ? 'そろっている' : '足りない（' + v.miss.join(',') + '）') + '。ラベルとコメントを改めました。');
 }
 
 /* 作り物の本文を、GitHub が様式から書く形で組む。 */
@@ -280,11 +344,12 @@ function selfTest() {
   const t = (name, cond) => { if (cond) pass++; else fails.push(name); };
   const all = BOXES.map(() => true);
   /* 試験の作り物。投稿ではない。 */
-  const good = { law: lawOption(3), title: '試験の作り物の題', text: 'これは受付の試験のための作り物の文で、寄せられた場面ではありません。', lang: LANG_OPTIONS.ja, checks: all, credit: [false], consent: [false] };
-  const goodEn = { law: lawOption(8), title: 'A made-up test title', text: 'This is made-up text for testing the intake. It is not a scene that anyone sent in.', lang: LANG_OPTIONS.en, checks: all, credit: [true], consent: [true] };
+  const good = { law: lawOption(3), title: '試験の作り物の題', text: 'これは受付の試験のための作り物の文で、寄せられた場面ではありません。', lang: LANG_OPTIONS.ja, checks: all, consent: [false] };
+  const goodEn = { law: lawOption(8), title: 'A made-up test title', text: 'This is made-up text for testing the intake. It is not a scene that anyone sent in.', lang: LANG_OPTIONS.en, checks: all, consent: [true] };
   const g = verdict(bodyFrom(good)), ge = verdict(bodyFrom(goodEn));
-  t('そろった日本語の本文が通る', g.complete && g.entry.law === 3 && g.entry.lang === 'ja' && !g.entry.credit_allowed && !g.entry.consent);
-  t('そろった英語の本文が通り、名の表示と同意の印を読む', ge.complete && ge.entry.law === 8 && ge.entry.lang === 'en' && ge.entry.credit_allowed && ge.entry.consent);
+  t('そろった日本語の本文が通る', g.complete && g.entry.law === 3 && g.entry.lang === 'ja' && !g.entry.consent);
+  t('そろった英語の本文が通り、同意の印を読む', ge.complete && ge.entry.law === 8 && ge.entry.lang === 'en' && ge.entry.consent);
+  t('読んだ寄せに、名の表示の欄が無い', !('credit_allowed' in g.entry) && !('credit' in g.entry) && !FIELDS.some(([, id]) => id === 'credit'));
   t('[x] の小文字の印も読む', verdict(bodyFrom(good).replace(/- \[X\]/g, '- [x]')).complete);
   t('CRLF の本文も読む', verdict(bodyFrom(good).replace(/\n/g, '\r\n')).complete);
   const cases = [
@@ -304,25 +369,37 @@ function selfTest() {
   for (const [name, o, code] of cases) { const v = verdict(bodyFrom(o)); t('落ちる：' + name, !v.complete && v.miss.includes(code)); }
   t('落ちる：様式を通らない本文', !verdict('何かを寄せたい').complete);
   t('落ちる：印の文を書き換えた本文', !verdict(bodyFrom(good).replace('十八歳以上です。', '十八歳以上かもしれません。')).complete);
-  t('名の表示の印が無ければ、名を出してよいと読まない', !verdict(bodyFrom(good)).entry.credit_allowed);
   t('同意の印が無ければ、同意と読まない', !verdict(bodyFrom(Object.assign({}, goodEn, { consent: [false] }))).entry.consent);
   /* コメントは決まった語だけで、題も本文も写さない。 */
   const bad = verdict(bodyFrom(Object.assign({}, good, { checks: all.map((x, j) => j !== 0), text: good.text + '田中さんは魔法使いだ。' })));
   t('コメントに題も本文も写さない', !comment(bad).includes('田中') && !comment(bad).includes(good.title) && comment(bad).startsWith(MARK) && comment(g).startsWith(MARK));
   t('コメントが、足りないものを日本語と英語で挙げる', comment(bad).includes(MISS_TEXT['box:adult'][0]) && comment(bad).includes(MISS_TEXT['box:adult'][1]) && comment(bad).includes(MISS_TEXT.words[0]));
-  /* 載せた場面の形。 */
-  const e0 = { issue: 1, law: 3, title: '試験の作り物の題', text: 'これは検査のための作り物の文で、寄せられた場面ではありません。', lang: 'ja', credit: null, credit_allowed: false, edited: false, accepted: '2026-11-23' };
+  const lc = comment(g, ['law-full', 'account-full']);
+  t('上限のコメントが、二つの上限を日本語と英語で挙げ、題を写さない', lc.startsWith(MARK) && lc.includes(limitText('law-full', 3)[0]) && lc.includes(limitText('law-full', 3)[1]) && lc.includes(limitText('account-full')[0]) && lc.includes(limitText('account-full')[1]) && !lc.includes(good.title) && lc.includes('第三法則 保存'));
+  /* 載せた場面の形。名の欄は無い。一つの法則に LAW_CAP 件まで。 */
+  const e0 = { issue: 1, law: 3, title: '試験の作り物の題', text: 'これは検査のための作り物の文で、寄せられた場面ではありません。', lang: 'ja', edited: false, accepted: '2026-11-23' };
   const D = (...es) => ({ _: 'x', entries: es });
-  t('載せた場面：正しい形が通る', validateData(D(e0, Object.assign({}, e0, { issue: 2, lang: 'en', title: 'A made-up title', text: 'Made-up text for the check, not a scene anyone sent in.', credit: 'octo-cat', credit_allowed: true })), '2026-11-23').length === 0);
+  const many = (law, k) => Array.from({ length: k }, (x, j) => Object.assign({}, e0, { issue: 100 * law + j, law }));
+  t('載せた場面：正しい形が通る', validateData(D(e0, Object.assign({}, e0, { issue: 2, lang: 'en', title: 'A made-up title', text: 'Made-up text for the check, not a scene anyone sent in.' })), '2026-11-23').length === 0);
   t('載せた場面：零件が通る', validateData(D(), '2026-11-23').length === 0);
-  for (const [name, d] of [['名の印なしに名を出す', D(Object.assign({}, e0, { credit: 'octo-cat' }))], ['法則が 11', D(Object.assign({}, e0, { law: 11 }))], ['番号が重なる', D(e0, Object.assign({}, e0))],
+  t('載せた場面：一つの法則に ' + LAW_CAP + ' 件、十の法則で ' + LAWS.length * LAW_CAP + ' 件が通る', validateData(D(...LAWS.flatMap((x, i) => many(i + 1, LAW_CAP))), '2026-11-23').length === 0);
+  for (const [name, d] of [['名を書く', D(Object.assign({}, e0, { credit: 'octo-cat' }))], ['名の印の欄を書く', D(Object.assign({}, e0, { credit_allowed: false }))], ['法則が 11', D(Object.assign({}, e0, { law: 11 }))], ['番号が重なる', D(e0, Object.assign({}, e0))],
     ['欄が足りない', D((({ edited, ...r }) => r)(e0))], ['欄が多い', D(Object.assign({}, e0, { email: 'x' }))], ['性経験の語', D(Object.assign({}, e0, { text: e0.text + '童貞の話。' }))],
-    ['場面が長い', D(Object.assign({}, e0, { text: 'あ'.repeat(201) }))], ['載せた日が先', D(Object.assign({}, e0, { accepted: '2099-01-01' }))], ['名の形でない', D(Object.assign({}, e0, { credit: 'a b', credit_allowed: true }))],
+    ['場面が長い', D(Object.assign({}, e0, { text: 'あ'.repeat(201) }))], ['載せた日が先', D(Object.assign({}, e0, { accepted: '2099-01-01' }))],
+    ['一つの法則に ' + (LAW_CAP + 1) + ' 件', D(...many(4, LAW_CAP + 1))],
     ['< を含む', D(Object.assign({}, e0, { text: e0.text + '<b>' }))], ['形が違う', { entries: [] }]]) t('載せた場面：落ちる：' + name, validateData(d, '2026-11-23').length > 0);
+  t('場面が ' + LAW_CAP + ' 件載った法則を数える', fullLaws(D(...many(2, LAW_CAP), ...many(7, LAW_CAP - 1))).join() === '2' && fullLawText(D(...many(2, LAW_CAP)), 'ja') === '第二法則 多面' && fullLawText(D(), 'en') === 'none');
+  /* 効き始める日。日本時間で、issue を開いた日で見る。 */
+  /* 2026-11-23 に運営者が決めた数と、利用規約で示した日。数を変えるなら、利用規約で前もって示してから。 */
+  t('上限は、一つのアカウントから 3 件、一つの法則に 5 件、図鑑の全体で 50 件。効く日は 2026-12-08、示した日は 2026-11-24', ACCOUNT_CAP === 3 && LAW_CAP === 5 && LAWS.length * LAW_CAP === 50 && EFFECTIVE === '2026-12-08' && ANNOUNCED === '2026-11-24');
+  t('上限は ' + EFFECTIVE + ' の日本時間の零時から当たる', !limitsApply('2026-12-07T14:59:59Z') && limitsApply('2026-12-07T15:00:00Z') && limitsApply(undefined) && EFFECTIVE > ANNOUNCED);
   /* 呼んでよくない API は、送る前に止まる。 */
-  for (const [m, u, b] of [['PATCH', '/issues/5', { state: 'closed' }], ['PUT', '/issues/5/lock', {}], ['DELETE', '/issues/5', undefined], ['PATCH', '/issues/5', { title: 'x' }], ['PATCH', '/issues/5', { body: 'x' }], ['DELETE', '/issues/comments/9', undefined], ['POST', '/issues/5/comments', { body: 'x', state: 'closed' }]]) {
-    let stopped = false; try { guard(m, u, b); } catch (e) { stopped = true; } t('止まる：' + m + ' ' + u + ' ' + JSON.stringify(b || {}), stopped);
+  for (const [m, u, b] of [['PATCH', '/issues/5', { state: 'closed' }], ['PUT', '/issues/5/lock', {}], ['DELETE', '/issues/5', undefined], ['PATCH', '/issues/5', { title: 'x' }], ['PATCH', '/issues/5', { body: 'x' }], ['DELETE', '/issues/comments/9', undefined], ['POST', '/issues/5/comments', { body: 'x', state: 'closed' }],
+    ['GET', '/issues?state=open&creator=octo-cat&labels=entry&per_page=100&page=1', undefined], ['GET', '/issues?state=all&creator=a/b&labels=entry&per_page=100&page=1', undefined], ['GET', '/issues?state=all&creator=octo-cat&per_page=100&page=1', undefined], ['GET', '/search/issues?q=author:octo-cat', undefined]]) {
+    let stopped = false; try { guard(m, u, b); } catch (e) { stopped = true; } t('止まる：' + m + ' ' + u.split('?')[0] + ' ' + JSON.stringify(b || {}) + (u.includes('?') ? '（問いの形が違う）' : ''), stopped);
   }
+  let through = true; try { guard('GET', '/issues?state=all&creator=octo-cat&labels=entry&per_page=100&page=2', undefined); } catch (e) { through = false; }
+  t('通る：同じアカウントの寄せの一覧', through);
   return { pass, fails };
 }
 /* 作り物の API で、事件から確かめまでを通す。 */
@@ -331,28 +408,37 @@ async function selfTestRun() {
   const t = (name, cond) => { if (cond) pass++; else fails.push(name); };
   const all = BOXES.map(() => true);
   const secret = '試験の作り物の秘密の語';
-  const mk = (o) => bodyFrom(Object.assign({ law: lawOption(6), title: secret, text: 'これは受付の試験のための作り物の文で、' + secret + 'を含みます。', lang: LANG_OPTIONS.ja, checks: all, credit: [false], consent: [false] }, o));
-  async function sim(issue, comments = []) {
+  const who = 'fixture-sender';
+  const mk = (o) => bodyFrom(Object.assign({ law: lawOption(6), title: secret, text: 'これは受付の試験のための作り物の文で、' + secret + 'を含みます。', lang: LANG_OPTIONS.ja, checks: all, consent: [false] }, o));
+  const e0 = { issue: 1, law: 6, title: '試験の作り物の題', text: 'これは検査のための作り物の文で、寄せられた場面ではありません。', lang: 'ja', edited: false, accepted: '2026-11-23' };
+  const data0 = { _: 'x', entries: [] };
+  const full6 = { _: 'x', entries: Array.from({ length: LAW_CAP }, (x, j) => Object.assign({}, e0, { issue: 900 + j })) };
+  const four6 = { _: 'x', entries: full6.entries.slice(1) };
+  /* 前に開いた寄せの一覧。id 7 が寄せた人。 */
+  const prior = (k, extra = []) => [...Array.from({ length: k }, (x, j) => ({ number: 10 + j, state: j % 2 ? 'closed' : 'open', user: { login: who, id: 7 }, labels: [{ name: 'entry' }] })), ...extra];
+  async function sim(issue, comments = [], data = data0, listed = []) {
     const calls = [], logs = [];
     let cs = comments.slice();
     const fake = async (u, opt) => {
       const url = u.replace('https://api.github.com/repos/' + REPO, ''), body = opt.body ? JSON.parse(opt.body) : undefined;
-      calls.push([opt.method, url.split('?')[0], body]);
+      calls.push([opt.method, url.split('?')[0], body, url]);
       const res = (status, j) => ({ ok: status < 300, status, json: async () => j });
       if (opt.method === 'GET' && /^\/issues\/\d+$/.test(url)) return res(200, issue);
+      if (opt.method === 'GET' && /^\/issues\?/.test(url)) return res(200, /&page=1$/.test(url) ? listed : []);
       if (opt.method === 'GET') return res(200, cs);
       if (opt.method === 'POST' && url === '/labels') return res(422, {});
       if (opt.method === 'POST' && /comments$/.test(url)) { cs.push({ id: 77, user: { type: 'Bot' }, body: body.body }); return res(201, {}); }
       return res(200, {});
     };
-    await run(client('x', fake, REPO), issue.number, (s) => logs.push(s));
-    return { calls, logs };
+    await run(client('x', fake, REPO), issue.number, (s) => logs.push(s), data);
+    return { calls, logs, comment: cs.length ? cs[cs.length - 1].body : '' };
   }
-  const base = { number: 4, state: 'open', labels: [{ name: 'entry' }] };
+  const base = { number: 40, state: 'open', labels: [{ name: 'entry' }], user: { login: who, id: 7 }, created_at: '2026-12-08T00:00:00Z' };
+  const labelled = (r, l) => r.calls.some(([m, u, b]) => m === 'POST' && u === '/issues/40/labels' && b.labels[0] === l);
   const r1 = await sim(Object.assign({}, base, { body: mk({}) }));
-  t('そろった issue に complete のラベルとコメント一つ', r1.calls.some(([m, u, b]) => m === 'POST' && u === '/issues/4/labels' && b.labels[0] === LABEL.complete) && r1.calls.filter(([m, u]) => m === 'POST' && u === '/issues/4/comments').length === 1);
+  t('そろった issue に complete のラベルとコメント一つ', labelled(r1, LABEL.complete) && r1.calls.filter(([m, u]) => m === 'POST' && u === '/issues/40/comments').length === 1);
   const r2 = await sim(Object.assign({}, base, { body: mk({ checks: all.map((x, j) => j !== 1) }), labels: [{ name: 'entry' }, { name: LABEL.complete }] }));
-  t('足りない issue に incomplete を付け、complete を外す', r2.calls.some(([m, u, b]) => m === 'POST' && u === '/issues/4/labels' && b.labels[0] === LABEL.incomplete) && r2.calls.some(([m, u]) => m === 'DELETE' && u === '/issues/4/labels/' + encodeURIComponent(LABEL.complete)));
+  t('足りない issue に incomplete を付け、complete を外す', labelled(r2, LABEL.incomplete) && r2.calls.some(([m, u]) => m === 'DELETE' && u === '/issues/40/labels/' + encodeURIComponent(LABEL.complete)));
   const old = { id: 9, user: { type: 'Bot' }, body: comment(verdict(mk({}))) };
   const r3 = await sim(Object.assign({}, base, { body: mk({}), labels: [{ name: 'entry' }, { name: LABEL.complete }] }), [old]);
   t('同じ文のコメントがあれば、足さず書き換えもしない', !r3.calls.some(([m, u]) => (m === 'POST' || m === 'PATCH') && /comments/.test(u)));
@@ -364,9 +450,37 @@ async function selfTestRun() {
   for (const [name, iss] of [['ラベル entry の無い issue', Object.assign({}, base, { body: mk({}), labels: [] })], ['閉じた issue', Object.assign({}, base, { body: mk({}), state: 'closed' })], ['PR', Object.assign({}, base, { body: mk({}), pull_request: {} })]]) {
     const r = await sim(iss); t(name + 'には何も書かない', r.calls.every(([m]) => m === 'GET'));
   }
-  const every = [r1, r2, r3, r4, r5];
+  /* 一つのアカウントから ACCOUNT_CAP 件まで。前に開いた寄せは、開いていても閉じていても数える。 */
+  const a2 = await sim(Object.assign({}, base, { body: mk({}) }), [], data0, prior(ACCOUNT_CAP - 1));
+  t('前の寄せが ' + (ACCOUNT_CAP - 1) + ' 件なら、' + ACCOUNT_CAP + ' 件目を受ける', labelled(a2, LABEL.complete) && !labelled(a2, LABEL.declined));
+  const a3 = await sim(Object.assign({}, base, { body: mk({}), labels: [{ name: 'entry' }, { name: LABEL.complete }] }), [], data0, prior(ACCOUNT_CAP));
+  t('前の寄せが ' + ACCOUNT_CAP + ' 件（閉じたものを含む）なら、' + (ACCOUNT_CAP + 1) + ' 件目は受けず、not accepted を付けて complete を外し、そのことをコメントで知らせる',
+    labelled(a3, LABEL.declined) && a3.calls.some(([m, u]) => m === 'DELETE' && u === '/issues/40/labels/' + encodeURIComponent(LABEL.complete)) && a3.comment.includes(limitText('account-full')[0]) && a3.comment.includes(limitText('account-full')[1]));
+  const a3i = await sim(Object.assign({}, base, { body: mk({ checks: all.map((x, j) => j !== 0) }) }), [], data0, prior(ACCOUNT_CAP));
+  t('欄が足りなくても、上限に当たれば not accepted', labelled(a3i, LABEL.declined) && !labelled(a3i, LABEL.incomplete));
+  const others = [{ number: 11, user: { login: who, id: 8 }, labels: [{ name: 'entry' }] }, { number: 12, user: { login: who, id: 7 }, labels: [{ name: 'entry' }], pull_request: {} },
+    { number: 13, user: { login: who, id: 7 }, labels: [{ name: 'question' }] }, { number: 40, user: { login: who, id: 7 }, labels: [{ name: 'entry' }] }, { number: 41, user: { login: who, id: 7 }, labels: [{ name: 'entry' }] }, { number: 42, user: { login: who, id: 7 }, labels: [{ name: 'entry' }] }];
+  const ao = await sim(Object.assign({}, base, { body: mk({}) }), [], data0, prior(ACCOUNT_CAP - 1, others));
+  t('ほかのアカウント・PR・ラベル entry の無い issue・この issue 自身・後に開いた寄せは数えない', labelled(ao, LABEL.complete) && !labelled(ao, LABEL.declined));
+  const listUrl = a3.calls.find(([m, u]) => m === 'GET' && u === '/issues');
+  t('一覧は、同じアカウントの、ラベル entry の、開いているものも閉じたものも引く', !!listUrl && listUrl[3] === '/issues?state=all&creator=' + who + '&labels=entry&per_page=100&page=1');
+  let threw = false; try { await sim(Object.assign({}, base, { body: mk({}), user: { login: 'bad name', id: 7 } })); } catch (e) { threw = !String(e.message).includes('bad name'); }
+  t('アカウントが読めなければ止まり、その名を出さない', threw);
+  /* 一つの法則に LAW_CAP 件まで。data/entries.json で数える。 */
+  const l4 = await sim(Object.assign({}, base, { body: mk({}) }), [], four6);
+  t('法則の場面が ' + (LAW_CAP - 1) + ' 件なら受ける', labelled(l4, LABEL.complete));
+  const l5 = await sim(Object.assign({}, base, { body: mk({}) }), [], full6);
+  t('法則の場面が ' + LAW_CAP + ' 件なら受けず、そのことをコメントで知らせる', labelled(l5, LABEL.declined) && l5.comment.includes(limitText('law-full', 6)[0]) && l5.comment.includes(limitText('law-full', 6)[1]));
+  const l5o = await sim(Object.assign({}, base, { body: mk({ law: lawOption(7) }) }), [], full6);
+  t('ほかの法則の寄せは受ける', labelled(l5o, LABEL.complete));
+  /* 効き始める日より前に開いた issue には、上限を当てない。 */
+  const early = Object.assign({}, base, { created_at: '2026-12-07T14:59:59Z' });
+  const b1 = await sim(Object.assign({}, early, { body: mk({}) }), [], full6, prior(ACCOUNT_CAP + 2));
+  t(EFFECTIVE + ' より前に開いた issue には上限を当てず、一覧も引かない', labelled(b1, LABEL.complete) && !b1.calls.some(([m, u]) => m === 'GET' && u === '/issues'));
+  const every = [r1, r2, r3, r4, r5, a2, a3, a3i, ao, l4, l5, l5o, b1];
   t('どの呼び出しも、閉じず・鍵を掛けず・消さず・題と本文を変えない', every.every((r) => r.calls.every(([m, u, b]) => !/lock/.test(u) && !(m === 'PATCH' && /^\/issues\/\d+$/.test(u)) && !(m === 'DELETE' && !/\/labels\//.test(u)) && !(b && ('state' in b || 'locked' in b || 'title' in b)))));
-  t('ログに題も本文も出さない', every.every((r) => r.logs.every((l) => !l.includes(secret) && !l.includes('作り物の文'))));
+  t('ログに題も本文もアカウントの名も出さない', every.every((r) => r.logs.every((l) => !l.includes(secret) && !l.includes('作り物の文') && !l.includes(who))));
+  t('コメントに題も本文もアカウントの名も出さない', every.every((r) => !r.comment.includes(secret) && !r.comment.includes(who)));
   return { pass, fails };
 }
 
@@ -382,13 +496,17 @@ async function main() {
   const token = process.env.GITHUB_TOKEN, repo = process.env.GITHUB_REPOSITORY;
   if (!token || !repo) throw new Error('GITHUB_TOKEN と GITHUB_REPOSITORY が要る');
   const gh = client(token, fetch, repo);
-  if (arg === '--labels') { await ensureLabels(gh, ['entry', 'complete', 'incomplete']); console.log('ラベルを確かめました。'); return; }
+  if (arg === '--labels') { await ensureLabels(gh, ['entry', 'complete', 'incomplete', 'declined']); console.log('ラベルを確かめました。'); return; }
   if (arg) throw new Error('知らない引数：' + arg);
   const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'));
   const n = Number(event.issue && event.issue.number);
   if (!Number.isInteger(n) || n < 1) throw new Error('事件に issue の番号が無い');
-  await run(gh, n, (s) => console.log(s));
+  /* 載せた場面は、checkout した既定の枝のものを読む。形が違えば止まる。 */
+  const data = JSON.parse(fs.readFileSync(require('path').join(__dirname, '..', 'data', 'entries.json'), 'utf8'));
+  const bad = validateData(data);
+  if (bad.length) throw new Error('data/entries.json の形が違う');
+  await run(gh, n, (s) => console.log(s), data);
 }
 if (require.main === module) main().catch((e) => { console.error(e.message); process.exit(1); });
-module.exports = { LAWS, lawOption, LIMITS, len, BOXES, CREDIT_BOX, CONSENT_JA, CONSENT_EN, CONSENT_BOX, PUBLIC_JA, PUBLIC_EN, LABEL, FIELDS, INTRO, form, config, FORBIDDEN, forbidden,
+module.exports = { LAWS, lawOption, LIMITS, len, ACCOUNT_CAP, LAW_CAP, EFFECTIVE, ANNOUNCED, jstDay, limitsApply, lawCounts, fullLaws, fullLawText, limitText, priorEntries, limits, BOXES, CONSENT_JA, CONSENT_EN, CONSENT_BOX, PUBLIC_JA, PUBLIC_EN, LABEL, FIELDS, INTRO, form, config, FORBIDDEN, forbidden,
   parse, verdict, comment, MARK, MISS_TEXT, validateData, ENTRY_KEYS, USERNAME, ALLOWED, guard, client, run, bodyFrom, selfTest, selfTestRun };

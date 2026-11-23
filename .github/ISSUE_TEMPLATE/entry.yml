@@ -13,9 +13,11 @@ body:
 
         issue は、開いたその時から GitHub で公開されます。運営者が読む前から、誰でも読めます。開いた人の GitHub の名も、一緒に出ます。
 
-        サイトに載るのは、運営者が読んで選んだ場面だけです。受付の機械は、欄と印を確かめてラベルとコメントを付けるだけで、何も載せず、issue を閉じません。
+        サイトに載るのは、運営者が読んで選んだ場面だけです。頁には、寄せた人の名を出しません。受付の機械は、欄と印と寄せの数を確かめてラベルとコメントを付けるだけで、何も載せず、issue を閉じません。
 
-        載せた場面を外すこと、名を隠すこと、この issue を直すか消すことは、いつでも求められます（[求めと連絡](https://quiet-wizard.vercel.app/requests.html)）。寄せた場面の決まりは[利用規約](https://quiet-wizard.vercel.app/terms.html)の「寄せた場面」に、扱う情報は[個人情報の取り扱い](https://quiet-wizard.vercel.app/privacy.html)にあります。
+        寄せは、一つの GitHub のアカウントにつき 3 件までです。選ばれなかった寄せも、取り下げた寄せも数えます。図鑑に場面が 5 件載った法則の寄せは、受けません。どちらも 2026-12-08 から開いた issue に当てます。
+
+        載せた場面を外すこと、この issue を直すか消すことは、いつでも求められます（[求めと連絡](https://quiet-wizard.vercel.app/requests.html)）。寄せた場面の決まりは[利用規約](https://quiet-wizard.vercel.app/terms.html)の「寄せた場面」に、扱う情報は[個人情報の取り扱い](https://quiet-wizard.vercel.app/privacy.html)にあります。
 
         This is a play, not science.
 
@@ -23,14 +25,16 @@ body:
 
         An issue is public on GitHub from the moment it is opened, before the operator reads it. Anyone can read it, and the GitHub username of the person who opened it is shown with it.
 
-        Only scenes that the operator has read and chosen appear on the site. The intake only checks the fields and boxes and adds a label and a comment; it publishes nothing and closes no issue.
+        Only scenes that the operator has read and chosen appear on the site. No name of the sender is shown there. The intake only checks the fields, the boxes and the number of scenes sent, and adds a label and a comment; it publishes nothing and closes no issue.
 
-        Removing an added scene, hiding the name, and editing or deleting this issue can be asked for at any time ([requests and contact](https://quiet-wizard.vercel.app/requests.en.html)). The rules for scenes are in "Scenes sent in" of the [terms of use](https://quiet-wizard.vercel.app/terms.en.html), and the information handled is in the [privacy policy](https://quiet-wizard.vercel.app/privacy.en.html).
+        Each GitHub account can send 3 scenes at most, counting scenes not chosen and scenes withdrawn. A law with 5 scenes in the guide takes no more. Both apply to issues opened from 2026-12-08.
+
+        Removing an added scene, and editing or deleting this issue, can be asked for at any time ([requests and contact](https://quiet-wizard.vercel.app/requests.en.html)). The rules for scenes are in "Scenes sent in" of the [terms of use](https://quiet-wizard.vercel.app/terms.en.html), and the information handled is in the [privacy policy](https://quiet-wizard.vercel.app/privacy.en.html).
   - type: dropdown
     id: law
     attributes:
       label: "法則 / Law"
-      description: "どの法則の場面か / The law the scene shows"
+      description: "どの法則の場面か。図鑑に場面が 5 件載った法則の寄せは、受けません（2026-12-08 から）。いま 5 件載っている法則：なし / The law the scene shows. A law with 5 scenes in the guide takes no more (from 2026-12-08). Laws with 5 now: none"
       options:
         - "第一法則 成立 / Law 1 Establishment"
         - "第二法則 多面 / Law 2 Many Faces"
@@ -86,18 +90,10 @@ body:
           required: true
         - label: "遊びの文で、科学でも助言でもありません。 / It is play, not science or advice."
           required: true
-        - label: "この文を CC BY 4.0 で許諾します。名の表示は「名の表示」の欄の印のとおりで、印が無ければ名を出しません。運営者は、載せないことも、載せた後で外すこともあります。 / I license this text under CC BY 4.0. Credit follows the box under \"Credit\"; without it, no name is shown. The operator may decline the text, or remove it later."
+        - label: "この文を CC BY 4.0 で許諾します。頁では名を出さないことを選び、名の表示を求めません。運営者は、載せないことも、載せた後で外すこともあります。 / I license this text under CC BY 4.0, and choose to have no name shown on the site: I do not ask for credit. The operator may decline the text, or remove it later."
           required: true
         - label: "載せるときに、運営者が次の三つに限って手を入れることに同意します。長さを詰めること。表記（字、句読点、かなと漢字）をそろえること。このサイトの決めに合わない語を替えること。意味の変わる直しは、この issue で尋ねてからにします。 / I agree that, when adding the text, the operator may change it in these three ways only: shortening it, making the notation consistent (characters, punctuation, kana and kanji), and replacing words that do not fit the rules of this site. A change of meaning is asked about in this issue first."
           required: true
-  - type: checkboxes
-    id: credit
-    attributes:
-      label: "名の表示 / Credit"
-      description: "任意です。印が無ければ、頁にも data/entries.json にも名を書きません / Optional. Without it, no name is written on the site or in data/entries.json"
-      options:
-        - label: "GitHub の名を、寄せた人として頁に出してよい。 / My GitHub username may be shown on the site as the contributor."
-          required: false
   - type: checkboxes
     id: consent
     attributes:
