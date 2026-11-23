@@ -28,16 +28,18 @@
 | 問い | `src/faq.md` | 科学なのか、誰が魔法使いなのか |
 | 断りと開示 | `src/about.md` | このサイトが何でないか、誰が何を書いたか、ライセンス |
 | 利用規約・個人情報・求めと連絡・適法性の説明 | `src/terms.md`・`src/privacy.md`・`src/requests.md`・`src/legality.md` | 決まりと、法令との関わり。条文は `verification/statutes-texts.json` の写しから組む |
-| デザインに関する法的な扱い | `src/design.md` | 見た目の部品（書体・印・ファビコン・場面・図・配色と配置の指定・遊び場の絵）の出所と許諾、著作権・意匠・商標・不正競争・見やすさの法令との関わり。部品の表とファイル、書体、色の比などを `verification/check.js` が確かめる |
+| デザインに関する法的な扱い | `src/design.md` | 見た目の部品（書体・印・ファビコン・場面・図・共有のカード・配色と配置の指定・遊び場の絵）の出所と許諾、著作権・意匠・商標・不正競争・見やすさの法令との関わり。部品の表とファイル、書体、色の比などを `verification/check.js` が確かめる |
 
 ## 作り方
 
 ```
 node build.js
 node verification/check.js
+node tools/card.js --check
 ```
 
-`site/` は生成物です。`src/` と `assets/` を直して作り直します。
+`site/` は生成物です。
+共有のカードとホーム画面のアイコン（`assets/card.png`、`assets/apple-touch-icon.png`）は、`tools/card.js` が紋と色と書体から描いた PNG です。描き直すときは `node tools/card.js` を使います。Playwright の Chromium が要ります。`src/` と `assets/` を直して作り直します。
 頁は、ほかのサーバーへ何も要求しません。cookie も、アクセスの解析も、入力を受け取る仕組みもありません。
 配信は Vercel で、`site/` を根にしています。
 
