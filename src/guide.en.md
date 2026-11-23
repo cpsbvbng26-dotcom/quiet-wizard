@@ -49,4 +49,8 @@ There is no way to tell.
 By Law 6, results cannot be seen from outside, and by Law 7, those who have become one do not say so to each other.
 Using this guide to decide that someone nearby is a wizard is outside this play.
 
+## Field Guide by Visitors
+
+Readers can send in scenes of the same kind as GitHub issues. Scenes the operator reads and chooses appear in the [Field Guide by Visitors](entries.en.html).
+
 Last updated: 2026-11-23.
