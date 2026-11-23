@@ -1,0 +1,82 @@
+name: みんなの図鑑の受付
+
+# みんなの図鑑（2026-11-23）。読む人が issue の様式（.github/ISSUE_TEMPLATE/entry.yml）で寄せた場面の、欄と印を確かめる。
+# ラベル entry の付いた issue が開かれるか、編集されるか、開き直されたときに、intake/entry.js が確かめ、
+# ラベル（entry: complete か entry: incomplete）と、決まった文のコメント一つを付ける。前に付けたコメントがあれば、それを書き換える。
+# どの issue も閉じず、鍵を掛けず、消さない。題も本文も書き換えない。何も頁に載せない。載せるのは、運営者が data/entries.json を直す PR だけ。
+# issue の題と本文は、式にも、環境の変数にも、シェルにも渡さない。スクリプトは、事件のファイル（GITHUB_EVENT_PATH）から番号だけを読み、
+# 本文を API から読む。ログに出すのは、issue の番号と決まった語だけ（run の記録は、step の環境の変数を写すため）。
+# PR と push では、作り物の本文と作り物の API で、落ちるべきものを落とし、閉じず・鍵を掛けず・消さないことを確かめる（--self-test）。
+# main への push と手で起こしたときは、様式と受付が使う三つのラベルが無ければ作る（様式のラベルは、在るときだけ issue に付くため）。
+on:
+  issues:
+    types: [opened, edited, reopened]
+  pull_request:
+    paths: ['intake/**', '.github/workflows/entry.yml', '.github/ISSUE_TEMPLATE/**']
+  push:
+    branches: [main]
+    paths: ['intake/**', '.github/workflows/entry.yml', '.github/ISSUE_TEMPLATE/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    if: github.event_name != 'issues'
+    name: 受付の self-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: node intake/entry.js --self-test
+
+  labels:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: test
+    name: 様式と受付のラベル
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: node intake/entry.js --labels
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  intake:
+    if: github.event_name == 'issues' && !github.event.issue.pull_request && contains(github.event.issue.labels.*.name, 'entry')
+    name: 寄せた場面の欄と印を確かめる
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    # 同じ issue の確かめは一度に一つ。新しい事件が古い run を止め、新しい run がその時の issue を確かめる。
+    concurrency:
+      group: entry-intake-${{ github.event.issue.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: node intake/entry.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
