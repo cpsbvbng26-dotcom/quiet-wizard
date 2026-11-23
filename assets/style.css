@@ -385,3 +385,7 @@ html:lang(en) .cls-skills b, html:lang(en) .cls-stats dt { letter-spacing: .04em
 @media (max-width: 34rem) { html:lang(en) .cls-skills li { grid-template-columns: 6.6rem minmax(0, 1fr); } }
 html:lang(en) .p-strict main > p > strong:first-child { letter-spacing: .02em; }
 html:lang(en) .p-canon td:nth-child(2) { white-space: normal; }
+/* 英語の決まりの頁（2026-11-23）。条文の下の要約には「Summary, not a translation」の札を付け、日本語の頁に従うという断りを頁の頭に置く。 */
+.summary { margin-top: .4rem; font-size: .9rem; color: var(--muted); }
+.sum-k { display: inline-block; margin-right: .7rem; font-family: var(--display); font-size: .66rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); }
+.langnote { padding: .6rem .9rem; border: 1px solid var(--hair); background: var(--tint); font-size: .86rem; }

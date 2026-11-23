@@ -23,7 +23,7 @@ const PAGES = [['index', 'index', 'はじめに', true], ['canon', 'canon', '原
   ['design', 'design', 'デザインに関する法的な扱い', false]];
 /* 英語の頁（2026-11-23）。日本語の頁ごとに一つ、src/<名>.en.md から site/<名>.en.html を作る。英語の頁は訳で、日本語の頁がもと。
  * ここに挙げた頁だけに英語の頁がある。まだ英語の無い頁へのつなぎは、日本語の頁へ向け、hreflang="ja" を付ける。 */
-const EN_PAGES = ['index', 'canon', 'strict', 'guide', 'play', 'faq', 'about'];
+const EN_PAGES = ['index', 'canon', 'strict', 'guide', 'play', 'faq', 'about', 'terms', 'privacy', 'requests', 'legality', 'design'];
 const LANGS = ['ja', 'en'];
 const hasEn = (out) => out === '404' || EN_PAGES.includes(out);
 /* 頁のファイルの名と、所在。英語の頁は <名>.en.html。日本語のはじめには根（/）を所在とする。 */
@@ -35,8 +35,41 @@ const STATUTES = JSON.parse(fs.readFileSync(path.join(__dirname, 'verification',
 /* <!-- 条文 A、B --> を、引いた条文の原文に置き換える。無い条を引けば止まる。
  * <!-- 抜粋 条｜切り出した所｜文｜文 --> は、長い条から、頁の文が拠る項や号だけを置く。切り出した文が写しの文の一部でなければ止まる（2026-11-22）。
  * 出どころの注は、頁の最後の条文の後に一度だけ置く。 */
-function statutes(html) {
+/* 英語の頁の条文（2026-11-23）。<!-- statute 条｜要約 --> と <!-- excerpt 条｜切り出した所（英語）｜文｜文｜要約 --> で書く。
+ * 条文は写しの日本語のまま置き、その下の英語は「Summary, not a translation」と札を付けた要約にする。訳は置かない。
+ * 抜粋の最後の欄が要約で、それより前の欄は写しの文の一部でなければ止まる。 */
+const LAW_EN = { 刑法: 'Penal Code', 民法: 'Civil Code', 著作権法: 'Copyright Act', 景品表示法: 'Act against Unjustifiable Premiums and Misleading Representations', 消費者契約法: 'Consumer Contract Act',
+  商標法: 'Trademark Act', 意匠法: 'Design Act', 不正競争防止法: 'Unfair Competition Prevention Act', 障害者差別解消法: 'Act for Eliminating Discrimination against Persons with Disabilities' };
+const ROMAN = ['', 'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+function statuteEn(k) {
+  const [law, art] = k.split(' ');
+  const m = /^第(\d+)条(?:の(\d+))?(?:第(\d+)項)?(?:第(\d+)号)?(?:・第(\d+)号)?$/.exec(art || '');
+  if (!LAW_EN[law] || !m) throw new Error('条の英語の名が作れない：' + k);
+  return LAW_EN[law] + ', Article ' + m[1] + (m[2] ? '-' + m[2] : '') + (m[3] ? '(' + m[3] + ')' : '') + (m[4] ? '(' + ROMAN[m[4]] + ')' : '') + (m[5] ? ' and (' + ROMAN[m[5]] + ')' : '');
+}
+const SUMMARY_K = 'Summary, not a translation';
+function statutes(html, lang) {
   const END = '\u0000';
+  if (lang === 'en') {
+    const text = (k) => { const t = STATUTES.texts[k]; if (!t) throw new Error('条文の写しに無い：' + k); return t; };
+    const head = (k, where) => '<h3>' + esc(statuteEn(k)) + (where ? ', ' + esc(where) : '') + ' <span lang="ja">（' + esc(k) + '）</span></h3>\n';
+    const sum = (t) => { if (!t || /[\u3040-\u30ff\u4e00-\u9fff]/.test(t)) throw new Error('条文の英語の要約が無いか、日本語が混じる'); return '<p class="summary"><span class="sum-k">' + SUMMARY_K + '</span>' + esc(t) + '</p>'; };
+    let n = 0;
+    html = html.replace(/<!-- (statute|excerpt) ([^>]+?) -->/g, (m, kind, body) => {
+      n++;
+      const parts = body.split('｜').map((x) => x.trim());
+      if (kind === 'statute') { if (parts.length !== 2) throw new Error('statute の形が違う：' + parts[0]); return head(parts[0]) + '<blockquote lang="ja"><p>' + esc(text(parts[0])) + '</p></blockquote>\n' + sum(parts[1]) + END; }
+      const [k, where, ...rest] = parts, summary = rest.pop(), all = text(k);
+      if (!where || !rest.length) throw new Error('excerpt の形が違う：' + k);
+      for (const p of rest) if (!all.includes(p)) throw new Error('抜粋が写しの文に無い：' + k + '：' + p.slice(0, 24));
+      return head(k, where) + '<blockquote lang="ja">' + rest.map((p) => '<p>' + esc(p) + '</p>').join('') + '</blockquote>\n' + sum(summary)
+        + '\n<p class="note">This is a long article, so only part of it (' + esc(where) + ') is cut out of the copy, character for character. The other paragraphs and items are left out.</p>' + END;
+    });
+    if (!n) return html;
+    const last = html.lastIndexOf(END);
+    const note = '\n<p class="note">Source: retrieved from the e-Gov Laws API (v1) and recorded by the operator on ' + esc(STATUTES.recorded) + ' (verification/statutes-texts.json in another of the operator\'s repositories, commit ' + esc(STATUTES.from.commit.slice(0, 7)) + '). The copy is in verification/statutes-texts.json in this repository. The statutes are shown in the Japanese original only.</p>';
+    return (html.slice(0, last) + note + html.slice(last + 1)).split(END).join('');
+  }
   const text = (k) => { const t = STATUTES.texts[k]; if (!t) throw new Error('条文の写しに無い：' + k); return t; };
   let n = 0;
   html = html.replace(/<!-- (条文|抜粋) ([^>]+?) -->/g, (m, kind, body) => {
@@ -452,6 +485,9 @@ const DESC_EN = {
 };
 /* 404 の頁の英語。所在は根から書く。 */
 const NOT_FOUND_EN = '<h1>Page not found</h1>\n<p>There is no page at this address. By Law 6 it may just be invisible, but most likely it really is not here.</p>\n<p>Return to the <a href="/index.en.html">home page</a>.</p>';
+/* 英語の決まりの頁に一度だけ置く断り。二つの言葉の頁が食い違えば、日本語の頁に従う。 */
+const RULE_PAGES = ['terms', 'privacy', 'requests', 'legality', 'design'];
+const GOVERNS_EN = 'This page is an English version of a Japanese page. If the two differ, the Japanese page governs.';
 /* 頁の枠の英語。上の帯、上の欄、下の欄の決まった語。 */
 const UI = {
   ja: { name: NAME, frame: FRAME, foot: FOOT, tag: '娯楽の枠', frameLabel: 'この頁の枠', skip: '本文へ', crest: 'クラスの紋', navLabel: '頁', rulesLabel: '決まり', repo: 'リポジトリ',
@@ -495,7 +531,7 @@ function page(file, title, body, lang) {
   const label = (out, short) => (en ? esc(SHORT_EN[out]) : '<span class="ja">' + esc(short) + '</span> <span class="en" lang="en">' + esc(NAV_EN[out]) + '</span>');
   const nav = PAGES.filter((x) => x[3]).map(([, out, short]) => (out === file ? '<span aria-current="page">' + label(out, short) + '</span>' : '<a href="' + href(out) + '"' + hl(out) + '>' + label(out, short) + '</a>')).join('\n');
   const sub = en ? (SUB_EN[file] || ['ja', (PAGES.find(([, o]) => o === file) || [])[2] || '']) : ['en', EN[file] || ''];
-  body = body.replace('</h1>', '</h1>\n<p class="en-title" lang="' + sub[0] + '" aria-hidden="true">' + esc(sub[1]) + '</p>');
+  body = body.replace('</h1>', '</h1>\n<p class="en-title" lang="' + sub[0] + '" aria-hidden="true">' + esc(sub[1]) + '</p>' + (en && RULE_PAGES.includes(file) ? '\n<p class="langnote">' + esc(GOVERNS_EN) + '</p>' : ''));
   const url = urlOf(file, lang);
   const full = en ? (title === NAME_EN ? NAME_EN + ' (a play)' : title + ' | ' + NAME_EN) : (title === NAME ? NAME + '（遊び）' : title + ' | ' + NAME);
   const desc = en ? DESC_EN[file] + ' ' + DESC_TAIL_EN : DESC[file] + DESC_TAIL;
@@ -647,4 +683,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { ITEM_HEAD_EN, CITE_EN, BOOK_TOP, EN_PAGES, LANGS, hasEn, fileOf, urlOf, NAME_EN, FRAME_EN, FOOT_EN, HERO_EN, EMBLEMS_EN, CLASS_EN, PLAY_EN, SHORT_EN, EYEBROW_EN, DESC_EN, DESC_TAIL_EN, NOT_FOUND_EN, UI, FIG_EN, figText, CARD_ALT_EN, DESC, DESC_TAIL, CARD, THEME, NOT_FOUND, VERCEL, ROBOTS, SITEMAP, headIds, tocList, CITE, GSC, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { statuteEn, SUMMARY_K, RULE_PAGES, GOVERNS_EN, LAW_EN, ITEM_HEAD_EN, CITE_EN, BOOK_TOP, EN_PAGES, LANGS, hasEn, fileOf, urlOf, NAME_EN, FRAME_EN, FOOT_EN, HERO_EN, EMBLEMS_EN, CLASS_EN, PLAY_EN, SHORT_EN, EYEBROW_EN, DESC_EN, DESC_TAIL_EN, NOT_FOUND_EN, UI, FIG_EN, figText, CARD_ALT_EN, DESC, DESC_TAIL, CARD, THEME, NOT_FOUND, VERCEL, ROBOTS, SITEMAP, headIds, tocList, CITE, GSC, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
