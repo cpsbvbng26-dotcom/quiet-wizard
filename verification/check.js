@@ -127,7 +127,7 @@ function files() {
   const x = {};
   for (const f of ['README.md', 'CLAUDE.md', 'PRINCIPIA.md', 'build.js', 'assets/play.js', 'assets/style.css', 'assets/OFL-InterTight.txt', 'verification/statutes-texts.json', ...B.PAGES.map(([s]) => 'src/' + s + '.md')]) x[f] = R(f);
   for (const f of fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(path.join(ROOT, 'site')) : []) if (/\.html$/.test(f)) x['site/' + f] = R('site/' + f);
-  /* 配る素材（書体・図・台本・意匠）は、assets と site/assets で同じであること。書体は中身の指紋で固める。 */
+  /* 配る素材（書体・図・スクリプト・意匠）は、assets と site/assets で同じであること。書体は中身の指紋で固める。 */
   const sha = (p) => { try { return require('crypto').createHash('sha256').update(fs.readFileSync(path.join(ROOT, p))).digest('hex'); } catch (e) { return ''; } };
   x['#assets'] = fs.readdirSync(path.join(ROOT, 'assets')).sort().map((f) => f + ' ' + sha('assets/' + f)).join('\n');
   x['#site-assets'] = fs.existsSync(path.join(ROOT, 'site', 'assets')) ? fs.readdirSync(path.join(ROOT, 'site', 'assets')).sort().map((f) => f + ' ' + sha('site/assets/' + f)).join('\n') : '';
@@ -141,11 +141,63 @@ function files() {
   walk('');
   x['#raster'] = raster.join('\n');
   x['#pages'] = JSON.stringify(B.PAGES);
+  /* 配信の決まりと、検索の仕組みに渡すファイル（2026-11-23 から、元から作ったものと同じことを確かめる）。 */
+  for (const f of ['site/vercel.json', 'site/robots.txt', 'site/sitemap.xml']) x[f] = R(f);
   return x;
 }
 
 /* 第二巻からの模型と数。模型は頁の文に依らないので、一度だけ計算する。 */
 const MD = require('./models.js'), mr = MD.run(), mbad = MD.verdict(mr);
+
+/* 遊び場のスクリプトを、ブラウザの代わりの小さな作り物の上で動かす（2026-11-23）。押したときと、自動で過ごすときの一日を、
+ * 決めた乱数で進め、描いた線と点、知らせの文と読み上げの設定を集める。頁の文の数（人の数・閾の幅）と、魔法使い自身の線が
+ * 自分の成果で太らないことを、スクリプトの文を読むのではなく、動かした結果で確かめるため。 */
+function simulatePlay(js, play, { first = 0.5, days = 120, seed = 7 } = {}) {
+  const vm = require('vm');
+  const mk = (tag) => ({ tag, attrs: {}, style: {}, kids: [], handlers: {}, textContent: '', className: '',
+    setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k]; },
+    appendChild(c) { this.kids.push(c); return c; }, removeChild(c) { this.kids.splice(this.kids.indexOf(c), 1); return c; },
+    get firstChild() { return this.kids[0] || null; }, addEventListener(t, f) { this.handlers[t] = f; } });
+  const els = {};
+  for (const m of play.matchAll(/<([a-z0-9]+)\b([^>]*)\sid="([a-z]+)"([^>]*)>/g)) {
+    els[m[3]] = mk(m[1]);
+    for (const a of (m[2] + m[4]).matchAll(/([a-z-]+)="([^"]*)"/g)) els[m[3]].attrs[a[1]] = a[2];
+  }
+  let tick = null, calls = 0, st = seed;
+  const rand = () => { if (calls++ === 0) return first; st = (st * 1103515245 + 12345) % 2147483648; return st / 2147483648; };
+  const ctx = { document: { getElementById: (id) => els[id] || null, createElementNS: (ns, name) => mk(name) },
+    window: { matchMedia: () => ({ matches: false }) }, setInterval: (f) => { tick = f; return 1; }, clearInterval: () => { tick = null; }, __rand: rand };
+  vm.createContext(ctx);
+  vm.runInContext('Math.random = __rand;\n' + js, ctx, { timeout: 2000 });
+  const click = (id) => els[id].handlers.click.call(els[id]);
+  const out = { notes: [], deeds: new Set(), maxNow: 0, live: [], colors: { inner: new Set(), outer: new Set() }, wizardWidths: new Set(), widths: new Set(), people: 0 };
+  const look = () => {
+    out.deeds.add(els.deeds.textContent); out.notes.push(els.note.textContent);
+    out.maxNow = Math.max(out.maxNow, Number(els.meter.attrs['aria-valuenow']));
+    const o = els.outer.kids, me = o.find((k) => k.tag === 'circle');
+    out.people = o.filter((k) => k.tag === 'circle').length;
+    for (const k of o.filter((z) => z.tag === 'line')) {
+      out.widths.add(k.style.strokeWidth);
+      if (me && ((k.attrs.x1 === me.attrs.cx && k.attrs.y1 === me.attrs.cy) || (k.attrs.x2 === me.attrs.cx && k.attrs.y2 === me.attrs.cy))) out.wizardWidths.add(k.style.strokeWidth);
+    }
+    for (const [w, svg] of [['inner', els.inner], ['outer', els.outer]]) for (const k of svg.kids) {
+      if (k.style.stroke && k.style.stroke !== 'none' && k.style.strokeWidth !== '0') out.colors[w].add(k.style.stroke);
+      if (k.style.fill) out.colors[w].add('fill:' + k.style.fill);
+    }
+  };
+  look();
+  for (let d = 0; d < days; d++) { if (d % 9 === 4) click('scene'); click('live'); look(); }
+  /* 自動で過ごす：始めの知らせは読み上げ、日ごとの知らせは読み上げず、止めると戻す。 */
+  click('auto'); out.live.push(els.note.attrs['aria-live'] + ':' + (tick ? 'on' : 'none')); look();
+  for (let d = 0; d < 5 && tick; d++) { tick(); out.live.push(els.note.attrs['aria-live']); look(); }
+  click('auto'); out.live.push(els.note.attrs['aria-live'] + ':' + (tick ? 'on' : 'none')); look();
+  out.valuemax = Number(els.meter.attrs['aria-valuemax']);
+  out.threshold = Number((out.notes.map((t) => /閾の (\d+) に届き/.exec(t)).find(Boolean) || [, NaN])[1]);
+  return out;
+}
+/* 遊び場の部品（build.js の PLAY）は、build.js の文から読む（壊し方が build.js を変えて確かめられるように）。 */
+const playOf = (x) => (/const PLAY = `([\s\S]*?)`;/.exec(x['build.js'] || '') || [, ''])[1];
+const KANJI_N = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
 
 function verdict(x) {
   const bad = [];
@@ -254,13 +306,22 @@ function verdict(x) {
     /* Search Console の所有の確認（2026-11-22）。運営者が受け取った値を、どの頁の head にも一つだけ置く。 */
     if ((h.match(/<meta name="google-site-verification" content="([^"]*)">/g) || []).join() !== '<meta name="google-site-verification" content="UEPpX5mfnLlhOBTBTETu-PmRO_Y4L2SmjEiaq_U1Zf8">' || h.indexOf('google-site-verification') > h.indexOf('</head>')) bad.push(f + '：Search Console の確認の値');
     /* 上の欄（2026-11-22）：クラスの紋と名とラテン語の添え名。紋は自分の assets から読み、代わりの文を持つ。 */
-    if (!h.includes('<header><div class="mast"><a class="site" href="index.html"><img class="crest" src="assets/emblem-crest.svg" alt="クラスの紋" width="34" height="40"><span class="titles"><span class="name">' + B.NAME + '</span><span class="sub" lang="la" aria-hidden="true">Magus Occultus</span></span></a></div>')) bad.push(f + '：上の欄の紋と名と添え名');
+    /* 404 の頁は、どのディレクトリの所在でも出るので、つなぎと素材を根から書く（2026-11-23）。ほかの頁は、頁のある所から書く。 */
+    const up = f === 'site/404.html' ? '/' : '';
+    if (!h.includes('<header><div class="mast"><a class="site" href="' + (up || 'index.html') + '"><img class="crest" src="' + up + 'assets/emblem-crest.svg" alt="クラスの紋" width="34" height="40"><span class="titles"><span class="name">' + B.NAME + '</span><span class="sub" lang="la" aria-hidden="true">Magus Occultus</span></span></a></div>')) bad.push(f + '：上の欄の紋と名と添え名');
+    /* 本文へ飛ぶつなぎ（2026-11-23）。body の初めに一つ、飛び先の main は一つ。 */
+    if (!/<body class="p-[a-z0-9]+">\n<a class="skip" href="#main">本文へ<\/a>\n/.test(h) || (h.match(/<main\b[^>]*>/g) || []).join() !== '<main id="main">' || (h.match(/id="main"/g) || []).length !== 1) bad.push(f + '：本文へ飛ぶつなぎ');
+    /* canonical と、検索に載せないこと。404 は canonical を出さず、noindex。ほかは、自分の所在の canonical を一つ。 */
+    const canon = h.match(/<link rel="canonical" href="([^"]*)">/g) || [], noidx = /<meta name="robots" content="noindex">/.test(h);
+    const self = f.replace(/^site\//, '');
+    if (up ? (canon.length || !noidx) : (canon.join() !== '<link rel="canonical" href="' + B.BASE + (self === 'index.html' ? '' : self) + '">' || noidx)) bad.push(f + '：canonical か noindex');
+    if (up) for (const m of h.matchAll(/\s(?:src|href)="([^"]*)"/g)) if (!/^(\/|#|https:)/.test(m[1])) bad.push(f + '：根から書いていない所在 ' + m[1]);
     const foot = h.indexOf('<footer>') < 0 ? '' : h.slice(h.indexOf('<footer>'));
     if (!foot.includes('運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。')) bad.push(f + '：下の欄の、別の枠だという断り');
     /* 下の欄の文は FOOT と比べるだけでは、FOOT ごと弱めても通る。決めた語を頁ごとに固める。 */
     for (const w of ['これは遊びです。', '科学の法則ではなく', '誰の性経験も評価せず', '特定の人を指しません。']) if (!foot.includes(w)) bad.push(f + '：下の欄の断り（' + w + '）');
     for (const w of ['内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。', '選民思想ではなく、運営者は魔法使いの代表ではありません。']) if (!h.includes(w)) bad.push(f + '：下の欄の断り（' + w.slice(0, 8) + '）');
-    for (const l of ['terms', 'privacy', 'requests', 'legality', 'about', 'design']) if (!h.includes('href="' + l + '.html"') && f !== 'site/' + l + '.html') bad.push(f + '：決まりの頁 ' + l + ' へのつなぎ');
+    for (const l of ['terms', 'privacy', 'requests', 'legality', 'about', 'design']) if (!h.includes('href="' + up + l + '.html"') && f !== 'site/' + l + '.html') bad.push(f + '：決まりの頁 ' + l + ' へのつなぎ');
     for (const d of DISCLOSE) if (!h.includes(d)) bad.push(f + '：開示');
     /* 外へ読みに行く要素。canonical は読みに行かないので除く。 */
     if (/<(script|img|link|iframe|source)\b(?![^>]*rel="canonical")[^>]*\s(src|href)="https?:/i.test(h)) bad.push(f + '：外へ読みに行く');
@@ -281,9 +342,81 @@ function verdict(x) {
   if (!x['src/play.md'].includes('人には、名前も年齢も性別も、どんな属性も付けていません。見るのは、関係の移り変わりだけです。')) bad.push('遊び場：属性を付けないという断り');
   if ((x['src/play.md'].match(/^\| 第[二三四五六七八九十]法則 /mg) || []).length !== 9) bad.push('遊び場：法則と働きの表が九行でない');
   /* 生成物が元と同じか（site/ は手で直さない）。 */
-  const fresh = (s) => { const md = x['src/' + s + '.md']; return B.page(s, /^# (.+)$/m.exec(md)[1], B.render(md)); };
+  const fresh = (s) => { const md = x['src/' + s + '.md']; return B.page(s, /^# (.+)$/m.exec(md)[1], B.render(md, s)); };
   const freshOr = (s) => { try { return fresh(s); } catch (e) { bad.push('src/' + s + '.md から作れない：' + e.message); return null; } };
   for (const [s, out] of B.PAGES) if (x['site/' + out + '.html'] !== undefined && x['site/' + out + '.html'] !== freshOr(s)) bad.push('site/' + out + '.html が src から作ったものと違う（node build.js）');
+  if (x['site/404.html'] !== B.page('404', '頁が見つかりません', B.NOT_FOUND)) bad.push('site/404.html が build.js から作ったものと違う（node build.js）');
+  if (x['site/vercel.json'] !== B.VERCEL || x['site/robots.txt'] !== B.ROBOTS || x['site/sitemap.xml'] !== B.SITEMAP) bad.push('site の vercel.json・robots.txt・sitemap.xml が build.js から作ったものと違う（node build.js）');
+  /* 配信の決まりに、廃れた指定（interest-cohort）を書かない。browsing-topics を止める（2026-11-23）。 */
+  let V = {};
+  try { V = JSON.parse(x['site/vercel.json']); } catch (e) { /* 下で落ちる */ }
+  const pp = (((V.headers || [])[0] || {}).headers || []).find((z) => z.key === 'Permissions-Policy') || {};
+  if (/interest-cohort/.test(pp.value || '') || !/(^|, )browsing-topics=\(\)/.test(pp.value || '')) bad.push('配信の Permissions-Policy：' + pp.value);
+  /* 最終更新（2026-11-23）：どの頁の元にも、日付の行が一つあり、頁ではその日と、元のファイルの変更の記録へのリンクになる。 */
+  for (const [s, out] of B.PAGES) {
+    const ds = [...(x['src/' + s + '.md'] || '').matchAll(/^最終更新：(\d{4}-\d{2}-\d{2})。$/mg)].map((m) => m[1]);
+    const d = ds[0], ok1 = ds.length === 1 && !isNaN(Date.parse(d + 'T00:00:00Z')) && new Date(d + 'T00:00:00Z').toISOString().slice(0, 10) === d;
+    if (!ok1) bad.push('src/' + s + '.md：最終更新の行が一つでないか、日付でない');
+    else if (!(x['site/' + out + '.html'] || '').includes('<p class="updated">最終更新：<time datetime="' + d + '">' + d + '</time>（<a href="https://github.com/cpsbvbng26-dotcom/quiet-wizard/commits/main/src/' + s + '.md" rel="noopener">変更の記録</a>）。</p>')) bad.push('site/' + out + '.html：最終更新と変更の記録');
+  }
+  if (!x['src/terms.md'].includes('上の案内と下の欄からつなぐ頁には、どれも最終更新の日を書き、その頁の本文を最後に変えた日を示します。')) bad.push('利用規約：最終更新の日の断り');
+  /* Search Console の確認の値を置くなら、個人情報の取り扱いにそう書き、頁が Google へ何も送らないことと、運営者の見る集計が Google の側のものであることを書く（2026-11-23）。 */
+  if (html.some((f) => x[f].includes('google-site-verification')) && !['どの頁の頭にも、Google Search Console の所有の確認の値（`google-site-verification` の meta）を置いています。', '頁は、この値で Google へ何も送りません。', '運営者が Search Console で見られるのは、Google 検索の側で集められた集計です。'].every((w) => x['src/privacy.md'].includes(w))) bad.push('個人情報の取り扱い：Search Console の確認の値のこと');
+  if (!x['src/about.md'].includes('Google Search Console の所有の確認の値を置いていますが、頁はそれで Google へ何も送りません')) bad.push('断りと開示：Search Console の確認の値のこと');
+  /* 散文の数（2026-11-23）。遊び場を動かして数えた人の数・閾の幅・メーターの上限と、頁の文が同じこと。 */
+  let sim = null, lo = null, hi = null;
+  const PL = playOf(x);
+  try { sim = simulatePlay(js, PL); lo = simulatePlay(js, PL, { first: 0 }); hi = simulatePlay(js, PL, { first: 0.9999999 }); } catch (e) { bad.push('遊び場のスクリプトを動かせない：' + e.message); }
+  if (sim) {
+    const n = sim.people, pm = x['src/play.md'];
+    if (n !== 8 && !n) bad.push('遊び場の人の数が数えられない');
+    for (const [f, w] of [['src/index.md', '[遊び場](play.html) ' + n + ' 人の関係の上で'], ['src/play.md', '下の遊び場では、' + n + ' 人と、そのあいだの関係の線だけを描きます。'], ['src/play.md', '魔法使いもほかの ' + (n - 1) + ' 人と同じ点で描く'], ['build.js', '<p class="small">' + n + ' 人と、隣り合う人どうしの関係の線だけが見えます。']]) if (!x[f].includes(w)) bad.push(f + '：人の数が遊び場と違う（' + w.slice(0, 20) + '）');
+    if (!(x['assets/play.js'] || '').includes("'外の目。' + N + ' 人と、")) bad.push('play.js：外の目の代わりの文の人の数を N から作っていない');
+    if (lo.threshold !== 18 || hi.threshold !== 36 || !pm.includes('開くたびに ' + lo.threshold + ' から ' + hi.threshold + ' のあいだで決まる')) bad.push('遊び場の閾の幅が頁の文と違う：' + lo.threshold + '〜' + hi.threshold);
+    if (sim.valuemax !== hi.threshold || hi.maxNow !== sim.valuemax) bad.push('遊び場のメーターの上限が閾の上限と違う');
+    const figs = (pm.match(/^!\[[^\]]+\]\(fig:[a-z0-9-]+\)$/mg) || []).length;
+    if (!pm.includes('下の' + KANJI_N[figs] + 'つの図で順に見て')) bad.push('遊び場：図の数が頁の文と違う（' + figs + '）');
+    /* 魔法使い自身の線は、自分の成果で太らない（要請四・定理二十三）。ほかの線は太る。見える成果はいつも 0。 */
+    if ([...sim.wizardWidths].join() !== '1' || ![...sim.widths].some((w) => Number(w) > 1)) bad.push('遊び場：魔法使い自身の線が太るか、どの線も太らない（' + [...sim.wizardWidths].join(',') + '）');
+    if ([...sim.deeds].join() !== '0') bad.push('遊び場：見える成果が 0 でないことがある');
+    /* 切り替わりの知らせは、閾と目安の三十を比べて言う。 */
+    for (const [o, w] of [[lo, '閾は目安の三十より小さく、早めの切り替わりです。'], [hi, '閾は目安の三十より大きく、遅めの切り替わりです。']]) if (!o.notes.some((t) => t.includes('閾の ' + o.threshold + ' に届き') && t.includes(w))) bad.push('遊び場：切り替わりの知らせが早い遅いを言わない');
+    /* 自動で過ごすあいだは読み上げず、始めと止めたときは読み上げる。 */
+    if (sim.live.join() !== 'polite:on,off,off,off,off,off,polite:none') bad.push('遊び場：自動で過ごすときの読み上げ（' + sim.live.join() + '）');
+    /* ボタンの名は、遊び方の箇条の太字の名と同じ。丸の数字を付けない。 */
+    for (const m of PL.matchAll(/<button type="button" id="[a-z]+">([^<]+)<\/button>/g)) if (!pm.split('\n').some((l) => /^\d+\. \*\*/.test(l) && l.includes('**' + m[1] + '**'))) bad.push('遊び場のボタン「' + m[1] + '」が、遊び方の箇条にない');
+    if (/[①-⑳]/.test(PL + x['assets/play.js'])) bad.push('遊び場に丸の数字がある');
+  }
+  /* 図の番号は、頁ごとに 1 から欠けずに振る（2026-11-23）。 */
+  for (const [s] of B.PAGES) { const ns = [...(x['src/' + s + '.md'] || '').matchAll(/^!\[図(\d+) /mg)].map((m) => Number(m[1])); if (ns.some((k, i) => k !== i + 1)) bad.push('src/' + s + '.md：図の番号が 1 から並ばない（' + ns.join(',') + '）'); }
+  /* ほかの頁から原理の項や巻へ飛ぶリンク（2026-11-23）：飛び先が原理の頁にあり、項ならその名、巻ならその見出しを指す。 */
+  const sh = x['site/strict.html'] || '';
+  let jumps = 0;
+  for (const f of html.filter((k) => k !== 'site/strict.html')) for (const m of x[f].matchAll(/<a href="strict\.html#([a-z0-9-]+)">([^<]+)<\/a>/g)) {
+    jumps++;
+    const at = new RegExp('<(p|h2) id="' + m[1] + '">([\\s\\S]*?)</\\1>').exec(sh);
+    if (!at || !at[2].replace(/<[^>]+>/g, '').replace(/^\s+/, '').startsWith(m[2])) bad.push(f + '：原理へのリンク「' + m[2] + '」の飛び先が違う（#' + m[1] + '）');
+  }
+  if (jumps < 5) bad.push('ほかの頁から原理の項へ飛ぶリンクが少ない（' + jumps + '）');
+  /* はじめにの目次：原理の行は五つの巻を順に挙げ、決まりの行は下の欄の決まりの頁（断りと開示のほか）をすべて挙げる。 */
+  const ix = x['src/index.md'] || '';
+  const prin = (ix.split('\n').find((l) => l.startsWith('- [原理](strict.html)')) || '');
+  const books = (x['src/strict.md'].match(/^## 第[一二三四五六七八九十]+巻/mg) || []).map((l) => l.slice(3));
+  if (!books.length || (prin.match(/第[一二三四五六七八九十]+巻/g) || []).join() !== books.join()) bad.push('はじめにの原理の行が、巻を順に挙げていない');
+  const rules = (ix.split('\n').find((l) => l.startsWith('- [決まり](terms.html)')) || '');
+  for (const [s, , , top] of B.PAGES) if (!top && s !== 'about' && !rules.includes(/^# (.+)$/m.exec(x['src/' + s + '.md'])[1])) bad.push('はじめにの決まりの行に無い頁：' + s);
+  /* 頁の中の目次（2026-11-23）：目次を置く頁では、目次がすべての見出しを順に挙げ、どの見出しにも飛び先がある。 */
+  for (const f of html) {
+    const t = x[f], nav = (/<nav class="toc"[\s\S]*?<\/nav>/.exec(t) || [''])[0];
+    if (!nav) continue;
+    const heads = [...t.matchAll(/<h([23]) id="(s[\d-]+)">/g)].map((m) => m[2]);
+    const listed = [...nav.matchAll(/<a href="#(s[\d-]+)">/g)].map((m) => m[1]);
+    if (!heads.length || listed.join() !== heads.join() || (t.match(/<h[23]>/g) || []).length) bad.push(f + '：頁の中の目次が見出しと合わない');
+  }
+  for (const s of ['legality', 'design', 'strict']) if (!/<nav class="toc"/.test(x['site/' + s + '.html'] || '')) bad.push('site/' + s + '.html：頁の中の目次が無い');
+  /* 印刷では、上の帯と上の欄を黒字にする（2026-11-23）。 */
+  const pr2 = ((/@media print \{([\s\S]*?)\} \}\n/.exec(x['assets/style.css']) || [, ''])[1]);
+  if (!/\.frame, \.frame \*, header, header \* \{ color: #000 !important;/.test(pr2) || !/header \{ background: none !important;/.test(pr2)) bad.push('印刷で、上の帯と上の欄を黒字にしていない');
   return bad;
 }
 
@@ -309,8 +442,9 @@ function principiaVerdict(x) {
     } else if (/^## /.test(l)) cur = null;
     if (!cur) continue;
     const rest = m ? l.slice(l.indexOf('**', 2) + 2) : l;
-    for (const c of rest.matchAll(/(定義|要請|定理)([一二三四五六七八九十]+)(?!つ)|第([一二三四五六七八九十]+)法則/g)) {
-      const t = c[3] ? '第' + c[3] + '法則' : c[1] + c[2];
+    /* 系は「系の」の形で引く（「体系の」は除く）。注は、持ち主の項を引くものとして読む（「第十法則の注」「系の後の注」）。2026-11-23 に系を足した。 */
+    for (const c of rest.matchAll(/(定義|要請|定理)([一二三四五六七八九十]+)(?!つ)|第([一二三四五六七八九十]+)法則|(?<!体)(系)(?=の)/g)) {
+      const t = c[4] ? '系' : c[3] ? '第' + c[3] + '法則' : c[1] + c[2];
       cites.push(t);
       if (/^証明。/.test(l) && t !== cur) (deps[cur] = deps[cur] || []).push({ t, line: l });
     }
@@ -344,6 +478,13 @@ function principiaVerdict(x) {
   const want = ['定義', '要請', '法則', '定理', '系'].flatMap((k) => items.filter((it) => it.kind === k).map((it) => it.id));
   if (order.join() !== want.join()) bad.push('原理の索引が、すべての項を順に挙げていない');
   if (([...toc.matchAll(/<li><a href="#s\d+">第[一二三四五]巻/g)]).length !== 5) bad.push('原理の目次が五つの巻を挙げていない');
+  /* 目次は入れ子（2026-11-23）：巻と総注解を上の段に、巻の中の見出しをその下の段に、頁の見出しをすべて順に挙げる。 */
+  const tocBooks = (/<ol class="toc-books">([\s\S]*?)<\/ol><\/nav>|<ol class="toc-books">([\s\S]*?)<\/ol><details/.exec(toc) || [])[2] || '';
+  const allH2 = [...h.matchAll(/<h2 id="(s\d+)">([\s\S]*?)<\/h2>/g)];
+  if ([...tocBooks.matchAll(/href="#(s\d+)"/g)].map((m) => m[1]).join() !== allH2.map((m) => m[1]).join()) bad.push('原理の目次が、頁の見出しをすべて順に挙げていない');
+  const topLevel = tocBooks.replace(/<ol>[\s\S]*?<\/ol>/g, '');
+  const want2 = allH2.filter((m) => /^(第[一二三四五六七八九十]+巻|総注解)/.test(m[2].replace(/<[^>]+>/g, ''))).map((m) => m[1]);
+  if ([...topLevel.matchAll(/href="#(s\d+)"/g)].map((m) => m[1]).join() !== want2.join()) bad.push('原理の目次の上の段が、巻と総注解でない');
   return bad;
 }
 
@@ -435,7 +576,31 @@ function designVerdict(x) {
   if ([...used].sort().join() !== [...DESIGN_ELEMENTS].sort().join()) bad.push('SVG の要素が頁と違う：' + [...used].sort().join(','));
   if (!md.includes('SVG は、' + DESIGN_ELEMENTS.join('、') + ' の要素だけで組んでいます。')) bad.push('頁：SVG の要素');
   const drawn = [...new Set([...(x['assets/play.js'] || '').matchAll(/\bel\('([a-z]+)'/g)].map((m) => m[1]))].sort();
-  if (drawn.join() !== DESIGN_DRAWN.join() || /createElement(?!NS\(ns, name\))/.test(x['assets/play.js'] || '') || !md.includes('遊び場の台本が描く要素は、circle と line だけです。')) bad.push('遊び場の台本が描く要素：' + drawn.join(','));
+  if (drawn.join() !== DESIGN_DRAWN.join() || /createElement(?!NS\(ns, name\))/.test(x['assets/play.js'] || '') || !md.includes('遊び場のスクリプトが描く要素は、circle と line だけです。')) bad.push('遊び場のスクリプトが描く要素：' + drawn.join(','));
+  /* 図の中の文字は、形を色の名で指さない（2026-11-23）。図の線の色は、暗い配色で明るく変わる。 */
+  for (const f of Object.keys(x).filter((k) => /^src\/figs\/.+\.svg$/.test(k) || k === 'src/hero.svg.part')) for (const m of (x[f] || '').matchAll(/<text\b[^>]*>([^<]*)<\/text>/g)) if (/[黒白金銀赤青緑灰紺]|色/.test(m[1])) bad.push(f + '：図の文字が色の名で形を指す（' + m[1] + '）');
+  if (!md.includes('図の中の文字は、形を色の名で指しません。')) bad.push('頁：図の文字と色の名');
+  /* 遊び場の網の色（2026-11-23）：動かして描いた線と点の色と、二つの目の地の色の比は 3 以上（WCAG 1.4.11）。地と同じ塗りは、地として除く。 */
+  const eyeBg = (w) => ((new RegExp('\\.eye\\.' + w + ' \\{ background: (#[0-9a-f]{6}); \\}').exec(css)) || [, ''])[1];
+  let netLow = null;
+  try {
+    const sim = simulatePlay(x['assets/play.js'] || '', playOf(x));
+    for (const w of ['inner', 'outer']) {
+      const bg = eyeBg(w);
+      if (!bg) { bad.push('遊び場の ' + w + ' の地の色が読めない'); continue; }
+      for (const c of sim.colors[w]) {
+        const col = c.replace(/^fill:/, '');
+        if (!/^#[0-9a-f]{6}$/.test(col)) { bad.push('遊び場の網の色が読めない：' + c); continue; }
+        if (col === bg) continue;
+        const r = contrast(col, bg);
+        if (r < 3) bad.push('遊び場の網の ' + col + ' と地の ' + bg + ' の比が 3 より低い：' + r.toFixed(2));
+        if (!netLow || r < netLow.r) netLow = { r, at: (w === 'inner' ? '魔法使いの目' : '外の目') + 'の ' + col + ' と地の ' + bg };
+      }
+    }
+  } catch (e) { bad.push('遊び場のスクリプトを動かせない：' + e.message); }
+  if (!netLow || !md.includes('遊び場の網の線と点の色と、二つの目の地の色の比は、3 以上です。遊び場の網で、いちばん低いのは、' + netLow.at + ' の ' + netLow.r.toFixed(2) + ' です。')) bad.push('頁の、遊び場の網の色の比が計算と違う：' + (netLow ? netLow.at + ' ' + netLow.r.toFixed(2) : ''));
+  /* 本文へ飛ぶつなぎと印刷は、頁の文のとおり（つなぎと印刷の中身は、約束の検査が頁と style.css で見る）。 */
+  for (const w of ['どの頁にも、本文へ飛ぶつなぎ（「本文へ」）を、頁の初めに置いています。', '印刷では、上の帯と上の欄とクラス表を、白地の黒字にします。']) if (!md.includes(w)) bad.push('頁：' + w.slice(0, 16));
   if (x['#raster']) bad.push('ラスターの画像がある：' + x['#raster'].split('\n').join(','));
   /* 文字の色の比：明るい配色と暗い配色の、四つの文字の色と二つの地の色。 */
   const tok = (block) => Object.fromEntries([...block.matchAll(/--([a-z]+):\s*(#[0-9a-f]{6})/gi)].map((m) => [m[1], m[2]]));
@@ -505,7 +670,7 @@ function designVerdict(x) {
 console.log('\n1. 約束・原典・外への要求・生成物');
 const real = files();
 const now = verdict(real);
-ok('原典の定義九つと法則十が一字一句そのまま、どの頁も遊びと断り、科学ではないと書き、下の欄に断りと開示、CSP、外へ読みに行かず、研究の系列につながず、遊び場は何も送らず残さず、生成物が元と同じ', now.length === 0, now.slice(0, 6).join(' / '));
+ok('原典の定義九つと法則十が一字一句そのまま、どの頁も遊びと断り、科学ではないと書き、下の欄に断りと開示、CSP、外へ読みに行かず、研究の系列につながず、遊び場は何も送らず残さず、生成物が元と同じ。404 は根から書き、目次・最終更新・本文へのつなぎ・原理へのリンクがあり、散文の数が遊び場を動かした数と同じ', now.length === 0, now.slice(0, 6).join(' / '));
 
 console.log('\n2. 壊して確かめる');
 const mut = (f, a, b) => Object.assign({}, real, { [f]: String(real[f]).replace(a, b) });
@@ -527,7 +692,7 @@ const breaks = [
   ['法則と働きの表から一行外す', mut('src/play.md', /\| 第六法則 還元 [^\n]+\n/, '')],
   ['見える成果を数える', mut('assets/play.js', "$('deeds').textContent = '0';", "$('deeds').textContent = String(deeds);")],
   ['生成した頁を手で直す', mut('site/faq.html', '何かが起きるとは、原典のどこにも', '何かが起きると、原典の')],
-  ['頁の中に style を書く', mut('site/canon.html', '<main>', '<main style="color:red">')],
+  ['頁の中に style を書く', mut('site/canon.html', '<main id="main">', '<main id="main" style="color:red">')],
   ['準拠法を外す', mut('src/terms.md', 'この決まりは日本法に準拠します。', '')],
   ['責任を軽くする', mut('src/terms.md', 'この決まりは、法令が認める以上に運営者の責任を軽くしません。', '運営者は一切の責任を負いません。')],
   ['集めると書く', mut('src/privacy.md', 'サイトは、何も集めません。', 'サイトは、アクセスを解析します。')],
@@ -562,7 +727,7 @@ const breaks = [
   ['論文の DOI をもう一つ足す', mut('site/about.html', '</main>', '<a href="https://doi.org/10.5281/zenodo.99999999">x</a></main>')],
   ['研究の頁へ、正文の例外の外でつなぐ', mut('site/faq.html', '</main>', '<a href="https://doi.org/10.5281/zenodo.23114131">x</a></main>')],
   ['英語の版の DOI を確かめずに書く', mut('src/about.md', 'その DOI は、ここには書いていません。確かめていないためです。', 'DOI は 10.5281/zenodo.0 です。')],
-  ['外の台本を読む', mut('site/play.html', '<script src="assets/play.js" defer></script>', '<script src="https://cdn.example.com/x.js"></script>')],
+  ['外のスクリプトを読む', mut('site/play.html', '<script src="assets/play.js" defer></script>', '<script src="https://cdn.example.com/x.js"></script>')],
   ['学術的な活動とは別の枠だという断りを外す', mut('src/index.md', FRAME, '')],
   ['上の帯を外す', mut('site/strict.html', /<aside class="frame"[^\n]+\n/, '')],
   ['上の帯の文を弱める', mut('site/terms.html', '<span class="say">' + FRAME, '<span class="say">これは娯楽です。')],
@@ -598,6 +763,42 @@ const breaks = [
   ['デザインの頁から弁護士の断りを外す', mut('src/design.md', '弁護士の確認は受けていません。', '')],
   ['デザインの頁へのつなぎを外す', mut('site/terms.html', '<a href="design.html">', '<a href="x.html">')],
   ['デザインの頁を手で直す', mut('site/design.html', '配る書体は Inter Tight だけです。', '配る書体は二つです。')],
+  /* 2026-11-23 に足した壊し方。 */
+  ['404 の頁で素材を相対の所在で読む', mut('site/404.html', 'href="/assets/style.css"', 'href="assets/style.css"')],
+  ['404 の頁に canonical を出す', mut('site/404.html', '<meta name="robots" content="noindex">', '<link rel="canonical" href="https://quiet-wizard.vercel.app/404.html">')],
+  ['ほかの頁を検索から外す', mut('site/faq.html', '</head>', '<meta name="robots" content="noindex">\n</head>')],
+  ['404 の頁を手で直す', mut('site/404.html', 'たぶん本当にありません', 'ありません')],
+  ['本文へ飛ぶつなぎを外す', mut('site/guide.html', '<a class="skip" href="#main">本文へ</a>\n', '')],
+  ['本文の飛び先を外す', mut('site/terms.html', '<main id="main">', '<main>')],
+  ['配信の決まりに廃れた指定を戻す', mut('site/vercel.json', 'browsing-topics=()', 'interest-cohort=()')],
+  ['sitemap を手で直す', mut('site/sitemap.xml', '</urlset>', '<url><loc>https://quiet-wizard.vercel.app/x.html</loc></url>\n</urlset>')],
+  ['最終更新の行を外す', mut('src/guide.md', /\n最終更新：[0-9-]+。\n/, '\n')],
+  ['最終更新を日付でなくする', mut('src/canon.md', /最終更新：[0-9-]+。/, '最終更新：2026-02-30。')],
+  ['頁から変更の記録を外す', mut('site/play.html', /（<a href="[^"]+\/commits\/main\/src\/play\.md" rel="noopener">変更の記録<\/a>）/, '')],
+  ['利用規約から最終更新の断りを外す', mut('src/terms.md', '上の案内と下の欄からつなぐ頁には、どれも最終更新の日を書き、', '')],
+  ['個人情報の取り扱いから Search Console のことを外す', mut('src/privacy.md', '頁は、この値で Google へ何も送りません。', '')],
+  ['断りと開示から Search Console のことを外す', mut('src/about.md', 'Google Search Console の所有の確認の値を置いていますが、', '')],
+  ['遊び場の人の数を変える', mut('assets/play.js', 'var N = 8, pos = [];', 'var N = 9, pos = [];')],
+  ['頁のほかの人の数を違える', mut('src/play.md', 'ほかの 7 人', 'ほかの 6 人')],
+  ['はじめにの人の数を違える', mut('src/index.md', '[遊び場](play.html) 8 人', '[遊び場](play.html) 6 人')],
+  ['外の目の代わりの文の人の数を書き込む', mut('assets/play.js', "'外の目。' + N + ' 人と、", "'外の目。8 人と、")],
+  ['閾の幅を変える', mut('assets/play.js', '18 + Math.floor(Math.random() * 19)', '16 + Math.floor(Math.random() * 21)')],
+  ['メーターの上限を違える', mut('build.js', 'aria-valuemax="36"', 'aria-valuemax="40"')],
+  ['図の数を違える', mut('src/play.md', '下の五つの図', '下の四つの図')],
+  ['魔法使い自身の線を、自分の成果で太らせる', mut('assets/play.js', 'return s !== 0;', 'return true;')],
+  ['自動で過ごすあいだも読み上げる', mut('assets/play.js', "$('note').setAttribute('aria-live', 'off'); ", '')],
+  ['止めても読み上げを戻さない', mut('assets/play.js', "\n      $('note').setAttribute('aria-live', 'polite');", '')],
+  ['切り替わりの知らせから早めの断りを外す', mut('assets/play.js', '閾は目安の三十より小さく、早めの切り替わりです。', '')],
+  ['ボタンに丸の数字を戻す', mut('build.js', '>場面を変える</button>', '>① 場面を変える</button>')],
+  ['ボタンの名を箇条と違える', mut('build.js', '>一日を過ごす</button>', '>次の日</button>')],
+  ['図の番号を頁をまたいで続ける', mut('src/strict.md', '![図1 和・偏・衝', '![図6 和・偏・衝')],
+  ['原理へのリンクの飛び先を違える', mut('site/faq.html', 'strict.html#prop-3', 'strict.html#prop-4')],
+  ['原理の巻へのリンクの飛び先を違える', mut('site/index.html', 'strict.html#s9', 'strict.html#s8')],
+  ['はじめにの決まりの行からデザインの頁を外す', mut('src/index.md', '、デザインに関する法的な扱いは', 'は')],
+  ['はじめにの原理の行から巻を一つ外す', mut('src/index.md', '第三巻は関係の力学、', '')],
+  ['頁の中の目次の見出しを違える', mut('site/design.html', '<a href="#s2">', '<a href="#s9">')],
+  ['長い頁から目次を外す', mut('site/legality.html', /<nav class="toc"[\s\S]*?<\/nav>/, '')],
+  ['印刷で上の欄を黒字にしない', mut('assets/style.css', '.frame, .frame *, header, header * { color: #000 !important;', '.frame, .frame * { color: #000 !important;')],
 ];
 const missed = breaks.filter(([, y]) => verdict(y).length === 0).map(([k]) => k);
 ok('壊して確かめる：原典の一字・法則・前書き・冒頭の断り・科学・性経験・下の欄・開示・外の画像・研究へのリンク・送る・残す・成果を数える・手で直す・style のどれでも落ちる（' + (breaks.length - missed.length) + ' / ' + breaks.length + '）', missed.length === 0, missed.join(' / '));
@@ -615,6 +816,10 @@ const pbreaks = [
   ['頁から飛び先を一つ外す', pmut('site/strict.html', 'id="law-6"', '')],
   ['引き合いのリンクを違う項に向ける', pmut('site/strict.html', '<a class="xref" href="#law-6">第六法則</a>', '<a class="xref" href="#law-5">第六法則</a>')],
   ['索引から項を一つ外す', pmut('site/strict.html', /<a href="#def-7"[^>]*>[^<]*<\/a>/, '')],
+  /* 2026-11-23 に足した壊し方。 */
+  ['証明が後ろの系の注を引く', pmut('src/strict.md', '科学ではないと名乗る。ゆえに原理は異端である。', '科学ではないと名乗る（系の後の注）。ゆえに原理は異端である。')],
+  ['目次から巻の中の見出しを外す', pmut('site/strict.html', /(<ol class="toc-books"><li><a href="#s1">[^<]*<\/a>)<ol>[\s\S]*?<\/ol>/, '$1')],
+  ['目次の上の段に巻でない見出しを出す', pmut('site/strict.html', /(<ol class="toc-books"><li><a href="#s1">[^<]*<\/a>)<ol>/, '$1</li>')],
 ];
 const pmissed = pbreaks.filter(([, y]) => principiaVerdict(y).length === 0).map(([k]) => k);
 ok('壊して確かめる：無い項・循環・後ろを引く・理由の断り・番号の飛び・飛び先・リンクの向き・索引のどれでも落ちる（' + (pbreaks.length - pmissed.length) + ' / ' + pbreaks.length + '）', pmissed.length === 0, pmissed.join(' / '));
@@ -641,7 +846,7 @@ const dbreaks = [
   ['三つの紋の一つに画像を埋める', dmut('assets/emblem-seal.svg', '</svg>', '<image href="data:image/png;base64,AAAA" width="1" height="1"/></svg>')],
   ['ファビコンに画像を埋める', dmut('assets/favicon.svg', '</svg>', '<image href="data:image/png;base64,AAAA" width="1" height="1"/></svg>')],
   ['図に別の要素を足す', dmut('src/figs/fig-faces.svg', '</svg>', '<polyline points="0,0 1,1"/></svg>')],
-  ['遊び場の台本が別の要素を描く', dmut('assets/play.js', "el('line'", "el('rect'")],
+  ['遊び場のスクリプトが別の要素を描く', dmut('assets/play.js', "el('line'", "el('rect'")],
   ['ラスターの画像を置く', Object.assign({}, real, { '#raster': 'assets/og.png' })],
   ['文字の色の比を下げる', dmut('assets/style.css', '--muted: #555b65;', '--muted: #9aa0a8;')],
   ['頁の色の比の数を違える', dmut('src/design.md', 'の 5.73 です。', 'の 5.80 です。')],
@@ -658,9 +863,46 @@ const dbreaks = [
   ['条文の出どころのコミットを外す', dmut('site/design.html', '、コミット 85dd680）', '）')],
   ['障害者差別解消法の正式の名を外す', dmut('src/design.md', '障害を理由とする差別の解消の推進に関する法律（障害者差別解消法）', '障害者差別解消法')],
   ['決まりの頁の一覧から外す', Object.assign({}, real, { '#pages': JSON.stringify(B.PAGES.filter(([k]) => k !== 'design')) })],
+  /* 2026-11-23 に足した壊し方。 */
+  ['図の文字で形を色の名で指す', dmut('src/figs/fig-interface.svg', '細い線の辺は相＋、太い帯の辺は相−', '金の辺は相＋、黒の帯は相−')],
+  ['頁から図の文字と色の名の断りを外す', dmut('src/design.md', '- 図の中の文字は、形を色の名で指しません。', '-')],
+  ['遊び場の網の線を薄くする', dmut('assets/play.js', "'#7a8089'", "'#8f959d'")],
+  ['頁の遊び場の網の色の比を違える', dmut('src/design.md', 'の #12161c の 3.12 です。', 'の #12161c の 3.20 です。')],
+  ['頁から本文へ飛ぶつなぎの文を外す', dmut('src/design.md', 'どの頁にも、本文へ飛ぶつなぎ（「本文へ」）を、頁の初めに置いています。', '')],
+  ['頁から印刷の文を外す', dmut('src/design.md', '印刷では、上の帯と上の欄とクラス表を、白地の黒字にします。', '')],
 ];
 const dmissed = dbreaks.filter(([, y]) => designVerdict(y).length === 0).map(([k]) => k);
 ok('壊して確かめる：部品の表・許諾・書体の名・書体の名前表と字・許諾の文・SVG の要素・ラスター・色の比・動き・代わりの文・拡大・フォーカス・条文の抜粋と引用と出どころ・正式の名のどれでも落ちる（' + (dbreaks.length - dmissed.length) + ' / ' + dbreaks.length + '）', dmissed.length === 0, dmissed.join(' / '));
+
+/* 最終更新の日と、リポジトリの履歴（2026-11-23）。頁の元のファイルを最後に変えた日（UTC）より、最終更新の日が前でないこと。
+ * まだ記録していない変更があれば、今日（UTC）を求める。履歴の浅い複製（CI の既定）では、日が分からないので省く。 */
+function gitDates() {
+  const cp = require('child_process');
+  try {
+    if (cp.execFileSync('git', ['rev-parse', '--is-shallow-repository'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() !== 'false') return null;
+    const env = Object.assign({}, process.env, { TZ: 'UTC' }), today = new Date().toISOString().slice(0, 10), out = {};
+    for (const [s] of B.PAGES) {
+      const f = 'src/' + s + '.md';
+      const dirty = cp.spawnSync('git', ['diff', '--quiet', 'HEAD', '--', f], { cwd: ROOT }).status !== 0;
+      out[f] = dirty ? today : cp.execFileSync('git', ['log', '-1', '--format=%cd', '--date=format-local:%Y-%m-%d', '--', f], { cwd: ROOT, env }).toString().trim();
+    }
+    return out;
+  } catch (e) { return null; }
+}
+function updatedVerdict(x, dates) {
+  const bad = [];
+  for (const [f, d] of Object.entries(dates)) { const u = (/^最終更新：(\d{4}-\d{2}-\d{2})。$/m.exec(x[f] || '') || [, ''])[1]; if (!u || u < d) bad.push(f + '：最終更新 ' + u + ' が、最後に変えた日 ' + d + ' より前'); }
+  return bad;
+}
+console.log('\n5. 最終更新の日と履歴');
+const gd = gitDates();
+if (!gd) console.log('  省  履歴の浅い複製なので、最終更新の日と履歴の突き合わせを省きました');
+else {
+  const uv = updatedVerdict(real, gd);
+  ok('どの頁の最終更新の日も、元のファイルを最後に変えた日より前でない', uv.length === 0, uv.join(' / '));
+  const late = Object.assign({}, gd, { 'src/guide.md': '2099-01-01' });
+  ok('壊して確かめる：元のファイルを最終更新の日より後に変えたことにすると落ちる', updatedVerdict(real, late).length === 1);
+}
 
 console.log('\n' + '-'.repeat(48));
 if (fails.length) { console.log(pass + ' 件が通り、' + fails.length + ' 件が通りませんでした。'); process.exit(1); }

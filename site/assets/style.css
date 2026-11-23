@@ -70,6 +70,8 @@ main { counter-reset: chapter; }
 h2 { counter-increment: chapter; font-family: var(--head); font-weight: 700; font-size: 1.16rem; letter-spacing: .08em; margin-top: 3.6rem; margin-bottom: 1.2rem; display: flex; align-items: baseline; gap: .9rem; }
 h2::after { content: ""; flex: 1; height: 1px; background: var(--hair); align-self: center; }
 h2::before { content: counter(chapter, decimal-leading-zero); font-family: var(--display); font-weight: 400; font-size: .72rem; letter-spacing: .12em; color: var(--gold); min-width: 1.8em; font-variant-numeric: tabular-nums; }
+/* 原理は、巻の名が番号を持つので、見出しの通し番号を出さない（「06 第二巻」のように二つの番号が並ばないように。2026-11-23）。 */
+.p-strict main h2::before { content: none; }
 h3 { font-family: var(--head); font-weight: 600; font-size: 1.02rem; letter-spacing: .08em; margin-top: 2.4rem; margin-bottom: .6rem; }
 p { margin-top: .9rem; margin-bottom: .9rem; }
 strong { font-weight: 600; }
@@ -138,7 +140,17 @@ h2 .lat { font-weight: 400; color: var(--muted); letter-spacing: .32em; white-sp
 .idx-l a { white-space: nowrap; }
 a.xref { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--gold); }
 a.xref:hover { color: var(--accent); border-bottom-style: solid; }
-.p-strict main > [id] { scroll-margin-top: 1.5rem; }
+.p-strict main > [id], main h2[id], main h3[id] { scroll-margin-top: 1.5rem; }
+/* 入れ子の目次（2026-11-23）：巻や見出しの下の段は、細い罫の内に小さく。目次は原理のほか、長い頁にも置く。 */
+.toc ol ol { list-style: none; margin: 0 0 .5rem; padding: 0 0 0 .9rem; border-left: 1px solid var(--hair); }
+.toc ol ol li { margin: 0; }
+.toc ol ol a { display: block; padding: .12rem 0; font-family: var(--sans); font-size: .82rem; letter-spacing: .04em; color: var(--muted); }
+.toc ol ol a:hover { color: var(--ink); }
+.toc-books > li { break-inside: avoid; }
+.updated { font-size: .8rem; letter-spacing: .06em; color: var(--muted); }
+/* 本文へ飛ぶつなぎ（2026-11-23）。ふだんは画面の外に置き、キーボードで選んだときだけ、左上に出す。 */
+.skip { position: absolute; z-index: 10; left: max(12px, env(safe-area-inset-left, 0px)); top: -4rem; padding: .45rem .9rem; background: var(--mastbg); color: var(--mastink); border: 1px solid var(--mastgold); font-size: .84rem; letter-spacing: .1em; text-decoration: none; }
+.skip:focus { top: .5rem; }
 .p-strict main > p[id]:target { box-shadow: -1rem 0 0 -0.94rem var(--gold); }
 .p-strict main > p br:has(+ .orig) { display: none; }
 .orig { display: block; margin-top: .55rem; padding-left: .9rem; border-left: 1px solid var(--hair); font-family: var(--sans); font-size: .8rem; line-height: 1.8; letter-spacing: .04em; color: var(--muted); }
@@ -151,6 +163,8 @@ table { border-collapse: collapse; width: 100%; font-size: .93rem; }
 th { font-weight: 400; font-size: .72rem; letter-spacing: .26em; color: var(--muted); text-align: left; padding: .5rem .8rem .5rem 0; border-bottom: 1px solid var(--ink); }
 td { padding: .8rem .8rem .8rem 0; border-bottom: 1px solid var(--hair); vertical-align: top; }
 td:first-child { white-space: nowrap; font-family: var(--head); color: var(--gold); padding-right: 1.2rem; }
+/* 原理の記号の表は一つめの欄が長いので、折り返して、二つめの欄の幅を残す（2026-11-23）。 */
+.p-strict td:first-child { white-space: normal; min-width: 6.5em; }
 .p-canon td:nth-child(2) { font-family: var(--head); white-space: nowrap; padding-right: 1.2rem; }
 
 /* デザインの法的な扱いの部品の表は欄が五つあるので、どの幅でも行を積む。頭の行は見た目だけ隠し（読み上げには残す）、二つめからは欄の名を添える。 */
@@ -231,7 +245,8 @@ main > .class-sheet { max-width: calc(var(--measure) + 8rem); }
 
 /* 遊び場 */
 .play { margin-top: 2rem; margin-bottom: 2.4rem; }
-.play .row { display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 1.2rem; }
+/* ボタンの行は、狭い画面で二つの目が縦に並んでも見えるよう、上に留める（2026-11-23）。 */
+.play .row { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: .6rem; margin-bottom: 1.2rem; padding-block: .6rem; background: var(--bg); }
 .play button { font: inherit; font-size: .84rem; letter-spacing: .1em; padding: .5rem 1.1rem; border: 1px solid var(--ink); background: transparent; color: var(--ink); border-radius: 0; cursor: pointer; transition: background .2s, color .2s; }
 .play button:hover { background: var(--ink); color: var(--bg); }
 .views { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1px; background: var(--hair); border: 1px solid var(--hair); }
@@ -306,8 +321,9 @@ main > h1 { animation-delay: .08s; } main > .en-title { animation-delay: .16s; }
   .cls-skills i { grid-column: 2; }
 }
 p, li, h1, h2, h3, blockquote, figcaption, .cap, td, dd, .cls-skills span { word-break: auto-phrase; line-break: strict; }
-/* 印刷では背景が落ちるので、クラス表を白地の黒字に戻す。 */
-@media print { .class-sheet { background: none; box-shadow: none; border: 1px solid #000; } .class-sheet, .class-sheet * { color: #000 !important; border-color: #888 !important; } .frame { background: none; } }
+/* 印刷では背景が落ちるので、クラス表を白地の黒字に戻す。上の帯と上の欄も、白地の黒字にする（2026-11-23）。本文へ飛ぶつなぎは刷らない。 */
+@media print { .class-sheet { background: none; box-shadow: none; border: 1px solid #000; } .class-sheet, .class-sheet * { color: #000 !important; border-color: #888 !important; } .frame { background: none; }
+  .frame, .frame *, header, header * { color: #000 !important; border-color: #888 !important; } header { background: none !important; box-shadow: none !important; } .skip, .play .row { display: none; } }
 
 /* 上の欄と、はじめにの頭（2026-11-22）。上の欄は夜の黒の帯にし、クラスの紋と名とラテン語の添え名、その下に頁の案内を置き、金の二本の線で締める。
  * はじめには、真ん中に題と添え名と金の短い線、一文、三つの紋を並べ、断りを、上に金の線を引いた箱に入れる。 */
