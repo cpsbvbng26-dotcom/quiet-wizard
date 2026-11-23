@@ -125,7 +125,7 @@ function woff2(buf) {
 
 function files() {
   const x = {};
-  for (const f of ['README.md', 'CLAUDE.md', 'PRINCIPIA.md', 'build.js', 'assets/play.js', 'assets/style.css', 'assets/OFL-InterTight.txt', 'verification/statutes-texts.json', ...B.PAGES.map(([s]) => 'src/' + s + '.md'), ...B.EN_PAGES.map((s) => 'src/' + s + '.en.md')]) x[f] = R(f);
+  for (const f of ['README.md', 'README.en.md', 'CLAUDE.md', 'PRINCIPIA.md', 'build.js', 'assets/play.js', 'assets/style.css', 'assets/OFL-InterTight.txt', 'verification/statutes-texts.json', ...B.PAGES.map(([s]) => 'src/' + s + '.md'), ...B.EN_PAGES.map((s) => 'src/' + s + '.en.md')]) x[f] = R(f);
   for (const f of fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(path.join(ROOT, 'site')) : []) if (/\.html$/.test(f)) x['site/' + f] = R('site/' + f);
   /* 配る素材（書体・図・スクリプト・意匠）は、assets と site/assets で同じであること。書体は中身の指紋で固める。 */
   const sha = (p) => { try { return require('crypto').createHash('sha256').update(fs.readFileSync(path.join(ROOT, p))).digest('hex'); } catch (e) { return ''; } };
@@ -741,9 +741,111 @@ function englishVerdict(x) {
   if (jumps < 5) bad.push('ほかの英語の頁から英語の原理の項へ飛ぶリンクが少ない（' + jumps + '）');
   /* デザインに関する法的な扱いは、英語の頁の書体と図の文字の扱いを書く。 */
   for (const w of ['英語の頁では、本文と見出しの英字も Inter Tight で組みます。', '英語の頁の図と場面の中の文字は、`build.js` の FIG_EN の表で英語に替えて描きます。図のファイルは一つのままです。英語の文字も、形を色の名で指しません。']) if (!(x['src/design.md'] || '').includes(w)) bad.push('デザインに関する法的な扱い：' + w.slice(0, 24));
+  /* README の英語：別の枠だという断り、クラスの断り、開示（2026-11-23）。 */
+  for (const w of [FRAME_EN, CLASS_NOTE_EN, 'Claude is not an author.', "if the two differ, the Japanese one governs."]) if (!(x['README.en.md'] || '').includes(w)) bad.push('README.en.md：' + w.slice(0, 30));
+  /* 英語の頁の本文の日本語は、どれも lang="ja" の中にある（原文・条文・名など）。 */
+  for (const f of html.filter((k) => langOf(k) === 'en')) {
+    let b = x[f].slice(x[f].indexOf('<body'));
+    for (let i = 0; i < 3; i++) b = b.replace(/<(span|blockquote|a|p|h[1-6])\b[^>]*\slang="ja"[^>]*>(?:(?!<\1\b)[\s\S])*?<\/\1>/g, '');
+    const stray = b.replace(/<[^>]+>/g, '').match(/[\u3040-\u30ff\u4e00-\u9fff]+/g);
+    if (stray) bad.push(f + '：lang="ja" の外に日本語がある（' + stray.slice(0, 3).join('、') + '）');
+  }
   /* 断りと開示の英語：学術的な正文の DOI は確かめた一つだけ。 */
   const ah = x['site/about.en.html'] || '';
   if (!ah.includes(PAPER_LINK) || ah.split('doi.org').length !== 2) bad.push('英語の断りと開示：学術的な正文の DOI は、確かめた一つだけ');
+  return bad;
+}
+
+/* 英語の決まりの頁（2026-11-23）。条文は写しの日本語のまま置き、英語は「Summary, not a translation」の札を付けた要約。
+ * 日本語の頁と同じ条を引き、抜粋は同じ文を切り出す。日本語の頁に従うという断りを一度だけ置く。頁の数と事実は、日本語の頁（検査が事実と照らしたもの）と同じ。 */
+const EN_LEGAL_SAYS = {
+  'src/terms.en.md': ['These terms are governed by Japanese law.', 'Disputes not settled that way fall under the court that the law designates.', "These terms do not reduce the operator's responsibility beyond what the law allows.",
+    'This site charges no one anything.', 'Changes that are unfavourable to readers are announced on this page, with what changes and the date it takes effect, before that date.',
+    'Whether the same or similar names are registered as trademarks has not been searched in the Japan Patent Office database.', 'Using the text or figures of this site as material to pry into, make fun of, or blame anyone for their sexual experience.',
+    'The operator does not speak for wizards.', 'Every page linked from the top menu and the footer shows a last-updated date, which is the date its main text last changed.', 'It is not elitism'],
+  'src/privacy.en.md': ['The site collects nothing.', 'It asks readers nothing about themselves: not sexual experience, not age, not name.', 'For people without a GitHub account, or who do not make their contact details public, there is currently no private way to get in touch.',
+    'The head of every page carries a Google Search Console ownership token', 'The pages send nothing to Google with this token.', 'What the operator can see in Search Console is statistics collected on the Google Search side'],
+  'src/requests.en.md': ['The title and text of an issue opened by anyone other than the operator are passed to the language model only when the writer consents within that issue.', 'Comments are not passed to the language model.', 'that entry is removed from the current version before any decision is made.'],
+  'src/legality.en.md': ["It records the operator's own understanding and is not legal advice to readers.", 'It has not been checked by a lawyer.', 'No statute text is written from memory.', 'Statutes are shown in the Japanese original only. The English under each one is a summary, not a translation.'],
+  'src/design.en.md': ["It records the operator's own understanding and is not legal advice to readers.", 'It has not been checked by a lawyer.', 'No statute text is written from memory.', 'The English beside them is a summary, not a translation.',
+    'This page decides neither that they do nor that they do not.', 'None of the licences has been changed.', 'Whether the same or similar names, or similar shapes, are registered as trademarks or designs has not been searched in the Japan Patent Office database.',
+    'When a part changes, this page and the check are corrected in the same change (the same PR).', 'Inter Tight is the only typeface distributed.', 'The card carries no Japanese text',
+    'The Japanese page and this English page are corrected together.'],
+  'src/design.md': ['英語の頁（`src/design.en.md`）の表と文も、同じ変更で直します。'],
+};
+function legalEnVerdict(x) {
+  const bad = [];
+  let S = {};
+  try { S = JSON.parse(x['verification/statutes-texts.json']); } catch (e) { bad.push('条文の写しが読めない'); }
+  const T = S.texts || {};
+  const unesc = (t) => t.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  if (B.EN_PAGES.slice().sort().join() !== B.PAGES.map(([s]) => s).sort().join()) bad.push('英語の頁の無い頁がある');
+  for (const [f, says] of Object.entries(EN_LEGAL_SAYS)) for (const w of says) if (!(x[f] || '').includes(w)) bad.push(f + '：' + w.slice(0, 40));
+  /* 日本語の頁に従うという断り：英語の決まりの頁に一度だけ。 */
+  for (const f of Object.keys(x).filter((k) => /^site\/.+\.html$/.test(k))) {
+    const n = (x[f].match(/<p class="langnote">/g) || []).length, want = langOf(f) === 'en' && B.RULE_PAGES.includes(pageOf(f)) ? 1 : 0;
+    if (n !== want || (want && !x[f].includes('<p class="langnote">This page is an English version of a Japanese page. If the two differ, the Japanese page governs.</p>'))) bad.push(f + '：日本語の頁に従うという断り（' + n + '）');
+  }
+  /* 条文：英語の頁の日本語の引用は、どれも写しの文の一部で、その下に要約の札。日本語の頁と同じ条を、同じ切り出しで引く。 */
+  for (const s of ['legality', 'design']) {
+    const jm = x['src/' + s + '.md'] || '', em = x['src/' + s + '.en.md'] || '', eh = x['site/' + s + '.en.html'] || '';
+    const jFull = [...jm.matchAll(/<!-- 条文 ([^>]+?) -->/g)].flatMap((m) => m[1].split('、').map((k) => k.trim()));
+    const jEx = [...jm.matchAll(/<!-- 抜粋 ([^>]+?) -->/g)].map((m) => m[1].split('｜').map((z) => z.trim()));
+    const eFull = [...em.matchAll(/<!-- statute ([^>]+?) -->/g)].map((m) => m[1].split('｜').map((z) => z.trim()));
+    const eEx = [...em.matchAll(/<!-- excerpt ([^>]+?) -->/g)].map((m) => m[1].split('｜').map((z) => z.trim()));
+    if (eFull.map((e) => e[0]).sort().join() !== jFull.slice().sort().join()) bad.push(s + '.en：全文で引く条が日本語の頁と違う');
+    if (JSON.stringify(eEx.map((e) => [e[0], ...e.slice(2, -1)]).sort()) !== JSON.stringify(jEx.map((e) => [e[0], ...e.slice(2)]).sort())) bad.push(s + '.en：抜粋の条か切り出した文が日本語の頁と違う');
+    for (const e of eFull.concat(eEx)) if (!e[e.length - 1] || /[぀-ヿ一-鿿]/.test(e[e.length - 1]) || e.length < 2) bad.push(s + '.en：' + e[0] + ' の英語の要約が無い');
+    const blocks = [...eh.matchAll(/<h3[^>]*>([^\n]*?)<span lang="ja">（([^）]+)）<\/span><\/h3>\n<blockquote lang="ja">((?:<p>[^<]*<\/p>)+)<\/blockquote>\n(<p class="summary"><span class="sum-k">([^<]*)<\/span>[^<]+<\/p>)?/g)];
+    if (blocks.length !== jFull.length + jEx.length || (eh.match(/<blockquote lang="ja">/g) || []).length !== blocks.length) bad.push(s + '.en：条文の数が ' + blocks.length);
+    for (const b of blocks) {
+      const k = b[2], t = T[k] || '';
+      if (!t) bad.push(s + '.en：写しに無い条 ' + k);
+      for (const q of [...b[3].matchAll(/<p>([^<]*)<\/p>/g)].map((m) => unesc(m[1]))) if (!t.includes(q)) bad.push(s + '.en：' + k + ' の引用が写しの文の一部でない');
+      if (b[5] !== 'Summary, not a translation') bad.push(s + '.en：' + k + ' の英語に「Summary, not a translation」の札が無い');
+      if (!b[1].startsWith(B.statuteEn(k))) bad.push(s + '.en：' + k + ' の英語の名');
+    }
+    if ((eh.match(/<p class="note">Source: /g) || []).length !== 1 || !eh.includes('commit ' + String((S.from || {}).commit || '').slice(0, 7) + ')') || !eh.includes('recorded by the operator on ' + S.recorded)) bad.push(s + '.en：条文の出どころ');
+  }
+  /* 適法性の説明：表は、引いた条をすべて挙げる。 */
+  const le = x['src/legality.en.md'] || '';
+  for (const k of ((/<!-- 条文 ([^>]+?) -->/.exec(x['src/legality.md'] || '') || [, ''])[1]).split('、').filter(Boolean)) {
+    const [law, art] = k.split(' '), num = (/^第(\d+)条(?:の(\d+))?/.exec(art) || []).slice(1).filter(Boolean).join('-');
+    if (!le.split('\n').some((l) => l.startsWith('| ' + B.LAW_EN[law] + ', Article') && new RegExp('\\b' + num + '\\b').test(l))) bad.push('legality.en：表に無い条 ' + k);
+  }
+  /* 求めと連絡：答える日の数は日本語の頁と同じ。 */
+  const days = (/(\d+) 日以内に答える/.exec(x['src/requests.md'] || '') || [])[1];
+  if (!days || !(x['src/requests.en.md'] || '').includes('The operator aims to reply within ' + days + ' days.')) bad.push('requests.en：答える日の数が日本語の頁と違う');
+  /* デザインに関する法的な扱い：部品の表と、数と事実は、日本語の頁（designVerdict が事実と照らしたもの）と同じ。 */
+  const dj = x['src/design.md'] || '', de = x['src/design.en.md'] || '';
+  const rowsOf = (md) => md.split('\n').filter((l) => l.startsWith('| ') && !/^\| (部品|Part|---)/.test(l));
+  const filesOf = (md) => rowsOf(md).flatMap((l) => [...(l.split(' | ')[1] || '').matchAll(/`([^`]+)`/g)].map((m) => m[1])).sort().join('\n');
+  const have = x['#parts'].split('\n').filter(Boolean).sort().join('\n');
+  if (filesOf(de) !== have || !rowsOf(de).some((l) => l.startsWith('| Footer seal | MARK in `build.js`'))) bad.push('design.en：部品の表とファイルが合わない');
+  for (const l of rowsOf(de)) { const c = l.split(' | '); const f = c[1] || '', lic = c[3] || ''; const want = /\.woff2|OFL/.test(f) ? 'SIL Open Font License 1.1' : /\.(css|js)`/.test(f) && !/MARK/.test(f) ? 'MIT, as code' : 'CC BY 4.0, as a figure'; if (!lic.includes(want)) bad.push('design.en：部品の表の許諾が違う：' + f.slice(0, 30)); }
+  for (const m of dj.matchAll(/SHA-256 は ([0-9a-f]{64})/g)) if (!de.includes('SHA-256 is ' + m[1])) bad.push('design.en：SHA-256 が日本語の頁と違う');
+  for (const m of dj.matchAll(/(\d+)×(\d+) の PNG/g)) if (!de.includes('A ' + m[1] + '×' + m[2] + ' PNG')) bad.push('design.en：PNG の大きさが日本語の頁と違う');
+  const get = (re) => (re.exec(dj) || []).slice(1);
+  const [chars] = get(/収める字は (\d+) 字です。/), [asc, sym, list] = get(/ASCII の (\d+) 字（U\+0020〜U\+007E）と、記号の (\d+) 字（([^）]+)）です。/);
+  if (!chars || !de.includes('It holds ' + chars + ' characters.') || !de.includes('They are the ' + asc + ' ASCII characters (U+0020 to U+007E) and ' + sym + ' symbols (' + String(list).split('、').join(', ') + ').')) bad.push('design.en：書体の字の数と範囲が日本語の頁と違う');
+  const [ver] = get(/Inter Tight（Version ([\d.]+)）/), [chr] = get(/Chromium（版 ([\d.]+)）/);
+  if (!ver || !de.includes('Inter Tight (Version ' + ver + ')') || !chr || !de.includes('Chromium (version ' + chr + ')')) bad.push('design.en：書体か Chromium の版が日本語の頁と違う');
+  const [sch, fg, bg, r] = get(/いちばん低いのは、(明るい|暗い)配色の (--\w+) と (--\w+) の ([\d.]+) です。/);
+  if (!r || !de.includes('The lowest is the ' + (sch === '明るい' ? 'light' : 'dark') + " scheme's " + fg + ' against ' + bg + ', at ' + r + '.')) bad.push('design.en：いちばん低い色の比が日本語の頁と違う');
+  const [eye, c1, c2, r2] = get(/遊び場の網で、いちばん低いのは、(魔法使いの目|外の目)の (#[0-9a-f]+) と地の (#[0-9a-f]+) の ([\d.]+) です。/);
+  if (!r2 || !de.includes("The lowest in the playground's network is the " + (eye === '外の目' ? 'outside view' : "wizard's view") + "'s " + c1 + ' against the ground ' + c2 + ', at ' + r2 + '.')) bad.push('design.en：遊び場の網の色の比が日本語の頁と違う');
+  const [ms1, ms2] = get(/一日の間を (\d+) ミリ秒から (\d+) ミリ秒に延ばします/);
+  if (!ms1 || !de.includes('lengthens each day from ' + ms1 + ' milliseconds to ' + ms2 + ' milliseconds.')) bad.push('design.en：遊び場の間が日本語の頁と違う');
+  const nr = x['#raster'].split('\n').filter((f) => f && !f.startsWith('site/')).length;
+  if (!de.includes('are only the ' + enWord(nr) + ' PNGs')) bad.push('design.en：ラスターの画像の数が違う');
+  const [els] = get(/SVG は、(.+) の要素だけで組んでいます。/), elist = String(els).split('、');
+  if (!els || !de.includes('built only from the elements ' + elist.slice(0, -1).join(', ') + ' and ' + elist[elist.length - 1] + '.')) bad.push('design.en：SVG の要素が日本語の頁と違う');
+  for (const [jk, ek] of [['名指す書体', 'Named typefaces'], ['端末の標準の書体を指す語', "Words that point to the device's default typefaces"]]) { const [v] = get(new RegExp('^' + jk + '：(.+)。$', 'm')); if (!v || !de.includes(ek + ': ' + v.split('、').join(', ') + '.')) bad.push('design.en：' + ek + ' が日本語の頁と違う'); }
+  for (const [, q] of DESIGN_QUOTES) if (!de.includes('〘「' + q + '」〙')) bad.push('design.en：「」で引く語句を日本語のまま置いていない：' + q.slice(0, 12));
+  for (const q of OFL_QUOTES) if (!de.includes('> ' + q)) bad.push('design.en：許諾の文の引用が違う：' + q.slice(0, 20));
+  const formal = '障害を理由とする差別の解消の推進に関する法律（障害者差別解消法）';
+  if (!de.includes('〘' + formal + '〙')) bad.push('design.en：障害者差別解消法の正式の名');
+  for (const a of AWAY) if (de.toLowerCase().includes(a)) bad.push('design.en：' + a);
   return bad;
 }
 
@@ -1255,7 +1357,7 @@ else {
 }
 
 console.log('\n6. 英語の頁');
-const ev = englishVerdict(real);
+const ev = englishVerdict(real).concat(legalEnVerdict(real));
 ok('英語の頁は作ったものと同じで、どの頁にも英語の断りと開示、言葉の切り替え、両向きの hreflang の対があり、原典と原理の原文は日本語のまま一字一句同じで、散文の数が数えた数と同じ', ev.length === 0, ev.join(' / '));
 const emut = (f, a, b) => Object.assign({}, real, { [f]: String(real[f]).replace(a, b) });
 const ebreaks = [
@@ -1324,9 +1426,41 @@ const ebreaks = [
   ['英語の断りと開示から英語の頁の開示を外す', emut('src/about.en.md', 'If the two differ, the Japanese page governs.', '')],
   ['日本語の断りと開示から英語の頁の開示を外す', emut('src/about.md', '二つが食い違うときは、日本語の頁に従います。', '')],
   ['デザインの頁から英語の図の文字の扱いを外す', emut('src/design.md', '英語の文字も、形を色の名で指しません。', '')],
+  /* 英語の決まりの頁（2026-11-23）。 */
+  ['英語の利用規約から準拠法を外す', emut('src/terms.en.md', 'These terms are governed by Japanese law.', '')],
+  ['英語の利用規約で責任を軽くする', emut('src/terms.en.md', "These terms do not reduce the operator's responsibility beyond what the law allows.", 'The operator bears no responsibility at all.')],
+  ['英語の個人情報で集めると書く', emut('src/privacy.en.md', 'The site collects nothing.', 'The site collects analytics.')],
+  ['英語の求めと連絡で同意なく issue を言語モデルに渡す', emut('src/requests.en.md', ' only when the writer consents within that issue', '')],
+  ['英語の求めと連絡の答える日数を違える', emut('src/requests.en.md', 'within 7 days.', 'within 3 days.')],
+  ['英語の適法性の説明から弁護士の確認の断りを外す', emut('src/legality.en.md', 'It has not been checked by a lawyer.', '')],
+  ['英語の決まりの頁から日本語の頁に従う断りを外す', emut('site/terms.en.html', /<p class="langnote">[^<]*<\/p>\n?/, '')],
+  ['日本語の頁に従う断りを二度置く', emut('site/design.en.html', '</main>', '<p class="langnote">This page is an English version of a Japanese page. If the two differ, the Japanese page governs.</p></main>')],
+  ['英語の条文の要約から札を外す', emut('site/legality.en.html', 'Summary, not a translation</span>', 'Translation</span>')],
+  ['英語の頁の条文を手で変える', emut('site/legality.en.html', '公然と人を侮辱した者は', '人を侮辱した者は')],
+  ['英語の頁で条を一つ引かない', emut('src/legality.en.md', /<!-- statute 民法 第709条[^\n]*\n/, '')],
+  ['英語の抜粋を写しに無い文にする', emut('src/design.en.md', '第二十条 著作者は、その著作物及びその題号の同一性', '第二十条 著作者は、その著作物の同一性')],
+  ['英語の条文の要約を外す', emut('src/legality.en.md', '｜Whoever publicly insults a person, even without stating facts, is punished.', '')],
+  ['英語の条文の出どころのコミットを外す', emut('site/design.en.html', ', commit 85dd680)', ')')],
+  ['英語の適法性の説明の表から条を外す', emut('src/legality.en.md', /\| Civil Code, Article 709 [^\n]+\n/, '')],
+  ['英語の部品の表から一行外す', emut('src/design.en.md', /\| Favicon \|[^\n]+\n/, '')],
+  ['英語の部品の表のカードの SHA-256 を違える', emut('src/design.en.md', /(\| `assets\/card\.png` \|[^|]*SHA-256 is )[0-9a-f]{64}/, '$1' + '0'.repeat(64))],
+  ['英語の部品の表の許諾を変える', emut('src/design.en.md', '| MIT, as code | The check confirms the contrast ratios', '| CC BY 4.0, as a figure | The check confirms the contrast ratios')],
+  ['英語の書体の字の数を違える', emut('src/design.en.md', 'It holds 103 characters.', 'It holds 100 characters.')],
+  ['英語の色の比の数を違える', emut('src/design.en.md', ', at 5.73.', ', at 5.80.')],
+  ['英語の遊び場の網の色の比を違える', emut('src/design.en.md', ', at 3.12.', ', at 3.20.')],
+  ['英語のラスターの画像の数を違える', emut('src/design.en.md', 'are only the two PNGs', 'are only the three PNGs')],
+  ['英語の名指す書体を一つ書き落とす', emut('src/design.en.md', 'Helvetica Neue, Arial, Hiragino', 'Helvetica Neue, Hiragino')],
+  ['英語の「」で引く語句を一字変える', emut('src/design.en.md', '〘「業として」〙', '〘「業」〙')],
+  ['英語の許諾の文の引用を一語変える', emut('src/design.en.md', '> to use, study, copy, merge, embed, modify,', '> to use, study, copy, merge, embed,')],
+  ['英語のデザインの頁で研究の系列の名を出す', emut('src/design.en.md', 'Laws outside Japan have not been looked into.', 'Laws outside Japan have not been looked into. See orcid.org.')],
+  ['英語の頁で日本語を lang="ja" の外に書く', emut('src/faq.en.md', '(in Japanese, 〘地味な魔法使い〙)', '(in Japanese, 地味な魔法使い)')],
+  ['英語の頁の目次の日本語から lang を外す', emut('site/legality.en.html', /<li><a href="#s5-1">([^<]*)<span lang="ja">([^<]*)<\/span><\/a><\/li>/, '<li><a href="#s5-1">$1$2</a></li>')],
+  ['英語の README から別の枠だという断りを外す', emut('README.en.md', FRAME_EN, '')],
+  ['英語の README からクラスの断りを外す', emut('README.en.md', CLASS_NOTE_EN, '')],
+  ['日本語のデザインの頁から英語の頁の表を直す断りを外す', emut('src/design.md', '英語の頁（`src/design.en.md`）の表と文も、同じ変更で直します。', '')],
   ['英語の断りと開示から英語の版の DOI の断りを外す', emut('src/about.en.md', 'Its DOI is not given here, because it has not been checked.', 'Its DOI is 10.5281/zenodo.0.')],
 ];
-const emissed = ebreaks.filter(([, y]) => englishVerdict(y).length === 0 && verdict(y).length === 0).map(([k]) => k);
+const emissed = ebreaks.filter(([, y]) => englishVerdict(y).length === 0 && legalEnVerdict(y).length === 0 && verdict(y).length === 0).map(([k]) => k);
 ok('壊して確かめる：英語の頁の断り・切り替え・hreflang・sitemap・原文・数・遊び場・図の文字のどれでも落ちる（' + (ebreaks.length - emissed.length) + ' / ' + ebreaks.length + '）', emissed.length === 0, emissed.join(' / '));
 
 console.log('\n' + '-'.repeat(48));
