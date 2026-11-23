@@ -1,0 +1,33 @@
+name: 本番
+
+# 本番の頁と共有のカードが、ログインなしで外から読めるかを確かめる（verification/live.js、2026-11-23）。
+# 共有したときに画像が出ないと運営者が知らせたのがきっかけ。作業の環境からは本番に届かないので、ここから取り寄せる。
+# 毎日一度と、この二つのファイルを変えた PR と、手で起こしたときに回す。読むだけで、何も書かない。
+on:
+  schedule:
+    - cron: '37 4 * * *'
+  pull_request:
+    paths:
+      - verification/live.js
+      - .github/workflows/live.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    name: 本番の頁と共有のカード（ログインなし）
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: 確かめが落ちるべきものを落とすか
+        run: node verification/live.js --self-test
+      - name: 本番を取り寄せる
+        run: node verification/live.js
