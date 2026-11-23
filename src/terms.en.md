@@ -1,6 +1,6 @@
 # Terms of Use
 
-Last updated: 2026-11-23.
+Last updated: 2026-11-24.
 
 ## About these terms
 
@@ -52,19 +52,40 @@ A person who sends a scene to the [Field Guide by Visitors](entries.en.html) tic
 - Saying nothing about anyone's sexual experience, with no sexual content.
 - Not claiming that they or anyone else is a wizard.
 - The text being play, not science or advice.
-- Licensing the text under CC BY 4.0, with credit following the "Credit" box.
+- Licensing the text under CC BY 4.0, choosing to have no name shown on the page, and not asking for credit.
 - Agreeing that, when adding the text, the operator may change it in three ways only: shortening it, making the notation consistent (characters, punctuation, kana and kanji), and replacing words that do not fit the rules of this site.
 
 An issue is public on GitHub from the moment it is opened, before the operator reads it. Anyone can read it, and the GitHub username of the person who opened it is shown with it.
 Copyright in the text stays with the person who sent it in. The operator and readers use it under the terms of CC BY 4.0.
 The operator does not ask anyone not to exercise moral rights. The only edits are the three agreed to with the box.
 A change of meaning is asked about in the issue first, and made only with the sender's agreement. An edited scene is marked as edited on the page.
-Credit follows the "Credit" box. With it, the GitHub username is shown; without it, no name is shown. Without the box, the sender is taken not to want a name shown.
+Scenes on the page are shown without the sender's name. Every scene is shown anonymously, and the number of the issue is not shown on the page either.
+The issue itself is public under GitHub's rules, with the GitHub username of the person who opened it. This site cannot change that.
+Each GitHub account can send 3 scenes at most, over its whole life. A fourth and later scenes are not accepted.
+What is counted is every issue with the label entry that the same account opened earlier in this repository, whether it was added, not chosen, closed or withdrawn.
+Issues deleted by the operator do not appear in GitHub's list, and cannot be counted.
+Once 5 scenes of one law are on the page, no more scenes for that law are taken. The whole guide holds 50 scenes at most.
+For a scene that is not accepted, the intake says so in a comment, with the limit that applies. The issue is not closed.
+These three (no names, the limit for each account, and the limit for each law) take effect on 2026-12-08 ("Planned changes" below).
 The operator may decline a scene, sometimes without giving a reason.
 Scenes that make fun of people, target someone, or sort people by attributes are not added.
-The operator may remove an added scene. On a request from the sender, or from someone the scene concerns, it is removed promptly. Hiding the name, and editing or deleting the issue, can also be asked for ([requests and contact](requests.en.html)).
+The operator may remove an added scene. On a request from the sender, or from someone the scene concerns, it is removed promptly. Editing or deleting the issue can also be asked for ([requests and contact](requests.en.html)).
 Senders are given no payment and no prize, and no fee is taken from them. Being added is not a prize.
 Adding a scene does not mean that the scene shows a law to be true.
+
+## Planned changes
+
+Changes that may be unfavourable to people who send scenes to the [Field Guide by Visitors](entries.en.html) were announced on this page on 2026-11-24.
+They take effect on 2026-12-08 (Japan time).
+There are three changes.
+
+- Scenes on the page are shown without the sender's name. The "Credit" box was removed from the form, and the licence box became the choice to have no name shown on the page.
+- Each GitHub account can send 3 scenes at most, over its whole life.
+- Once 5 scenes of one law are on the page, no more scenes for that law are taken.
+
+The two limits do not apply to issues opened before 2026-12-08.
+The "Credit" box was removed from the form on 2026-11-24. By that day, no issue had been opened to send a scene to the Field Guide by Visitors.
+There are 14 days between the announcement and the date the changes take effect. These terms set no number of days, so two weeks were left for anyone in the middle of sending a scene to read the new rules.
 
 ## No warranty
 
