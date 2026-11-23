@@ -743,6 +743,13 @@ function englishVerdict(x) {
   for (const w of ['英語の頁では、本文と見出しの英字も Inter Tight で組みます。', '英語の頁の図と場面の中の文字は、`build.js` の FIG_EN の表で英語に替えて描きます。図のファイルは一つのままです。英語の文字も、形を色の名で指しません。']) if (!(x['src/design.md'] || '').includes(w)) bad.push('デザインに関する法的な扱い：' + w.slice(0, 24));
   /* README の英語：別の枠だという断り、クラスの断り、開示（2026-11-23）。 */
   for (const w of [FRAME_EN, CLASS_NOTE_EN, 'Claude is not an author.', "if the two differ, the Japanese one governs."]) if (!(x['README.en.md'] || '').includes(w)) bad.push('README.en.md：' + w.slice(0, 30));
+  /* 英語の頁の本文の日本語は、どれも lang="ja" の中にある（原文・条文・名など）。 */
+  for (const f of html.filter((k) => langOf(k) === 'en')) {
+    let b = x[f].slice(x[f].indexOf('<body'));
+    for (let i = 0; i < 3; i++) b = b.replace(/<(span|blockquote|a|p|h[1-6])\b[^>]*\slang="ja"[^>]*>(?:(?!<\1\b)[\s\S])*?<\/\1>/g, '');
+    const stray = b.replace(/<[^>]+>/g, '').match(/[\u3040-\u30ff\u4e00-\u9fff]+/g);
+    if (stray) bad.push(f + '：lang="ja" の外に日本語がある（' + stray.slice(0, 3).join('、') + '）');
+  }
   /* 断りと開示の英語：学術的な正文の DOI は確かめた一つだけ。 */
   const ah = x['site/about.en.html'] || '';
   if (!ah.includes(PAPER_LINK) || ah.split('doi.org').length !== 2) bad.push('英語の断りと開示：学術的な正文の DOI は、確かめた一つだけ');
@@ -1446,6 +1453,8 @@ const ebreaks = [
   ['英語の「」で引く語句を一字変える', emut('src/design.en.md', '〘「業として」〙', '〘「業」〙')],
   ['英語の許諾の文の引用を一語変える', emut('src/design.en.md', '> to use, study, copy, merge, embed, modify,', '> to use, study, copy, merge, embed,')],
   ['英語のデザインの頁で研究の系列の名を出す', emut('src/design.en.md', 'Laws outside Japan have not been looked into.', 'Laws outside Japan have not been looked into. See orcid.org.')],
+  ['英語の頁で日本語を lang="ja" の外に書く', emut('src/faq.en.md', '(in Japanese, 〘地味な魔法使い〙)', '(in Japanese, 地味な魔法使い)')],
+  ['英語の頁の目次の日本語から lang を外す', emut('site/legality.en.html', /<li><a href="#s5-1">([^<]*)<span lang="ja">([^<]*)<\/span><\/a><\/li>/, '<li><a href="#s5-1">$1$2</a></li>')],
   ['英語の README から別の枠だという断りを外す', emut('README.en.md', FRAME_EN, '')],
   ['英語の README からクラスの断りを外す', emut('README.en.md', CLASS_NOTE_EN, '')],
   ['日本語のデザインの頁から英語の頁の表を直す断りを外す', emut('src/design.md', '英語の頁（`src/design.en.md`）の表と文も、同じ変更で直します。', '')],
