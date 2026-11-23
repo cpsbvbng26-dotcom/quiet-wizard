@@ -1,0 +1,8 @@
+{
+  "_": "試験の作り物（test fixture）。寄せられた場面ではない。verification/check.js と check_browser.js が、みんなの図鑑の頁が場面をどれも描くかを確かめるためにだけ使う。data/entries.json には入れない。issue の番号と名も作り物で、実在の issue と人を指さない。",
+  "entries": [
+    { "issue": 9001, "law": 8, "title": "試験の作り物 一", "text": "これは検査のための作り物の文で、寄せられた場面ではありません。第八法則の場面の形だけを借りています。", "lang": "ja", "credit": null, "credit_allowed": false, "edited": false, "accepted": "2026-11-23" },
+    { "issue": 9002, "law": 3, "title": "Test fixture two", "text": "This is made-up text for the check, not a scene that anyone sent in. It only borrows the shape of a scene for Law 3.", "lang": "en", "credit": "fixture-name", "credit_allowed": true, "edited": true, "accepted": "2026-11-23" },
+    { "issue": 9003, "law": 3, "title": "試験の作り物 三", "text": "これも検査のための作り物の文です。名の表示の印はあるが、名を出さない場合を確かめます。", "lang": "ja", "credit": null, "credit_allowed": true, "edited": false, "accepted": "2026-11-22" }
+  ]
+}

@@ -28,12 +28,18 @@
 20. 見た目の部品（`assets/`、`src/hero.svg.part`、`src/figs/`、`docs/figs/`、`tools/`、`build.js` の `MARK`）を変えたら、`src/design.md`（デザインに関する法的な扱い）の表と、`verification/check.js` の確かめを、同じ PR で直す。表とファイルが過不足なく合わなければ、検査が落ちる。条を足すときは、運営者の別のリポジトリの写しから一字一句そのまま写し、`STATUTES_SHA` を改めた理由をコミットと注に書く（2026-11-22）。
 
 21. 英語の頁（2026-11-23）は、日本語の頁ごとに一つ（`src/<名>.en.md` から `site/<名>.en.html`）。訳であって、日本語の頁がもと。二つが食い違えば、日本語の頁に従う。上の帯と下の欄の英語の断りは `build.js` の `FRAME_EN` と `FOOT_EN` で、決めごと 1・15・16 を英語で言い、検査が同じ文で固める。クラスの断り（決めごと 17）も英語のクラス表と問いに置く。原典と原理の原文は日本語のまま、一字一句同じに添え、英語の原典の頁は訳であって原典ではないと断る。どの頁にも、もう一つの言葉の同じ頁への切り替えと、両向きの hreflang の対を置く。遊び場の知らせの文は、`assets/play.js` が頁の lang を読んで選ぶ。英語の散文に書いた数も、検査が数える。英語の決まりの頁では、条文を写しの日本語のまま置き（決めごと 10）、英語は「Summary, not a translation」と札を付けた要約にする。訳は置かない。英語の決まりの頁には、日本語の頁に従うという断りを一度だけ置く。部品を変えたら、`src/design.en.md` の表と文も同じ PR で直す（決めごと 20）。
+22. 参加は、みんなの図鑑（`src/entries.md`）に場面を寄せることだけ（2026-11-23。利用者が GitHub のアカウントを通した参加を求め、Claude が形を決めた）。人が自分を参加者や魔法使いとして名を連ねる一覧は作らない。実在の GitHub の利用者を魔法使いとして並べることになり、決めごと 1・2 に触れるため。
+    場面は GitHub の issue の様式（`.github/ISSUE_TEMPLATE/entry.yml` と `config.yml`、どちらも `intake/entry.js` から `node build.js` が作る生成物）で寄せる。必須の印は、十八歳以上・自分で書いた文・実在の人を書かない・性経験に触れない・誰も魔法使いと呼ばない・遊び・CC BY 4.0 と名の表示・決めた三つの直し（長さ・表記・決めに合わない語）への同意。名の表示と、決めごと 12 の言語モデルへの同意は任意。様式は、issue が開いたその時から公開されることを書く。
+    受付（`.github/workflows/entry.yml` と `intake/entry.js`）は、欄と印を確かめてラベルとコメント一つを付けるだけ。閉じない・鍵を掛けない・消さない・載せない。issue の題と本文を、式にも環境の変数にもシェルにもログにも渡さない。呼べる API は `ALLOWED` の一覧だけ。受付のスクリプトは `tools/` に置かない（`tools/` は決めごと 20 の見た目の部品の置き場）。本物の issue で試さず、`--self-test` で確かめる。
+    載せるのは、運営者か、運営者の求めで Claude が、`data/entries.json` を直す PR だけ。`credit` は、名の表示の印（`credit_allowed`）があるときだけ GitHub の名。Claude は場面を書かない。作り物の場面は `verification/fixtures/` にだけ置き、作り物と書く。載せない決めの語は `intake/entry.js` の `FORBIDDEN`（控えめな一覧）。
+    法的な扱いは、適法性の説明の「参加（みんなの図鑑）の法的な扱い」に、危うさごとに、関わる法令・決め・残ることを書く。写しに無い法令と条は、名と番号だけを書き、文を引かず、確かめていないと書く。番号に確かでない条は、番号を書かない。
 ```
 node build.js
 node verification/check.js
 node tools/card.js --check   # 共有のカードとアイコンを描き直し、同じバイトかを確かめる（Playwright の Chromium が要る）
 node verification/check_browser.js           # ブラウザでの検査（Playwright の Chromium が要る）
 node verification/check_browser.js --break   # site/ の写しを壊し、ブラウザでの検査が落ちることを確かめる
+node intake/entry.js --self-test             # みんなの図鑑の受付を、作り物の本文と作り物の API で確かめる
 ```
 
 ブラウザでの検査（`verification/check_browser.js`、2026-11-23）は、`site/` を手元のサーバーで `site/vercel.json` と同じ見出しで配り、二つの言葉のすべての頁を Chromium で開いて、コンソールと CSP、はみ出し、キーボード、拡大、動き、遊び場、言葉の切り替え、入れ子の 404、頁の中のつなぎを確かめる。CI の `browser` の仕事が、push と PR のたびに確かめと壊し方の両方を走らせる。頁や部品を変えたら、この検査も通す。確かめの数は散文に書かない（走らせたときに出る）。

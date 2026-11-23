@@ -15,6 +15,8 @@
  *   7. どの頁の言葉の切り替えも、対の頁へ行き、また戻る
  *   8. ディレクトリの中の存在しない所在（/x/y.html など）で出る 404 の頁が、CSS と画像を読める
  *   9. 頁の中のつなぎと飛び先が、どれも在る
+ *  10. みんなの図鑑（2026-11-23）は、載せた場面をどれも見える形で描き、零件なら零件の文を見せる。本物の頁（いまは零件）のほかに、
+ *      検査の作り物の場面（verification/fixtures/entries.json）で組んだ写しでも、二つの言葉の頁を、遊び場のほかの確かめにかける
  *
  * 新しい依存は足さない。Playwright は手元にあるもの（require('playwright')）を使い、CI では
  * npm install -g playwright@1.56.1 と NODE_PATH="$(npm root -g)" で入れる。 */
@@ -403,7 +405,36 @@ async function checkLinks(env, base, pg) {
   return linkVerdict(env, base, pathOf(pg), links);
 }
 
-const KINDS = { console: checkConsole, overflow: checkOverflow, keyboard: checkKeyboard, zoom: checkZoom, motion: checkMotion, play: checkPlay, lang: checkLang, links: checkLinks };
+/* みんなの図鑑：頁の文の場面の数だけ、場面が見える形で描かれ、言葉の印（lang）を持つ。零件なら零件の文が見える。 */
+async function checkEntries(env, base, pg) {
+  if (pg.out !== 'entries') return [];
+  const { page } = await open(env.ctx.plain, base + pathOf(pg));
+  const r = await page.evaluate(() => {
+    const bad = [], vis = (e) => { const b = e.getBoundingClientRect(), s = getComputedStyle(e); return b.width > 0 && b.height > 0 && s.display !== 'none' && s.visibility !== 'hidden' && Number(s.opacity) > 0; };
+    const qs = [...document.querySelectorAll('main blockquote.entry')], none = document.querySelector('main .entries-none'), count = document.querySelector('main .entries-count');
+    const n = count ? Number((/\d+/.exec(count.textContent) || [NaN])[0]) : 0;
+    if (qs.length !== n || (!qs.length) !== Boolean(none)) bad.push('場面の数（' + qs.length + '）が、頁の文の数（' + n + '）か零件の文と合わない');
+    if (none && !vis(none)) bad.push('零件の文が見えない');
+    for (const q of qs) {
+      if (!['ja', 'en'].includes(q.getAttribute('lang'))) bad.push('場面に言葉の印が無い');
+      if (!vis(q) || [...q.querySelectorAll('p')].length !== 2 || [...q.querySelectorAll('p')].some((p) => !vis(p) || !p.textContent.trim())) bad.push('場面の題か文が見えない');
+      const note = q.nextElementSibling;
+      if (!note || !note.matches('p.note') || !vis(note)) bad.push('場面の札（言葉・日・名）が見えない');
+    }
+    return bad;
+  });
+  await page.close();
+  return [['みんなの図鑑の場面', r]];
+}
+/* 検査の作り物の場面で、みんなの図鑑の二つの頁を組み直した写しを作る。 */
+function withFixture(dir, data) {
+  const fx = data || JSON.parse(fs.readFileSync(path.join(ROOT, 'verification', 'fixtures', 'entries.json'), 'utf8'));
+  for (const lang of B.LANGS) {
+    const s = B.fileOf('entries', lang), md = fs.readFileSync(path.join(ROOT, 'src', s + '.md'), 'utf8');
+    fs.writeFileSync(path.join(dir, s + '.html'), B.page('entries', /^# (.+)$/m.exec(md)[1], B.render(md, s, lang, { entries: fx }), lang));
+  }
+}
+const KINDS = { entries: checkEntries, console: checkConsole, overflow: checkOverflow, keyboard: checkKeyboard, zoom: checkZoom, motion: checkMotion, play: checkPlay, lang: checkLang, links: checkLinks };
 
 async function environment(browser) {
   const mk = (o) => browser.newContext({ ...o }).then(async (c) => { await c.addInitScript(CSP_HOOK); return c; });
@@ -468,6 +499,11 @@ const BREAKS = [
   ['存在しない頁へのつなぎ', 'index.en.html', 'links', '頁の中のつなぎと飛び先', sub('index.en.html', 'href="faq.en.html"', 'href="faq-none.en.html"')],
   ['404 の頁の CSS を頁からの所在に戻す', null, 'nested', '入れ子', sub('404.html', 'href="/assets/style.css"', 'href="assets/style.css"')],
   ['404 の頁の紋を頁からの所在に戻す', null, 'nested', '入れ子', sub('404.html', 'src="/assets/emblem-crest.svg"', 'src="assets/emblem-crest.svg"')],
+  /* みんなの図鑑（2026-11-23）。作り物の場面で組んだ写しを壊す。 */
+  ['みんなの図鑑の場面を見えなくする', 'entries.html', 'entries', 'みんなの図鑑の場面', (dir) => { withFixture(dir); css('.p-entries blockquote.entry { display: none; }')(dir); }],
+  ['みんなの図鑑の場面を一つ描き落とす', 'entries.en.html', 'entries', 'みんなの図鑑の場面', (dir) => { withFixture(dir); sub('entries.en.html', /<blockquote class="entry"[^\n]*\n<p class="note">[^\n]*\n/, '')(dir); }],
+  ['みんなの図鑑の零件の文を見えなくする', 'entries.html', 'entries', 'みんなの図鑑の場面', (dir) => { withFixture(dir, { _: '', entries: [] }); css('.p-entries .entries-none { visibility: hidden; }')(dir); }],
+  ['作り物の場面の頁が横にはみ出す', 'entries.en.html', 'overflow', 'はみ出し', (dir) => { withFixture(dir); css('@media (max-width: 400px) { .p-entries blockquote.entry p::after { content: ""; display: block; width: 900px; height: 1px; } }')(dir); }],
 ];
 
 function fails(results) { return results.filter(([, , v]) => v.length); }
@@ -503,6 +539,13 @@ async function main() {
       if (caught !== BREAKS.length) code = 1;
     } else {
       const r = await run(browser, SITE, PAGES, Object.keys(KINDS));
+      /* 作り物の場面で組んだ写しでも、みんなの図鑑の二つの頁を、遊び場のほかの確かめにかける。 */
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'qw-entries-'));
+      try {
+        fs.cpSync(SITE, tmp, { recursive: true });
+        withFixture(tmp);
+        for (const [where, k, v] of await run(browser, tmp, PAGES.filter((p) => p.out === 'entries'), Object.keys(KINDS).filter((k) => k !== 'play'), { nested: false })) r.push(['作り物の場面：' + where, k, v]);
+      } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
       const f = fails(r);
       const byKind = new Map();
       for (const [, k, v] of r) { const key = k.replace(/（[^）]*）$/, ''); const e = byKind.get(key) || [0, 0]; e[0]++; if (v.length) e[1]++; byKind.set(key, e); }

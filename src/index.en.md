@@ -27,6 +27,7 @@ Magic is turning a negative into the positive on its opposite side and returning
 - [Canon](canon.en.html) The single text the play grew from, in English with the Japanese original. Nine definitions and ten laws.
 - [Principia](strict.en.html) The canon rebuilt in the style of a classical mathematics book. Book I holds the definitions and laws, Book II the laws as formulas, Book III the dynamics of relationships, Book IV what magic is, and Book V the ban on magic.
 - [Field Guide](guide.en.html) How the ten laws quietly show up in daily life.
+- [Field Guide by Visitors](entries.en.html) Scenes of the ten laws in daily life, sent in by readers as GitHub issues and chosen by the operator.
 - [Playground](play.en.html) A game on the relationships of 8 people: flip faces, store negatives, wait for the switch.
 - [FAQ](faq.en.html) Is it science? Who is a wizard? What happens on the thirtieth birthday?
 - [Disclaimers and disclosure](about.en.html) What this site is not, who wrote what, and the licences.

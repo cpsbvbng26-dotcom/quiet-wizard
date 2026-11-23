@@ -22,6 +22,21 @@ The English canon page says that it is a translation, and shows the Japanese ori
 In the English Principia, each item keeps its "Original" line in Japanese.
 On the English rule pages, statutes are quoted in the Japanese original, and the English under them is labelled "Summary, not a translation".
 
+## Taking part
+
+Taking part means sending a scene to the Field Guide by Visitors, and nothing else.
+There is no way for anyone to sign up as a player or list themselves as a wizard.
+A list of names would line up real GitHub users as wizards.
+That would go against two rules of this site: no particular person is called a wizard, and no one's sexual experience is judged.
+On 2026-11-23 the operator asked for participation through GitHub accounts, and Claude decided on this form.
+
+- Scenes are sent in through a GitHub issue form (`.github/ISSUE_TEMPLATE/entry.yml`). It has fields for the law, a title, the scene and the language, the required boxes under "Checks", an optional credit box, and an optional consent to a language model. The form is generated from `intake/entry.js` by `node build.js`.
+- An issue is public on GitHub from the moment it is opened, before the operator reads it.
+- The workflow "みんなの図鑑の受付" (`.github/workflows/entry.yml`) checks the fields and boxes of issues labelled entry with `intake/entry.js`, and adds a label and one comment of fixed wording. It does not close, lock or delete issues, and publishes nothing. It passes the title and body of an issue to no expression, environment variable or shell.
+- Scenes to be added are added to `data/entries.json` through a pull request, by the operator or by Claude at the operator's request. The page (`site/entries.html` and its English page) is built from that file. Claude does not write the scenes.
+- The rules are in "Scenes sent in" of the terms of use, "Scenes sent to the Field Guide by Visitors" and "Giving issues to a language model" of the privacy policy, "Scenes in the Field Guide by Visitors" of requests and contact, and "Taking part (Field Guide by Visitors) and the law" of the notes on legality.
+- `node intake/entry.js --self-test` checks, on made-up issue bodies and a made-up API, that what should fail fails and that no issue is closed or locked. It has not been tried on real issues.
+
 ## Building
 
 ```
@@ -30,6 +45,7 @@ node verification/check.js
 node tools/card.js --check
 node verification/check_browser.js
 node verification/check_browser.js --break
+node intake/entry.js --self-test
 ```
 
 `site/` is generated, English pages included.
@@ -38,7 +54,8 @@ It checks console errors and CSP violations, horizontal overflow at phone and de
 The number of checks is printed when it runs. `--break` damages a copy of `site/` and confirms that each kind of damage fails.
 CI runs both on every push and pull request.
 `verification/live.js` fetches the live Japanese and English home pages and the share card from outside, without logging in, under a generic crawler name and under X's crawler name (Twitterbot). The workflow "本番" runs it once a day. `--self-test` checks, on made-up answers, that it fails what it should.
-The pages request nothing from any other server. There are no cookies, no analytics, and nothing that takes input.
+The pages request nothing from any other server. There are no cookies and no analytics.
+The pages themselves take no input. Taking part happens through a GitHub issue form ("Taking part" above).
 
 ## Disclosure and licences
 

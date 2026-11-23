@@ -18,18 +18,47 @@ const GSC = 'UEPpX5mfnLlhOBTBTETu-PmRO_Y4L2SmjEiaq_U1Zf8';
 const REPO = 'https://github.com/cpsbvbng26-dotcom/quiet-wizard';
 const NAME = 'ステルス・ウィザード';
 /* 頁の順。[元, 出力, 案内の短い名, 上の案内に出すか] 上に出さない頁は、下の欄からつなぐ。 */
-const PAGES = [['index', 'index', 'はじめに', true], ['canon', 'canon', '原典', true], ['strict', 'strict', '原理', true], ['guide', 'guide', '図鑑', true], ['play', 'play', '遊び場', true], ['faq', 'faq', '問い', true],
+const PAGES = [['index', 'index', 'はじめに', true], ['canon', 'canon', '原典', true], ['strict', 'strict', '原理', true], ['guide', 'guide', '図鑑', true], ['entries', 'entries', 'みんなの図鑑', true], ['play', 'play', '遊び場', true], ['faq', 'faq', '問い', true],
   ['about', 'about', '断りと開示', false], ['terms', 'terms', '利用規約', false], ['privacy', 'privacy', '個人情報', false], ['requests', 'requests', '求めと連絡', false], ['legality', 'legality', '適法性の説明', false],
   ['design', 'design', 'デザインに関する法的な扱い', false]];
 /* 英語の頁（2026-11-23）。日本語の頁ごとに一つ、src/<名>.en.md から site/<名>.en.html を作る。英語の頁は訳で、日本語の頁がもと。
  * ここに挙げた頁だけに英語の頁がある。まだ英語の無い頁へのつなぎは、日本語の頁へ向け、hreflang="ja" を付ける。 */
-const EN_PAGES = ['index', 'canon', 'strict', 'guide', 'play', 'faq', 'about', 'terms', 'privacy', 'requests', 'legality', 'design'];
+const EN_PAGES = ['index', 'canon', 'strict', 'guide', 'entries', 'play', 'faq', 'about', 'terms', 'privacy', 'requests', 'legality', 'design'];
 const LANGS = ['ja', 'en'];
 const hasEn = (out) => out === '404' || EN_PAGES.includes(out);
 /* 頁のファイルの名と、所在。英語の頁は <名>.en.html。日本語のはじめには根（/）を所在とする。 */
 const fileOf = (out, lang) => (lang === 'en' ? out + '.en' : out);
 const urlOf = (out, lang) => BASE + (out === 'index' && lang !== 'en' ? '' : fileOf(out, lang) + '.html');
 const NAME_EN = 'Stealth Wizard';
+/* みんなの図鑑（2026-11-23）。読む人が GitHub の issue の様式で寄せ、運営者が読んで選んだ場面を、data/entries.json から頁にする。
+ * 受付と様式と、場面の形の確かめは intake/entry.js にある。頁そのものは何も受け取らない。様式へのつなぎは、ふつうのリンク。 */
+const E = require('./intake/entry.js');
+const ENTRIES_FILE = path.join(ROOT, 'data', 'entries.json');
+const today = () => new Date().toISOString().slice(0, 10);
+function loadEntries(text) {
+  const d = JSON.parse(text);
+  const bad = E.validateData(d, today());
+  if (bad.length) throw new Error('data/entries.json：' + bad.join(' / '));
+  return d;
+}
+const FORM_URL = 'https://github.com/cpsbvbng26-dotcom/quiet-wizard/issues/new?template=entry.yml';
+function entriesHtml(data, lang) {
+  const en = lang === 'en';
+  const es = data.entries.slice().sort((a, b) => a.law - b.law || a.accepted.localeCompare(b.accepted) || a.issue - b.issue);
+  if (!es.length) return '<p class="entries-none">' + (en ? 'No scene has been added yet.' : 'まだ、載せた場面はありません。') + '</p>';
+  const out = ['<p class="entries-count">' + (en ? (es.length === 1 ? '1 scene has been added.' : es.length + ' scenes have been added.') : '載せた場面は ' + es.length + ' 件です。') + '</p>'];
+  let law = 0;
+  for (const e of es) {
+    if (e.law !== law) { law = e.law; const [n, w, we] = E.LAWS[law - 1]; out.push('<h3>' + (en ? 'Law ' + law + ' ' + esc(we) : esc(n + ' ' + w)) + '</h3>'); }
+    const by = e.credit ? (en ? 'Contributor: <a href="' + REPO + '/issues/' + e.issue + '" rel="noopener">' + esc(e.credit) + '</a>.' : '寄せた人：<a href="' + REPO + '/issues/' + e.issue + '" rel="noopener">' + esc(e.credit) + '</a>。')
+      : (en ? "The contributor's name is not shown." : '寄せた人の名は出していません。');
+    const said = en ? (e.lang === 'en' ? 'Written in English.' : 'Written in Japanese and shown untranslated.') : (e.lang === 'ja' ? '日本語で寄せられた場面です。' : '英語で寄せられた場面で、訳していません。');
+    const edited = e.edited ? (en ? ' The operator edited it (length, notation, or words that did not fit the rules).' : '運営者が手を入れました（長さ・表記・決めに合わない語）。') : '';
+    out.push('<blockquote class="entry" lang="' + e.lang + '"><p>' + esc(e.title) + '</p><p>' + esc(e.text) + '</p></blockquote>',
+      '<p class="note">' + said + (en ? ' Added on ' : '') + '<time datetime="' + e.accepted + '">' + e.accepted + '</time>' + (en ? '.' : ' に載せました。') + edited + (en ? ' ' : '') + by + '</p>');
+  }
+  return out.join('\n');
+}
 /* 適法性の説明と、デザインに関する法的な扱いが引く条文。e-Gov から取り寄せた文の写し（verification/statutes-texts.json）。手で書かない。 */
 const STATUTES = JSON.parse(fs.readFileSync(path.join(__dirname, 'verification', 'statutes-texts.json'), 'utf8'));
 /* <!-- 条文 A、B --> を、引いた条文の原文に置き換える。無い条を引けば止まる。
@@ -321,12 +350,12 @@ const EMBLEMS = `<figure class="emblems"><div class="emb">
 <img src="assets/emblem-dial.svg" alt="三十の目盛り：零から三十までの目盛りと、三十の手前を指す針" width="200" height="160">
 </div><figcaption>原理の印、クラスの紋、三十の目盛り。目盛りの針は、三十の手前を指しています。三十歳は目安にすぎません（第五法則）。紋の帽子はクラスの印で、魔法使いの見た目ではありません。見た目には、杖も帽子もありません。</figcaption></figure>`;
 /* 頁の題の下に置く英語の添え名（飾り。読み上げからは外す）と、上の案内の英語。 */
-const EN = { index: 'Magus Occultus', canon: 'The Canon', strict: 'Principia Magi Occulti', guide: 'Field Guide', play: 'Playground', faq: 'FAQ',
+const EN = { index: 'Magus Occultus', canon: 'The Canon', strict: 'Principia Magi Occulti', guide: 'Field Guide', entries: 'Field Guide by Visitors', play: 'Playground', faq: 'FAQ',
   about: 'Disclaimers & Disclosure', terms: 'Terms of Use', privacy: 'Privacy', requests: 'Requests & Contact', legality: 'On Legality', design: 'Legal Handling of the Design', 404: 'Not Found' };
 /* 上の案内の英語。読み上げにも残す（見えている名と、読まれる名を揃える）。 */
-const NAV_EN = { index: 'Home', canon: 'Canon', strict: 'Principia', guide: 'Field Guide', play: 'Playground', faq: 'FAQ' };
+const NAV_EN = { index: 'Home', canon: 'Canon', strict: 'Principia', guide: 'Field Guide', entries: 'By Visitors', play: 'Playground', faq: 'FAQ' };
 /* 頁の題の上に置く小さな見出し。 */
-const EYEBROW = { index: '三十歳魔法使い都市伝説から生まれた、遊びのクラス', canon: '原典　定義九・法則十', strict: '原理　定義・要請・法則・定理', guide: '図鑑　十の法則の地味な現れ', play: '遊び場　関係の上で働く法則', faq: '問いと答え',
+const EYEBROW = { index: '三十歳魔法使い都市伝説から生まれた、遊びのクラス', canon: '原典　定義九・法則十', strict: '原理　定義・要請・法則・定理', guide: '図鑑　十の法則の地味な現れ', entries: 'みんなの図鑑　読む人が寄せた場面', play: '遊び場　関係の上で働く法則', faq: '問いと答え',
   about: '断りと開示', terms: '決まり', privacy: '決まり', requests: '決まり', legality: '決まり', design: '決まり', 404: '迷子' };
 /* 頁ごとの短い説明（meta の description と og:description）。どれも短い断りで終える（2026-11-23）。断りの全文は、頁の上の帯と下の欄にある。 */
 const DESC_TAIL = '遊びであり、科学ではありません。';
@@ -335,6 +364,7 @@ const DESC = {
   canon: '遊びの元になった一枚の文を、手を入れずに写した頁です。定義が九つ、法則が十あります。',
   strict: '原典の定義と法則を骨に、古典の数学書の形で組み直した原理です。定義・要請・法則・定理と証明を、五つの巻に並べます。',
   guide: '十の法則が、暮らしの中でどう地味に現れるかを並べた図鑑です。観察や調査に基づくものではありません。',
+  entries: '読む人が GitHub の issue で寄せ、運営者が読んで選んだ、十の法則の地味な現れの場面です。頁は何も受け取りません。',
   play: '8 人の関係の上で、面を返し、負を溜め、切り替わりを待つ遊び場です。何も測らず、何も記録しません。',
   faq: '科学なのか、誰が魔法使いなのか、三十歳の誕生日に何が起きるのか。よくある問いへの答えです。',
   about: 'このサイトが何でないか、誰が何を書いたか、ライセンスを書いた頁です。',
@@ -463,10 +493,10 @@ const PLAY_EN = `<div class="play" id="play">
 </div>
 <script src="assets/play.js" defer></script>`;
 /* 英語の頁の、案内の名・題の上の小さな見出し・題の下の添え名・頁ごとの説明。添え名は、日本語の頁の名（はじめにと原理はラテン語）。 */
-const SHORT_EN = { index: 'Home', canon: 'Canon', strict: 'Principia', guide: 'Field Guide', play: 'Playground', faq: 'FAQ',
+const SHORT_EN = { index: 'Home', canon: 'Canon', strict: 'Principia', guide: 'Field Guide', entries: 'By Visitors', play: 'Playground', faq: 'FAQ',
   about: 'Disclaimers and disclosure', terms: 'Terms of use', privacy: 'Privacy', requests: 'Requests and contact', legality: 'Notes on legality', design: 'Legal handling of the design' };
 const EYEBROW_EN = { index: 'A play class from an urban legend', canon: 'Canon · nine definitions, ten laws', strict: 'Principia · definitions, postulates, laws, propositions',
-  guide: 'Field guide · how the ten laws quietly show', play: 'Playground · laws at work on relationships', faq: 'Questions and answers',
+  guide: 'Field guide · how the ten laws quietly show', entries: 'Field guide by visitors · scenes sent in by readers', play: 'Playground · laws at work on relationships', faq: 'Questions and answers',
   about: 'Disclaimers and disclosure', terms: 'Rules', privacy: 'Rules', requests: 'Rules', legality: 'Rules', design: 'Rules', 404: 'Lost' };
 const SUB_EN = { index: ['la', 'Magus Occultus'], strict: ['la', 'Principia Magi Occulti'], 404: ['ja', '頁が見つかりません'] };
 const DESC_TAIL_EN = 'It is a play, not science.';
@@ -475,6 +505,7 @@ const DESC_EN = {
   canon: 'An English translation of the single text the play grew from, with the Japanese original beside each line. Nine definitions, ten laws.',
   strict: 'The canon rebuilt in the style of a classical mathematics book, with definitions, postulates, laws, propositions and proofs in five books.',
   guide: 'How the ten laws might quietly show up in daily life. Nothing here comes from observation or surveys.',
+  entries: 'Scenes of the ten laws in daily life, sent in by readers as GitHub issues and chosen by the operator. The page itself takes no input.',
   play: 'A playground on 8 people and their relationships: flip faces, store negatives, wait for the switch. Nothing is measured or recorded.',
   faq: 'Is it science? Who is a wizard? What happens on the thirtieth birthday? Answers to common questions.',
   about: 'What this site is not, who wrote what, and the licences.',
@@ -509,9 +540,11 @@ function updated(html, src, lang) {
 }
 /* src の Markdown を、頁の中身にする。差し込みの部品もここで置く。src は元のファイルの名（変更の記録へのリンクに使う）。lang は 'ja' か 'en'。
  * 英語の頁で、まだ英語の無い頁へのつなぎ（<名>.en.html）は、日本語の頁へ向け、hreflang="ja" を付ける。 */
-function render(md, src, lang) {
+function render(md, src, lang, opts = {}) {
   const en = lang === 'en';
-  let html = markdown(md, lang).replace('<!-- play -->', en ? PLAY_EN : PLAY).replace('<!-- hero -->', en ? HERO_EN : HERO).replace('<!-- class -->', en ? CLASS_EN : CLASS).replace('<!-- emblems -->', en ? EMBLEMS_EN : EMBLEMS);
+  let html = markdown(md, lang);
+  if (html.includes('<!-- entries -->')) html = html.replace('<!-- entries -->', entriesHtml(opts.entries || loadEntries(fs.readFileSync(ENTRIES_FILE, 'utf8')), lang));
+  html = html.replace('<!-- play -->', en ? PLAY_EN : PLAY).replace('<!-- hero -->', en ? HERO_EN : HERO).replace('<!-- class -->', en ? CLASS_EN : CLASS).replace('<!-- emblems -->', en ? EMBLEMS_EN : EMBLEMS);
   html = updated(statutes(html, lang), src, lang);
   if (html.includes('<!-- index -->')) { html = crossref(headIds(html), principiaItems(md, lang), lang); html = html.replace('<!-- index -->', principiaIndex(md, html, lang)); }
   if (html.includes('<!-- toc -->')) { html = headIds(html); html = html.replace('<!-- toc -->', pageToc(html, lang)); }
@@ -677,6 +710,10 @@ function build() {
   fs.writeFileSync(path.join(OUT, 'robots.txt'), ROBOTS);
   fs.writeFileSync(path.join(OUT, 'sitemap.xml'), SITEMAP);
   fs.writeFileSync(path.join(OUT, 'vercel.json'), VERCEL);
+  /* みんなの図鑑の様式（2026-11-23）。intake/entry.js の FORM から作る。 */
+  fs.mkdirSync(path.join(ROOT, '.github', 'ISSUE_TEMPLATE'), { recursive: true });
+  fs.writeFileSync(path.join(ROOT, '.github', 'ISSUE_TEMPLATE', 'entry.yml'), E.form());
+  fs.writeFileSync(path.join(ROOT, '.github', 'ISSUE_TEMPLATE', 'config.yml'), E.config());
   const pr = principia();
   fs.writeFileSync(path.join(ROOT, 'PRINCIPIA.md'), pr.md);
   fs.mkdirSync(path.join(ROOT, 'docs', 'figs'), { recursive: true });
@@ -685,4 +722,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { statuteEn, SUMMARY_K, RULE_PAGES, GOVERNS_EN, LAW_EN, ITEM_HEAD_EN, CITE_EN, BOOK_TOP, EN_PAGES, LANGS, hasEn, fileOf, urlOf, NAME_EN, FRAME_EN, FOOT_EN, HERO_EN, EMBLEMS_EN, CLASS_EN, PLAY_EN, SHORT_EN, EYEBROW_EN, DESC_EN, DESC_TAIL_EN, NOT_FOUND_EN, UI, FIG_EN, figText, CARD_ALT_EN, DESC, DESC_TAIL, CARD, THEME, NOT_FOUND, VERCEL, ROBOTS, SITEMAP, headIds, tocList, CITE, GSC, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { E, FORM_URL, entriesHtml, loadEntries, ENTRIES_FILE, statuteEn, SUMMARY_K, RULE_PAGES, GOVERNS_EN, LAW_EN, ITEM_HEAD_EN, CITE_EN, BOOK_TOP, EN_PAGES, LANGS, hasEn, fileOf, urlOf, NAME_EN, FRAME_EN, FOOT_EN, HERO_EN, EMBLEMS_EN, CLASS_EN, PLAY_EN, SHORT_EN, EYEBROW_EN, DESC_EN, DESC_TAIL_EN, NOT_FOUND_EN, UI, FIG_EN, figText, CARD_ALT_EN, DESC, DESC_TAIL, CARD, THEME, NOT_FOUND, VERCEL, ROBOTS, SITEMAP, headIds, tocList, CITE, GSC, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };

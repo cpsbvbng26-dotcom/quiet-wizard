@@ -5,8 +5,9 @@ Last updated: 2026-11-23.
 ## About these terms
 
 This page sets out the rules for using the site "Stealth Wizard" (called "Quiet Wizard" until 2026-11-21) and its repository.
-The site has no sign-up or registration, and there is no step for agreeing to these terms.
+The site has no sign-up or registration, and there is no step for readers to agree to these terms.
 So these terms are not a contract made with the reader. They show what the site does and does not do, and which uses it does not expect.
+A person who sends a scene to the [Field Guide by Visitors](entries.en.html) ticks boxes on the form. Those boxes are a licence for the text, agreement to the three kinds of edit set out there, and checks such as age ("Scenes sent in" below).
 
 ## What this site is
 
@@ -40,6 +41,30 @@ This site does not expect the following uses.
 The text (including the canon) and the figures may be used under CC BY 4.0. The code is MIT.
 Uses carry the attribution the licence requires.
 The "uses this site does not expect" above do not add conditions to the licence. Of these, uses that single people out or hurt them are acts that may break the law ([notes on legality](legality.en.html)).
+
+## Scenes sent in
+
+A person who sends a scene to the [Field Guide by Visitors](entries.en.html) ticks these eight boxes under "Checks" on the form (a GitHub issue).
+
+- Being 18 or older.
+- The text being their own new writing, copying no one else's text or work.
+- Naming or describing no real or identifiable person.
+- Saying nothing about anyone's sexual experience, with no sexual content.
+- Not claiming that they or anyone else is a wizard.
+- The text being play, not science or advice.
+- Licensing the text under CC BY 4.0, with credit following the "Credit" box.
+- Agreeing that, when adding the text, the operator may change it in three ways only: shortening it, making the notation consistent (characters, punctuation, kana and kanji), and replacing words that do not fit the rules of this site.
+
+An issue is public on GitHub from the moment it is opened, before the operator reads it. Anyone can read it, and the GitHub username of the person who opened it is shown with it.
+Copyright in the text stays with the person who sent it in. The operator and readers use it under the terms of CC BY 4.0.
+The operator does not ask anyone not to exercise moral rights. The only edits are the three agreed to with the box.
+A change of meaning is asked about in the issue first, and made only with the sender's agreement. An edited scene is marked as edited on the page.
+Credit follows the "Credit" box. With it, the GitHub username is shown; without it, no name is shown. Without the box, the sender is taken not to want a name shown.
+The operator may decline a scene, sometimes without giving a reason.
+Scenes that make fun of people, target someone, or sort people by attributes are not added.
+The operator may remove an added scene. On a request from the sender, or from someone the scene concerns, it is removed promptly. Hiding the name, and editing or deleting the issue, can also be asked for ([requests and contact](requests.en.html)).
+Senders are given no payment and no prize, and no fee is taken from them. Being added is not a prize.
+Adding a scene does not mean that the scene shows a law to be true.
 
 ## No warranty
 

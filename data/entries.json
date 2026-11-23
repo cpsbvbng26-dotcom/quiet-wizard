@@ -1,0 +1,4 @@
+{
+  "_": "みんなの図鑑に載せた場面（2026-11-23）。読む人が issue の様式（.github/ISSUE_TEMPLATE/entry.yml）で寄せ、運営者が読んで選んだものだけを、運営者か、運営者の求めで Claude が、PR で足す。欄は issue・law・title・text・lang・credit・credit_allowed・edited・accepted。credit は、様式で名の表示に印があったとき（credit_allowed が true）だけ GitHub の名、ほかは null。形は intake/entry.js の validateData が確かめる。",
+  "entries": []
+}

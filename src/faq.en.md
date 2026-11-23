@@ -70,5 +70,6 @@ Living long is hard, so sleep and water matter.
 
 No.
 This site collects nothing from anyone. There are no input fields and no cookies.
+Scenes for the [Field Guide by Visitors](entries.en.html) are sent in as GitHub issues by those who wish to. That form does not ask about sexual experience either.
 
 Last updated: 2026-11-23.

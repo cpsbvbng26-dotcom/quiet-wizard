@@ -29,6 +29,7 @@ That text has not been peer reviewed. The canon and the Principia of this site a
 - **The playful parts**: the texts of the home page, the field guide, the FAQ and the playground, and the build of the pages, were written by Claude (a language model made by Anthropic) at the operator's request. Claude is not an author.
 - **The rule pages**: the terms of use, the privacy policy, requests and contact, the notes on legality, the legal handling of the design, and this page were also written by Claude at the operator's request.
 - **The Principia**: a version that rebuilds the definitions and laws of the canon in the style of a classical mathematics book, written by Claude at the operator's request. It is not the canon. Until 2026-11-21 it was called the "strict version".
+- **The scenes of the Field Guide by Visitors**: texts written by the people who sent them in. When the operator edits one, the scene says so. Claude does not write the scenes. The build of the page, and the text around the scenes, were written by Claude at the operator's request.
 - **The English pages**: translations of the Japanese pages, written by Claude at the operator's request. If the two differ, the Japanese page governs.
 - This site says nothing about anyone's sexual experience, the operator's included.
 
@@ -38,8 +39,9 @@ There are [terms of use](terms.en.html), a [privacy policy](privacy.en.html), [r
 
 ## What is collected
 
-Nothing.
-There are no input fields, no cookies, and no access analytics. What is pressed in the playground is counted only inside the browser.
+The pages collect nothing.
+There are no input fields, no cookies, and no access analytics.
+Scenes for the [Field Guide by Visitors](entries.en.html) are sent in by readers as GitHub issues; the pages take no input ([privacy policy](privacy.en.html)). What is pressed in the playground is counted only inside the browser.
 The head of every page carries a Google Search Console ownership token, but the pages send nothing to Google with it ([privacy policy](privacy.en.html)).
 The pages request nothing from any other server.
 Vercel hosts the site, and handles the requests it receives under its own rules in order to serve the pages.

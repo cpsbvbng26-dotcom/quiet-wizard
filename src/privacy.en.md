@@ -12,6 +12,7 @@ The site collects nothing.
 There are no input fields, cookies, access analytics, advertising tags, or anything loaded from outside servers.
 What is pressed in the playground is counted only inside the browser, sent nowhere, and cleared when the page closes.
 It asks readers nothing about themselves: not sexual experience, not age, not name.
+Scenes for the Field Guide by Visitors are sent in through a GitHub issue form, not through the pages ("Scenes sent to the Field Guide by Visitors" below).
 
 ## Search-side statistics
 
@@ -32,6 +33,35 @@ Error reports and requests are received as issues on GitHub (United States). Iss
 Personal information written in an issue is removed by the operator as soon as it is found; if it cannot be removed, the issue is deleted. Copies left in GitHub's edit history may be beyond the operator's reach.
 Private correspondence is used only to reply, and is passed to no one else.
 For people without a GitHub account, or who do not make their contact details public, there is currently no private way to get in touch.
+
+## Scenes sent to the Field Guide by Visitors
+
+The form of the [Field Guide by Visitors](entries.en.html) is an issue on GitHub (United States).
+An issue is public on GitHub from the moment it is opened, before the operator reads it. Anyone can read it, and the GitHub username of the person who opened it is shown with it.
+What is handled is the GitHub username of the person who opened the issue and what is written in the issue (law, title, scene, language, boxes).
+The form asks nothing about the sender, such as sexual experience or real name. On age, there is only the box for being 18 or older.
+The only purposes are to read the scene, to decide whether to add it, to add it, and to answer requests.
+The intake (GitHub Actions) checks the fields and boxes of the body inside GitHub, and adds a label and a comment of fixed wording. It sends the body nowhere and writes it to no log.
+For a scene that is added, the title, text, language, law number, issue number, date added, whether it was edited, and the credit box are recorded in `data/entries.json` in the repository, and shown on the page.
+The issue number appears on the page only for scenes that show a name, as the link from the name to the issue.
+The GitHub username is written on the page and in `data/entries.json` only when the "Credit" box was ticked on the form.
+GitHub holds the issue under its own rules.
+On request, an added scene and its name are removed promptly from the current version of the page and of `data/entries.json`. Requests to edit the body of an issue, or to delete the issue, are also met.
+
+## Giving issues to a language model
+
+The operator maintains this repository with the help of a language model, Claude. Claude is a language model of Anthropic, a company in the United States.
+The title and text of an issue opened by anyone other than the operator are given to Claude only when the writer consents within that issue.
+On the form of the Field Guide by Visitors, the box under "Use of a language model" is that consent. The box is optional.
+The operator treats this as a provision of personal data to a third party in a foreign country under Article 28 of the Act on the Protection of Personal Information. The text of that Act is not in this repository's copy of statutes, and is not quoted here.
+On the system of the United States, the operator relies on the Personal Information Protection Commission's [information on the system of the United States](https://www.ppc.go.jp/enforcement/infoprovision/laws/offshore_report_america/).
+For the federal level, the Commission says 〘「包括的な法令は存在しない。」〙 (Summary, not a translation: there is no comprehensive law.)
+The United States takes part in the APEC CBPR system, and the Commission gives the date as 〘「2012年7月25日参加」〙 (Summary, not a translation: joined on 25 July 2012).
+In its [privacy policy](https://www.anthropic.com/legal/privacy), Anthropic states that it takes "appropriate technical and organizational security measures designed to protect personal data from loss, misuse, and unauthorized access, disclosure, alteration, or destruction".
+The phrases from these two pages are copied from texts that another of the operator's repositories retrieved and recorded on 2026-11-12. The two pages have not been read again from the environment of this work.
+How long Anthropic keeps the title and text it receives, and how it uses them, depends on the settings of the operator's account and on Anthropic's terms. Those settings are not checked on this page.
+An issue without the box is read by the operator in person. Comments are not given to it even with the box.
+The consent can be withdrawn in that issue at any time. After withdrawal, the issue is not given to a language model.
 
 ## Requests
 
