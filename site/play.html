@@ -12,6 +12,7 @@
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 </head>
 <body class="p-play">
+<a class="skip" href="#main">本文へ</a>
 <aside class="frame" aria-label="この頁の枠"><p><span class="tag">娯楽の枠</span><span class="say">これは運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。</span></p></aside>
 <header><div class="mast"><a class="site" href="index.html"><img class="crest" src="assets/emblem-crest.svg" alt="クラスの紋" width="34" height="40"><span class="titles"><span class="name">ステルス・ウィザード</span><span class="sub" lang="la" aria-hidden="true">Magus Occultus</span></span></a></div>
 <nav aria-label="頁">
@@ -22,7 +23,7 @@
 <span aria-current="page"><span class="ja">遊び場</span> <span class="en" lang="en">Playground</span></span>
 <a href="faq.html"><span class="ja">問い</span> <span class="en" lang="en">FAQ</span></a>
 </nav></header>
-<main>
+<main id="main">
 <p class="eyebrow">遊び場　関係の上で働く法則</p>
 <h1>遊び場：魔法使いに見えている世界</h1>
 <p class="en-title" lang="en" aria-hidden="true">Playground</p>
@@ -61,7 +62,7 @@
 </svg><figcaption>図3 切り替わり：負の面の逆が正として顕れる（遊び）</figcaption></figure>
 <p>溜まりきると、負の面はそのままに、その向かいの面が正として光り始めます（第四法則）。<br>
 三十歳はその目安にすぎず、もっと早いこともあります（第五法則）。遊び場では、遅いこともあるように作っています。<br>
-正四面体だけは向かいに面がないので、向かいの頂点が光ります（<a href="strict.html">原理</a>、定理六）。</p>
+正四面体だけは向かいに面がないので、向かいの頂点が光ります（<a href="strict.html">原理</a>の<a href="strict.html#prop-6">定理六</a>）。</p>
 <h3>4. 成果は、出た瞬間に人の関係へ溶ける</h3>
 <figure class="fig"><svg role="img" aria-label="図4 成果は人の関係へ還元され、外からは見えない（遊び）" viewBox="0 0 480 220"><rect class="s f-mt" x="16" y="24" width="300" height="176" stroke-dasharray="4 6"/>
 <g class="s f-mt"><path d="M80 112L196 64M80 112L252 124M80 112L188 172M196 64L252 124M188 172L252 124"/></g>
@@ -87,31 +88,35 @@
 <p>原典の法則は、人と人との関係の上で働きます。<br>
 下の遊び場では、8 人と、そのあいだの関係の線だけを描きます。<br>
 人には、名前も年齢も性別も、どんな属性も付けていません。見るのは、関係の移り変わりだけです。</p>
-<ol><li><strong>場面を変える</strong>：魔法使いが、それぞれの人へ向ける面（負か正か）が選び直されます。</li><li><strong>一日を過ごす</strong>：負の面を向けた人の数だけ、負が溜まります。</li><li><strong>切り替わりを見る</strong>：蓄積が閾に届くと、負を向けていた相手との線の逆が、正として光ります。そのあとは、一日ごとに成果が生まれ、相手と、その隣の人との関係が太くなります。</li><li><strong>自動で過ごす</strong>：日が自動で進み、ときどき場面も変わります。</li><li><strong>二つの目を見比べる</strong>：外の目にも、関係の線が太くなるのは見えます。けれど、どれが魔法使いで、誰のおかげかは見えません。</li></ol>
+<ol><li><strong>場面を変える</strong>：魔法使いが、それぞれの人へ向ける面（負か正か）が選び直されます。</li><li><strong>一日を過ごす</strong>：負の面を向けた人の数だけ、負が溜まります。</li><li><strong>切り替わりを見る</strong>：蓄積が閾に届くと、負を向けていた相手との線の逆が、正として光ります。そのあとは、一日ごとに成果が生まれ、相手と、その隣の人との関係が太くなります。隣の人は、魔法使いでない人から選びます。</li><li><strong>自動で過ごす</strong>：日が自動で進み、ときどき場面も変わります。</li><li><strong>二つの目を見比べる</strong>：外の目にも、関係の線が太くなるのは見えます。けれど、点はみな同じに描かれ、太くなった線の一本からは、誰のおかげかは分かりません。</li></ol>
 <div class="play" id="play">
-<div class="row"><button type="button" id="scene">① 場面を変える</button><button type="button" id="live">② 一日を過ごす</button><button type="button" id="auto">④ 自動で過ごす</button></div>
+<div class="row"><button type="button" id="scene">場面を変える</button><button type="button" id="live">一日を過ごす</button><button type="button" id="auto">自動で過ごす</button></div>
 <div class="views">
 <section class="eye inner" aria-labelledby="eye-in"><h3 id="eye-in">魔法使いの目</h3>
 <svg id="inner" class="net-svg" viewBox="0 0 300 240" role="img" aria-label="魔法使いの目"></svg>
 <ul class="legend"><li><span class="k k-me"></span>魔法使い（自分）</li><li><span class="k k-neg"></span>負の面を向けている線</li><li><span class="k k-pos"></span>正の面を向けている線</li><li><span class="k k-gold"></span>負の逆が光った線・成果が入った関係</li></ul>
 <div class="meter" id="meter" role="meter" aria-label="負の蓄積" aria-valuemin="0" aria-valuemax="36" aria-valuenow="0"><div class="fill" id="fill"></div></div>
 <p>日 <b id="day">0</b>　蓄積 <b id="stock">0</b>　負を向けている人 <b id="negs">0</b></p>
-<p>③ 切り替わり <b id="state">まだ</b></p>
+<p>切り替わり <b id="state">まだ</b></p>
 </section>
 <section class="eye outer" aria-labelledby="eye-out"><h3 id="eye-out">外の目</h3>
 <svg id="outer" class="net-svg" viewBox="0 0 300 240" role="img" aria-label="外の目"></svg>
 <p>魔法使いの見える成果 <b id="deeds">0</b></p>
 <p>関係の太さの合計 <b id="total">0</b></p>
-<p class="small">8 人と、隣り合う人どうしの関係の線だけが見えます。どれが魔法使いかも、誰のおかげで線が太くなったかも、見えません。</p>
+<p class="small">8 人と、隣り合う人どうしの関係の線だけが見えます。点はみな同じに描かれ、太くなった線の一本からは、誰のおかげかは分かりません。</p>
 </section>
 </div>
 <p class="note" id="note" aria-live="polite"></p>
 </div>
 <script src="assets/play.js" defer></script>
+<p>魔法使い自身の線は、自分の成果では太りません（<a href="strict.html">原理</a>の<a href="strict.html#prop-23">定理二十三</a>）。<br>
+外の目で長く見ていると、細いままの線に気づくかもしれません。<br>
+それでも、太くなった線の一本からは、その源は決まりません（<a href="strict.html#prop-18">定理十八</a>）。</p>
 <h2>法則と、遊び場での働き</h2>
-<div class="table"><table role="table"><tr role="row"><th scope="col" role="columnheader">法則</th><th scope="col" role="columnheader">遊び場での働き</th></tr><tr role="row"><td role="cell" data-col="法則">第二法則 多面</td><td role="cell" data-col="遊び場での働き">「場面を変える」で、同じ人へ向ける面が負にも正にも変わる</td></tr><tr role="row"><td role="cell" data-col="法則">第三法則 保存</td><td role="cell" data-col="遊び場での働き">蓄積は、一日ごとに増えるだけで、減らない</td></tr><tr role="row"><td role="cell" data-col="法則">第四法則 反転</td><td role="cell" data-col="遊び場での働き">閾に届くと、負を向けていた相手との線が金色に光る</td></tr><tr role="row"><td role="cell" data-col="法則">第五法則 目安</td><td role="cell" data-col="遊び場での働き">閾は開くたびに 18 から 36 のあいだで決まり、三十より早いことも遅いこともある</td></tr><tr role="row"><td role="cell" data-col="法則">第六法則 還元</td><td role="cell" data-col="遊び場での働き">成果は、相手と、その隣の人との関係を太くする。魔法使い自身の見える成果は 0 のまま</td></tr><tr role="row"><td role="cell" data-col="法則">第七法則 共通</td><td role="cell" data-col="遊び場での働き">外の目では、魔法使いもほかの 7 人と同じ点で描く。誰が成った者でも、同じことが起きる</td></tr><tr role="row"><td role="cell" data-col="法則">第八法則 泥沼</td><td role="cell" data-col="遊び場での働き">切り替わったあとに「止める」を押しても、止まるのは画面だけ</td></tr><tr role="row"><td role="cell" data-col="法則">第九法則 秘匿</td><td role="cell" data-col="遊び場での働き">成果の中身は、どこにも書かない。線が太くなることしか見せない</td></tr><tr role="row"><td role="cell" data-col="法則">第十法則 長命</td><td role="cell" data-col="遊び場での働き">日は、止めない限り進み続ける</td></tr></table></div>
+<div class="table"><table role="table"><tr role="row"><th scope="col" role="columnheader">法則</th><th scope="col" role="columnheader">遊び場での働き</th></tr><tr role="row"><td role="cell" data-col="法則">第二法則 多面</td><td role="cell" data-col="遊び場での働き">「場面を変える」で、同じ人へ向ける面が負にも正にも変わる</td></tr><tr role="row"><td role="cell" data-col="法則">第三法則 保存</td><td role="cell" data-col="遊び場での働き">蓄積は、一日ごとに増えるだけで、減らない</td></tr><tr role="row"><td role="cell" data-col="法則">第四法則 反転</td><td role="cell" data-col="遊び場での働き">閾に届くと、負を向けていた相手との線が金色に光る</td></tr><tr role="row"><td role="cell" data-col="法則">第五法則 目安</td><td role="cell" data-col="遊び場での働き">閾は蓄積の数で、歳ではない。開くたびに 18 から 36 のあいだで決まる。三十歳の目安を三十に見立て、それより小さい閾なら早め、大きい閾なら遅めの切り替わりになる</td></tr><tr role="row"><td role="cell" data-col="法則">第六法則 還元</td><td role="cell" data-col="遊び場での働き">成果は、相手と、その隣の人との関係を太くする。魔法使い自身の線は太らず、見える成果は 0 のまま</td></tr><tr role="row"><td role="cell" data-col="法則">第七法則 共通</td><td role="cell" data-col="遊び場での働き">外の目では、魔法使いもほかの 7 人と同じ点で描く。誰が成った者でも、同じことが起きる</td></tr><tr role="row"><td role="cell" data-col="法則">第八法則 泥沼</td><td role="cell" data-col="遊び場での働き">切り替わったあとに「止める」を押しても、止まるのは画面だけ</td></tr><tr role="row"><td role="cell" data-col="法則">第九法則 秘匿</td><td role="cell" data-col="遊び場での働き">成果の中身は、どこにも書かない。線が太くなることしか見せない</td></tr><tr role="row"><td role="cell" data-col="法則">第十法則 長命</td><td role="cell" data-col="遊び場での働き">日は、止めない限り進み続ける</td></tr></table></div>
 <h2>遊び方の決まり</h2>
 <ul><li>人に属性を付けません。だれを表すものでもありません。</li><li>この遊び場は、ブラウザの中だけで動きます。押したことは、どこにも送らず、残しません。頁を閉じれば、蓄積も消えます。原典の第三法則とは違いますが、それは遊びの側の都合です。</li><li>動きを減らす設定のブラウザでは、光る動きを省きます。</li></ul>
+<p class="updated">最終更新：<time datetime="2026-11-23">2026-11-23</time>（<a href="https://github.com/cpsbvbng26-dotcom/quiet-wizard/commits/main/src/play.md" rel="noopener">変更の記録</a>）。</p>
 </main>
 <footer>
 <p class="wordmark" lang="en" aria-hidden="true"><svg class="mark" viewBox="-50 -50 100 100" aria-hidden="true"><polygon points="0,-46 40,-23 40,23 0,46 -40,23 -40,-23"/><polygon points="0,-24 21,12 -21,12"/><path d="M0,-46L0,-24M40,-23L0,-24M-40,-23L0,-24M40,-23L21,12M40,23L21,12M0,46L21,12M0,46L-21,12M-40,23L-21,12M-40,-23L-21,12"/></svg>Stealth Wizard</p>

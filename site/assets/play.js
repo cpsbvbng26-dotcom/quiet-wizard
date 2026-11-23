@@ -39,7 +39,7 @@
     Object.keys(tie).forEach(function (k) {
       var pq = k.split('-').map(Number), w = 1 + Math.min(tie[k] - 1, 8) * 0.9;
       line(inn, pq[0], pq[1], flash === k ? '#d8b157' : '#5d6672', w);
-      line(out, pq[0], pq[1], '#8f959d', w);
+      line(out, pq[0], pq[1], '#7a8089', w);
     });
     /* 魔法使いからの面。魔法使いの目にだけ、負か正かが見える。切り替わったあとは、負の逆が正として光る（第四法則）。 */
     for (var q = 1; q < N; q++) {
@@ -60,11 +60,12 @@
     $('total').textContent = String(total);
     $('deeds').textContent = '0';
     $('inner').setAttribute('aria-label', '魔法使いの目。' + (N - 1) + ' 人への面のうち負が ' + negs + '。関係の太さの合計 ' + total + '。');
-    $('outer').setAttribute('aria-label', '外の目。8 人と、その関係の線だけが見える。関係の太さの合計 ' + total + '。');
+    $('outer').setAttribute('aria-label', '外の目。' + N + ' 人と、その関係の線だけが見える。関係の太さの合計 ' + total + '。');
   }
   function note(t) { $('note').textContent = t; }
   /* 一日。負の面を向けた人の数だけ、負が溜まる（第三法則）。切り替わったあとは、負を向けた相手との関係から、その逆が正として顕れ、
-   * 成果が生まれる。成果は、相手と、その隣の人とのあいだの関係を太くする（第六法則）。魔法使い自身の数には入らない。 */
+   * 成果が生まれる。成果は、相手と、その隣の人とのあいだの関係を太くする（第六法則）。魔法使い自身の数には入らない。
+   * 隣は魔法使いでない人から選ぶ。魔法使い自身の線は、自分の成果では太らない（原理の要請四・定理二十三。2026-11-23 に直した）。 */
   function live() {
     day += 1;
     var negs = [];
@@ -73,10 +74,16 @@
     var flash = null, msg;
     if (!switched && stock >= threshold) {
       switched = true;
-      msg = day + ' 日め。蓄積が閾に届き、負を向けた相手との線の逆が、正として光り始めました（第四法則）。早いことがあるのは第五法則によります。遅いこともあるのは、遊び場の作りです。';
+      /* 閾は蓄積の数で、歳ではない。三十歳の目安を三十に見立て、閾がそれより小さいか大きいかで、早めか遅めかを言う（2026-11-23）。 */
+      msg = day + ' 日め。蓄積が閾の ' + threshold + ' に届き、負を向けた相手との線の逆が、正として光り始めました（第四法則）。'
+        + (threshold < 30 ? '閾は目安の三十より小さく、早めの切り替わりです。早いことがあるのは第五法則によります。'
+          : threshold > 30 ? '閾は目安の三十より大きく、遅めの切り替わりです。遅いこともあるのは、遊び場の作りです。' : '閾は、ちょうど目安の三十です。');
     } else if (switched && negs.length) {
-      /* 成果は、相手と、その隣のどちらかの人との関係へ入る。隣が魔法使いのこともある。外の目で、魔法使いの線だけが細いままにならないように。 */
-      negs.forEach(function (r) { var s = Math.random() < 0.5 ? (r + 1) % N : (r + N - 1) % N; var k = key(r, s); tie[k] = (tie[k] || 0) + 1; flash = k; deeds += 1; });
+      /* 成果は、相手と、その隣の人との関係へ入る。隣は、魔法使いでない人から選ぶ。 */
+      negs.forEach(function (r) {
+        var nb = [(r + 1) % N, (r + N - 1) % N].filter(function (s) { return s !== 0; });
+        var k = key(r, nb[Math.floor(Math.random() * nb.length)]); tie[k] = (tie[k] || 0) + 1; flash = k; deeds += 1;
+      });
       msg = day + ' 日め。成果が ' + negs.length + ' つ生まれ、相手とその隣の人との関係が太くなりました。外の目にも線は太く見えますが、誰のおかげかは見えません（第六法則）。';
     } else if (switched) {
       msg = day + ' 日め。今日は負を向けた相手がいないので、成果はありません。場面を変えると、向ける面が変わります（第二法則）。';
@@ -90,11 +97,13 @@
   $('live').addEventListener('click', live);
   $('auto').addEventListener('click', function () {
     if (timer) {
-      clearInterval(timer); timer = null; this.textContent = '④ 自動で過ごす';
+      clearInterval(timer); timer = null; this.textContent = '自動で過ごす';
+      $('note').setAttribute('aria-live', 'polite');
       note(switched ? '画面の動きを止めました。原典では、成った者の脳は止まりません（第八法則）。' : '画面の動きを止めました。');
     } else {
-      timer = setInterval(function () { if (Math.random() < 0.3) scene(); live(); }, reduce ? 1500 : 800);
-      this.textContent = '④ 止める';
+      /* 自動で過ごすあいだは、日ごとの知らせを読み上げない（止めると戻す）。始めの知らせだけは読み上げる。 */
+      timer = setInterval(function () { $('note').setAttribute('aria-live', 'off'); if (Math.random() < 0.3) scene(); live(); }, reduce ? 1500 : 800);
+      this.textContent = '止める';
       note('日が自動で進みます。ときどき場面も変わります。');
     }
   });
