@@ -134,7 +134,7 @@ function files() {
   /* デザインに関する法的な扱い（2026-11-22）が挙げる部品。SVG の元、見た目の部品のファイルの一覧、書体の名前表と字、リポジトリにあるラスターの画像。 */
   for (const f of ['src/hero.svg.part', 'src/design.md', 'src/terms.md', ...fs.readdirSync(path.join(ROOT, 'assets')).filter((f) => /\.svg$/.test(f)).map((f) => 'assets/' + f), ...fs.readdirSync(path.join(ROOT, 'src', 'figs')).map((f) => 'src/figs/' + f)]) x[f] = R(f);
   const ls = (d) => (fs.existsSync(path.join(ROOT, d)) ? fs.readdirSync(path.join(ROOT, d)).sort().map((f) => d + '/' + f) : []);
-  x['#parts'] = [...ls('assets'), 'src/hero.svg.part', ...ls('src/figs'), ...ls('docs/figs'), 'build.js'].sort().join('\n');
+  x['#parts'] = [...ls('assets'), 'src/hero.svg.part', ...ls('src/figs'), ...ls('docs/figs'), ...ls('tools'), 'build.js'].sort().join('\n');
   try { x['#font'] = JSON.stringify(woff2(fs.readFileSync(path.join(ROOT, 'assets', 'intertight.woff2')))); } catch (e) { x['#font'] = '{}'; }
   const raster = [];
   const walk = (d) => { for (const e of fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })) { if (e.name === '.git' || e.name === 'node_modules') continue; const q = d ? d + '/' + e.name : e.name; if (e.isDirectory()) walk(q); else if (/\.(png|jpe?g|gif|webp|ico|bmp|avif|tiff?|heic)$/i.test(e.name)) raster.push(q); } };
@@ -143,6 +143,9 @@ function files() {
   x['#pages'] = JSON.stringify(B.PAGES);
   /* 配信の決まりと、検索の仕組みに渡すファイル（2026-11-23 から、元から作ったものと同じことを確かめる）。 */
   for (const f of ['site/vercel.json', 'site/robots.txt', 'site/sitemap.xml']) x[f] = R(f);
+  /* 共有のカードとアイコン（2026-11-23）。PNG は base64 で持ち、描くスクリプトの文も読む。 */
+  x['tools/card.js'] = R('tools/card.js');
+  for (const f of ['assets/card.png', 'assets/apple-touch-icon.png']) { try { x['#png:' + f] = fs.readFileSync(path.join(ROOT, f)).toString('base64'); } catch (e) { x['#png:' + f] = ''; } }
   return x;
 }
 
@@ -330,6 +333,32 @@ function verdict(x) {
     const hh = f === 'site/about.html' ? h.split(PAPER_LINK).join('') : h;
     for (const a of AWAY) if (hh.toLowerCase().includes(a)) bad.push(f + '：' + a + ' につないでいる');
   }
+  /* 頁の頭の説明と共有のカード（2026-11-23）。説明は頁ごとに違い、短く、短い断りで終える。カードは canonical の所在を指し、
+   * 題と説明は頁の title と description と同じ。404 は所在を持たないので、カードを出さない。どの頁も、帯の色と、ホーム画面のアイコンを持つ。 */
+  const descs = new Map();
+  let card = null;
+  try { card = readPng(x['#png:assets/card.png']); } catch (e) { bad.push('共有のカードが読めない：' + e.message); }
+  const mastbg = (/--mastbg:\s*(#[0-9a-f]{6})/.exec(x['assets/style.css']) || [, ''])[1];
+  for (const f of html) {
+    const h = x[f], head = h.slice(0, h.indexOf('</head>'));
+    const up = f === 'site/404.html' ? '/' : '';
+    const meta = (k) => [...head.matchAll(new RegExp('<meta (?:property|name)="' + k.replace(/:/g, ':') + '" content="([^"]*)">', 'g'))].map((m) => m[1]);
+    const d = meta('description');
+    if (d.length !== 1 || !d[0].endsWith('遊びであり、科学ではありません。') || [...d[0]].length > 120) bad.push(f + '：頁の説明（一つ、120 字まで、短い断りで終える）');
+    else if (descs.has(d[0])) bad.push(f + '：頁の説明が ' + descs.get(d[0]) + ' と同じ'); else descs.set(d[0], f);
+    if (meta('theme-color').join() !== mastbg) bad.push(f + '：帯の色が上の欄の夜の黒でない');
+    if (!head.includes('<link rel="apple-touch-icon" href="' + up + 'assets/apple-touch-icon.png">')) bad.push(f + '：ホーム画面のアイコン');
+    const og = (k) => meta('og:' + k);
+    if (up) { if (/property="og:|name="twitter:/.test(head)) bad.push(f + '：404 に共有のカードがある'); continue; }
+    const canon = (/<link rel="canonical" href="([^"]*)">/.exec(head) || [, ''])[1], title = (/<title>([^<]*)<\/title>/.exec(head) || [, ''])[1];
+    const want = { type: 'website', site_name: B.NAME, locale: 'ja_JP', title, description: d[0], url: canon, image: B.BASE + 'assets/card.png', 'image:type': 'image/png',
+      'image:width': String(card && card.w), 'image:height': String(card && card.h) };
+    for (const [k, v] of Object.entries(want)) if (og(k).join('\u0000') !== v || !v) bad.push(f + '：og:' + k + ' が ' + JSON.stringify(og(k)) + '（求めるのは ' + v + '）');
+    if (og('image:alt').length !== 1 || og('image:alt')[0].length < 20) bad.push(f + '：og:image:alt');
+    if (meta('twitter:card').join() !== 'summary_large_image') bad.push(f + '：twitter:card');
+  }
+  if (descs.size !== B.PAGES.length + 1) bad.push('頁の説明の数が頁の数と違う（' + descs.size + '）');
+  if (card && (card.w !== 1200 || card.h !== 630)) bad.push('共有のカードが 1200×630 でない：' + card.w + '×' + card.h);
   /* はじめにの三つの紋（2026-11-22）：決めた三つの img が、どれも代わりの文を持ち、自分の assets から読む。 */
   const emb = [...B.EMBLEMS.matchAll(/<img\b[^>]*src="assets\/(emblem-[a-z]+\.svg)"[^>]*alt="([^"]+)"/g)];
   if (emb.length !== 3 || !(x['site/index.html'] || '').includes(B.EMBLEMS) || emb.some(([, f]) => !x['#assets'].split('\n').some((l) => l.startsWith(f + ' ')))) bad.push('はじめにの三つの紋');
@@ -371,6 +400,8 @@ function verdict(x) {
     const n = sim.people, pm = x['src/play.md'];
     if (n !== 8 && !n) bad.push('遊び場の人の数が数えられない');
     for (const [f, w] of [['src/index.md', '[遊び場](play.html) ' + n + ' 人の関係の上で'], ['src/play.md', '下の遊び場では、' + n + ' 人と、そのあいだの関係の線だけを描きます。'], ['src/play.md', '魔法使いもほかの ' + (n - 1) + ' 人と同じ点で描く'], ['build.js', '<p class="small">' + n + ' 人と、隣り合う人どうしの関係の線だけが見えます。']]) if (!x[f].includes(w)) bad.push(f + '：人の数が遊び場と違う（' + w.slice(0, 20) + '）');
+    /* 遊び場の説明（meta）の人の数も、遊び場を動かした人の数と同じ（2026-11-23）。 */
+    if (!(x['site/play.html'] || '').includes('<meta name="description" content="' + n + ' 人の関係の上で')) bad.push('遊び場の説明の人の数が遊び場と違う');
     if (!(x['assets/play.js'] || '').includes("'外の目。' + N + ' 人と、")) bad.push('play.js：外の目の代わりの文の人の数を N から作っていない');
     if (lo.threshold !== 18 || hi.threshold !== 36 || !pm.includes('開くたびに ' + lo.threshold + ' から ' + hi.threshold + ' のあいだで決まる')) bad.push('遊び場の閾の幅が頁の文と違う：' + lo.threshold + '〜' + hi.threshold);
     if (sim.valuemax !== hi.threshold || hi.maxNow !== sim.valuemax) bad.push('遊び場のメーターの上限が閾の上限と違う');
@@ -511,7 +542,37 @@ const DESIGN_QUOTES = [
 ];
 /* 頁が許諾の文から引く英語の文。空白の折り返しを詰めて、許諾の文の一部であること。 */
 const OFL_QUOTES = ['to use, study, copy, merge, embed, modify, redistribute, and sell modified and unmodified copies of the Font Software',
+  'The requirement for fonts to remain under this license does not apply to any document created using the Font Software',
   '"Modified Version" refers to any derivative made by adding to, deleting, or substituting -- in part or in whole -- any of the components of the Original Version'];
+/* PNG を読む（2026-11-23）。依存を足さずに、頭（IHDR）と、画素（IDAT を zlib で解き、行ごとの filter を戻したもの）を読む。8 bit の RGB と RGBA だけ。 */
+function readPng(b64) {
+  const buf = Buffer.from(b64 || '', 'base64');
+  if (buf.length < 33 || buf.toString('latin1', 0, 8) !== '\x89PNG\r\n\x1a\n') throw new Error('PNG でない');
+  let p = 8, w = 0, h = 0, depth = 0, ctype = 0;
+  const idat = [];
+  while (p < buf.length) {
+    const len = buf.readUInt32BE(p), type = buf.toString('latin1', p + 4, p + 8), d = buf.subarray(p + 8, p + 8 + len);
+    if (type === 'IHDR') { w = d.readUInt32BE(0); h = d.readUInt32BE(4); depth = d[8]; ctype = d[9]; if (d[12]) throw new Error('飛び越しの PNG'); }
+    if (type === 'IDAT') idat.push(d);
+    p += 12 + len;
+    if (type === 'IEND') break;
+  }
+  const bpp = { 2: 3, 6: 4 }[ctype];
+  if (depth !== 8 || !bpp) throw new Error('8 bit の RGB か RGBA でない');
+  const raw = require('zlib').inflateSync(Buffer.concat(idat)), stride = w * bpp, px = Buffer.alloc(stride * h);
+  for (let y = 0; y < h; y++) {
+    const f = raw[y * (stride + 1)], src = raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1));
+    for (let i = 0; i < stride; i++) {
+      const a = i >= bpp ? px[y * stride + i - bpp] : 0, b = y ? px[(y - 1) * stride + i] : 0, c = y && i >= bpp ? px[(y - 1) * stride + i - bpp] : 0;
+      const pa = Math.abs(b - c), pb = Math.abs(a - c), pc = Math.abs(a + b - 2 * c);
+      const pred = [0, a, b, (a + b) >> 1, pa <= pb && pa <= pc ? a : pb <= pc ? b : c][f];
+      if (pred === undefined) throw new Error('filter ' + f);
+      px[y * stride + i] = (src[i] + pred) & 255;
+    }
+  }
+  const at = (x, y) => '#' + [0, 1, 2].map((k) => px[y * stride + x * bpp + k].toString(16).padStart(2, '0')).join('');
+  return { w, h, at, sha: require('crypto').createHash('sha256').update(buf).digest('hex') };
+}
 function contrast(a, b) {
   const L = (h) => { const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
   const x = L(a), y = L(b);
@@ -601,7 +662,32 @@ function designVerdict(x) {
   if (!netLow || !md.includes('遊び場の網の線と点の色と、二つの目の地の色の比は、3 以上です。遊び場の網で、いちばん低いのは、' + netLow.at + ' の ' + netLow.r.toFixed(2) + ' です。')) bad.push('頁の、遊び場の網の色の比が計算と違う：' + (netLow ? netLow.at + ' ' + netLow.r.toFixed(2) : ''));
   /* 本文へ飛ぶつなぎと印刷は、頁の文のとおり（つなぎと印刷の中身は、約束の検査が頁と style.css で見る）。 */
   for (const w of ['どの頁にも、本文へ飛ぶつなぎ（「本文へ」）を、頁の初めに置いています。', '印刷では、上の帯と上の欄とクラス表を、白地の黒字にします。']) if (!md.includes(w)) bad.push('頁：' + w.slice(0, 16));
-  if (x['#raster']) bad.push('ラスターの画像がある：' + x['#raster'].split('\n').join(','));
+  /* ラスターの画像は、共有のカードとホーム画面のアイコンの二枚と、site/assets のその写しだけ（2026-11-23 まで一枚もなかった）。 */
+  const RASTER = ['assets/apple-touch-icon.png', 'assets/card.png'];
+  if (x['#raster'] !== RASTER.concat(RASTER.map((f) => 'site/' + f)).sort().join('\n')) bad.push('ラスターの画像が決めた二枚とその写しでない：' + x['#raster'].split('\n').join(','));
+  if (!md.includes('ラスターの画像（PNG、JPEG、GIF、WebP、ICO など）は、共有のカード（`assets/card.png`）とホーム画面のアイコン（`assets/apple-touch-icon.png`）の' + KANJI_N[RASTER.length] + '枚だけです。')) bad.push('頁：ラスターの画像の数');
+  /* 二枚の PNG：大きさ、SHA-256 が部品の表のとおり、四隅が上の欄の夜の黒、金の画素がある。 */
+  const mast = Object.fromEntries([...((/:root\s*\{([^}]*)\}/.exec(css) || [, ''])[1]).matchAll(/--([a-z]+):\s*(#[0-9a-f]{6})/gi)].map((m) => [m[1], m[2]]));
+  for (const [f, w, hh] of [['assets/card.png', 1200, 630], ['assets/apple-touch-icon.png', 180, 180]]) {
+    let im = null;
+    try { im = readPng(x['#png:' + f]); } catch (e) { bad.push(f + ' が読めない：' + e.message); continue; }
+    if (im.w !== w || im.h !== hh) bad.push(f + ' の大きさが ' + im.w + '×' + im.h);
+    const row = rows.find((l) => l.split(' | ')[1] === '`' + f + '`') || '';
+    if (!row.includes(w + '×' + hh + ' の PNG') || !row.includes('SHA-256 は ' + im.sha + ' |')) bad.push(f + '：部品の表の大きさか SHA-256 が、ファイルと違う');
+    if ([[0, 0], [im.w - 1, 0], [0, im.h - 1 - 14], [im.w - 1, im.h - 1 - 14]].some(([a, b]) => im.at(a, b) !== mast.mastbg)) bad.push(f + '：隅が上の欄の夜の黒でない');
+    let gold = 0;
+    const g = mast.mastgold || '#000000', near = (c) => [1, 3, 5].every((k) => Math.abs(parseInt(c.slice(k, k + 2), 16) - parseInt(g.slice(k, k + 2), 16)) <= 6);
+    for (let yy = 0; yy < im.h; yy += 2) for (let xx = 0; xx < im.w; xx += 2) if (near(im.at(xx, yy))) gold++;
+    if (gold * 4 < im.w * im.h * 0.01) bad.push(f + '：金の色の画素が少ない（' + gold + '）');
+  }
+  /* カードの文字は英字だけで、配る書体の収める字のうちにある。描くスクリプトが読むのは、assets の部品だけ。 */
+  const cj = x['tools/card.js'] || '';
+  const words = (/const WORDS = \{([^}]*)\}/.exec(cj) || [, ''])[1];
+  const chars = [...words.matchAll(/: '([^']*)'/g)].map((m) => m[1]).join('');
+  if (!chars || [...chars].some((ch) => !codes.includes(ch.codePointAt(0)))) bad.push('カードの文字に、配る書体の収めない字がある：' + chars);
+  for (const m of cj.matchAll(/\bA\('([^']+)'\)|svg\('([^']+)'\)/g)) if (!x['#assets'].split('\n').some((l) => l.startsWith((m[1] || m[2]) + ' '))) bad.push('tools/card.js が assets に無いものを読む：' + (m[1] || m[2]));
+  if (/https?:\/\/(?!www\.w3\.org)/.test(cj.replace(/\/\*[\s\S]*?\*\//g, ''))) bad.push('tools/card.js が外を読む');
+  if (!md.includes('カードには和文を置いていません。')) bad.push('頁：カードに和文を置かない');
   /* 文字の色の比：明るい配色と暗い配色の、四つの文字の色と二つの地の色。 */
   const tok = (block) => Object.fromEntries([...block.matchAll(/--([a-z]+):\s*(#[0-9a-f]{6})/gi)].map((m) => [m[1], m[2]]));
   const light = tok((/:root\s*\{([^}]*)\}/.exec(css) || [, ''])[1]);
@@ -798,6 +884,17 @@ const breaks = [
   ['はじめにの原理の行から巻を一つ外す', mut('src/index.md', '第三巻は関係の力学、', '')],
   ['頁の中の目次の見出しを違える', mut('site/design.html', '<a href="#s2">', '<a href="#s9">')],
   ['長い頁から目次を外す', mut('site/legality.html', /<nav class="toc"[\s\S]*?<\/nav>/, '')],
+  ['共有のカードの画像を外す', mut('site/strict.html', /<meta property="og:image" content="[^"]*">\n/, '')],
+  ['共有のカードの所在を canonical と違える', mut('site/faq.html', '<meta property="og:url" content="https://quiet-wizard.vercel.app/faq.html">', '<meta property="og:url" content="https://quiet-wizard.vercel.app/">')],
+  ['共有のカードの大きさを違える', mut('site/guide.html', '<meta property="og:image:width" content="1200">', '<meta property="og:image:width" content="1201">')],
+  ['共有のカードの題を頁の題と違える', mut('site/about.html', /<meta property="og:title" content="[^"]*">/, '<meta property="og:title" content="魔法使い">')],
+  ['X のカードを外す', mut('site/canon.html', '<meta name="twitter:card" content="summary_large_image">\n', '')],
+  ['404 に共有のカードを出す', mut('site/404.html', '</head>', '<meta property="og:type" content="website">\n</head>')],
+  ['頁の説明を別の頁と同じにする', mut('site/guide.html', /<meta name="description" content="[^"]*">/, '<meta name="description" content="' + B.DESC.index + B.DESC_TAIL + '">')],
+  ['頁の説明から断りを外す', mut('site/terms.html', '示します。遊びであり、科学ではありません。">', '示します。">')],
+  ['帯の色を変える', mut('site/play.html', '<meta name="theme-color" content="#0d0f13">', '<meta name="theme-color" content="#ffffff">')],
+  ['ホーム画面のアイコンを外す', mut('site/requests.html', '<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">\n', '')],
+  ['遊び場の説明の人の数を違える', mut('site/play.html', '<meta name="description" content="8 人', '<meta name="description" content="7 人')],
   ['印刷で上の欄を黒字にしない', mut('assets/style.css', '.frame, .frame *, header, header * { color: #000 !important;', '.frame, .frame * { color: #000 !important;')],
 ];
 const missed = breaks.filter(([, y]) => verdict(y).length === 0).map(([k]) => k);
@@ -869,6 +966,15 @@ const dbreaks = [
   ['遊び場の網の線を薄くする', dmut('assets/play.js', "'#7a8089'", "'#8f959d'")],
   ['頁の遊び場の網の色の比を違える', dmut('src/design.md', 'の #12161c の 3.12 です。', 'の #12161c の 3.20 です。')],
   ['頁から本文へ飛ぶつなぎの文を外す', dmut('src/design.md', 'どの頁にも、本文へ飛ぶつなぎ（「本文へ」）を、頁の初めに置いています。', '')],
+  ['共有のカードを別の画像に差し替える', Object.assign({}, real, { '#png:assets/card.png': real['#png:assets/apple-touch-icon.png'] })],
+  ['部品の表のカードの SHA-256 を違える', dmut('src/design.md', /(\| `assets\/card\.png` \|[^|]*SHA-256 は )[0-9a-f]{64}/, '$1' + '0'.repeat(64))],
+  ['ラスターの画像の数を頁と違える', dmut('src/design.md', 'アイコン（`assets/apple-touch-icon.png`）の二枚だけです。', 'アイコン（`assets/apple-touch-icon.png`）の一枚だけです。')],
+  ['ラスターの写しを一枚落とす', Object.assign({}, real, { '#raster': real['#raster'].replace('\nsite/assets/card.png', '') })],
+  ['カードに和文を書く', dmut('tools/card.js', "title: 'STEALTH WIZARD'", "title: 'ステルス・ウィザード'")],
+  ['カードが assets に無いものを読む', dmut('tools/card.js', "svg('emblem-seal.svg')", "svg('photo.svg')")],
+  ['カードが外を読む', dmut('tools/card.js', "const font = 'data:font/woff2;base64,'", "const remote = 'https://fonts.example.com/x.woff2'; const font = 'data:font/woff2;base64,'")],
+  ['頁から書体で作った文書の許諾の引用を外す', dmut('src/design.md', '> The requirement for fonts to remain under this license does not apply to any document created using the Font Software', '>')],
+  ['部品の表からカードを描くスクリプトを外す', dmut('src/design.md', /\| カードとアイコンを描くスクリプト \|[^\n]+\n/, '')],
   ['頁から印刷の文を外す', dmut('src/design.md', '印刷では、上の帯と上の欄とクラス表を、白地の黒字にします。', '')],
 ];
 const dmissed = dbreaks.filter(([, y]) => designVerdict(y).length === 0).map(([k]) => k);

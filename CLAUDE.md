@@ -25,11 +25,14 @@
 17. 「クラス」はゲームの職業のたとえで、人を分ける区分ではなく、誰かを当てはめるものでもないと、クラス表と問いに書く。上位職として描かない（2026-11-21 に名をクラスへ替えたときに決めた）。
 18. 配る書体は、SIL Open Font License 1.1 の英字書体 Inter Tight（英字だけに絞った写し）だけ。許諾の文 `assets/OFL-InterTight.txt` を添え、断りと開示に書く。和文の書体は配らない。書体はこのサイトからだけ読む（CSP の `font-src 'self'`）。
 19. 原理の第五巻の定義二十の原文は、運営者の直観（2026-11-21）で、一字も変えない。原典と同じく、検査が一字一句で固めている。
-20. 見た目の部品（`assets/`、`src/hero.svg.part`、`src/figs/`、`docs/figs/`、`build.js` の `MARK`）を変えたら、`src/design.md`（デザインに関する法的な扱い）の表と、`verification/check.js` の確かめを、同じ PR で直す。表とファイルが過不足なく合わなければ、検査が落ちる。条を足すときは、運営者の別のリポジトリの写しから一字一句そのまま写し、`STATUTES_SHA` を改めた理由をコミットと注に書く（2026-11-22）。
+20. 見た目の部品（`assets/`、`src/hero.svg.part`、`src/figs/`、`docs/figs/`、`tools/`、`build.js` の `MARK`）を変えたら、`src/design.md`（デザインに関する法的な扱い）の表と、`verification/check.js` の確かめを、同じ PR で直す。表とファイルが過不足なく合わなければ、検査が落ちる。条を足すときは、運営者の別のリポジトリの写しから一字一句そのまま写し、`STATUTES_SHA` を改めた理由をコミットと注に書く（2026-11-22）。
 
 ```
 node build.js
 node verification/check.js
+node tools/card.js --check   # 共有のカードとアイコンを描き直し、同じバイトかを確かめる（Playwright の Chromium が要る）
 ```
+
+共有のカード（`assets/card.png`）とホーム画面のアイコン（`assets/apple-touch-icon.png`）は、紋や色や書体を変えたら `node tools/card.js` で描き直し、`src/design.md` の表の SHA-256 を改める（2026-11-23）。
 
 サイトは Vercel のプロジェクトが `site/` を根にして配る。

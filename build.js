@@ -226,6 +226,29 @@ const NAV_EN = { index: 'Home', canon: 'Canon', strict: 'Principia', guide: 'Fie
 /* 頁の題の上に置く小さな見出し。 */
 const EYEBROW = { index: '三十歳魔法使い都市伝説から生まれた、遊びのクラス', canon: '原典　定義九・法則十', strict: '原理　定義・要請・法則・定理', guide: '図鑑　十の法則の地味な現れ', play: '遊び場　関係の上で働く法則', faq: '問いと答え',
   about: '断りと開示', terms: '決まり', privacy: '決まり', requests: '決まり', legality: '決まり', design: '決まり', 404: '迷子' };
+/* 頁ごとの短い説明（meta の description と og:description）。どれも短い断りで終える（2026-11-23）。断りの全文は、頁の上の帯と下の欄にある。 */
+const DESC_TAIL = '遊びであり、科学ではありません。';
+const DESC = {
+  index: 'ステルス・ウィザードは、三十歳魔法使い都市伝説の魔法使いを、ゲームのクラスに見立てた遊びのサイトです。',
+  canon: '遊びの元になった一枚の文を、手を入れずに写した頁です。定義が九つ、法則が十あります。',
+  strict: '原典の定義と法則を骨に、古典の数学書の形で組み直した原理です。定義・要請・法則・定理と証明を、五つの巻に並べます。',
+  guide: '十の法則が、暮らしの中でどう地味に現れるかを並べた図鑑です。観察や調査に基づくものではありません。',
+  play: '8 人の関係の上で、面を返し、負を溜め、切り替わりを待つ遊び場です。何も測らず、何も記録しません。',
+  faq: '科学なのか、誰が魔法使いなのか、三十歳の誕生日に何が起きるのか。よくある問いへの答えです。',
+  about: 'このサイトが何でないか、誰が何を書いたか、ライセンスを書いた頁です。',
+  terms: 'このサイトの利用規約です。料金を取らず、想定していない使い方を示します。',
+  privacy: 'このサイトは何も集めません。配信の事業者、検索の側の集計、issue での求めの扱いを書いた頁です。',
+  requests: '文の誤りの知らせ、記載を消すことや直すことの求め、権利者からの知らせの受け方です。',
+  legality: 'このサイトが日本の法令のどこに触れうるかと、触れないための決めを、条文の写しと並べた頁です。法的な助言ではありません。',
+  design: '書体・印・ファビコン・図・共有のカードなど、見た目の部品の出所と許諾と、法令との関わりです。法的な助言ではありません。',
+  404: 'この所在に頁はありません。',
+};
+/* 共有のカードと、ホーム画面のアイコン（2026-11-23）。tools/card.js が、紋と上の欄の色と Inter Tight から描いた PNG。
+ * 大きさは PNG の頭（IHDR）から読む。上の欄の夜の黒を、ブラウザの帯の色（theme-color）にも使う。 */
+const pngSize = (f) => { const b = fs.readFileSync(path.join(ROOT, 'assets', f)); if (b.toString('latin1', 1, 4) !== 'PNG') throw new Error(f + ' が PNG でない'); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
+const CARD = { file: 'card.png', size: pngSize('card.png'),
+  alt: 'ステルス・ウィザードの共有のカード。夜の黒の地に、クラスの紋（盾の中の、先の折れた帽子と星）、英字の名 STEALTH WIZARD と MAGUS OCCULTUS、A play, not science. の一行、原理の印と三十の目盛り。' };
+const THEME = /--mastbg:\s*(#[0-9a-f]{6})/.exec(fs.readFileSync(path.join(ROOT, 'assets', 'style.css'), 'utf8'))[1];
 /* 小さな正二十面体のしるし。 */
 const MARK = '<svg class="mark" viewBox="-50 -50 100 100" aria-hidden="true"><polygon points="0,-46 40,-23 40,23 0,46 -40,23 -40,-23"/><polygon points="0,-24 21,12 -21,12"/><path d="M0,-46L0,-24M40,-23L0,-24M-40,-23L0,-24M40,-23L21,12M40,23L21,12M0,46L21,12M0,46L-21,12M-40,23L-21,12M-40,-23L-21,12"/></svg>';
 
@@ -298,19 +321,30 @@ function page(file, title, body) {
   const label = (out, short) => '<span class="ja">' + esc(short) + '</span> <span class="en" lang="en">' + esc(NAV_EN[out]) + '</span>';
   const nav = PAGES.filter((x) => x[3]).map(([, out, short]) => (out === file ? '<span aria-current="page">' + label(out, short) + '</span>' : '<a href="' + href(out) + '">' + label(out, short) + '</a>')).join('\n');
   body = body.replace('</h1>', '</h1>\n<p class="en-title" lang="en" aria-hidden="true">' + esc(EN[file] || '') + '</p>');
-  const where = file === '404' ? '<meta name="robots" content="noindex">' : '<link rel="canonical" href="' + BASE + (file === 'index' ? '' : file + '.html') + '">';
+  const url = BASE + (file === 'index' ? '' : file + '.html');
+  const full = title === NAME ? NAME + '（遊び）' : title + ' | ' + NAME;
+  const desc = DESC[file] + DESC_TAIL;
+  /* 共有のカード（Open Graph と X のカード）。404 は所在を持たないので、canonical もカードも出さない。 */
+  const share = ['<meta property="og:type" content="website">', '<meta property="og:site_name" content="' + esc(NAME) + '">', '<meta property="og:locale" content="ja_JP">',
+    '<meta property="og:title" content="' + esc(full) + '">', '<meta property="og:description" content="' + esc(desc) + '">', '<meta property="og:url" content="' + url + '">',
+    '<meta property="og:image" content="' + BASE + 'assets/' + CARD.file + '">', '<meta property="og:image:type" content="image/png">',
+    '<meta property="og:image:width" content="' + CARD.size[0] + '">', '<meta property="og:image:height" content="' + CARD.size[1] + '">',
+    '<meta property="og:image:alt" content="' + esc(CARD.alt) + '">', '<meta name="twitter:card" content="summary_large_image">'].join('\n');
+  const where = file === '404' ? '<meta name="robots" content="noindex">' : '<link rel="canonical" href="' + url + '">\n' + share;
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta http-equiv="Content-Security-Policy" content="${META_CSP}">
-<title>${esc(title === NAME ? NAME + '（遊び）' : title + ' | ' + NAME)}</title>
-<meta name="description" content="${esc(FOOT)}">
+<title>${esc(full)}</title>
+<meta name="description" content="${esc(desc)}">
+<meta name="theme-color" content="${THEME}">
 <meta name="google-site-verification" content="${GSC}">
 ${where}
 <link rel="stylesheet" href="${up}assets/style.css">
 <link rel="icon" href="${up}assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="${up}assets/apple-touch-icon.png">
 </head>
 <body class="p-${esc(file)}">
 <a class="skip" href="#main">本文へ</a>
@@ -426,4 +460,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { NOT_FOUND, VERCEL, ROBOTS, SITEMAP, headIds, tocList, CITE, GSC, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { DESC, DESC_TAIL, CARD, THEME, NOT_FOUND, VERCEL, ROBOTS, SITEMAP, headIds, tocList, CITE, GSC, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
