@@ -24,3 +24,27 @@ jobs:
         with:
           node-version: 22
       - run: node verification/check.js
+
+  # ブラウザが要る検査は別の仕事にする。環境の都合で落ちたのか、中身が壊れたのかを見分けるため（2026-11-23）。
+  # 二つの言葉のすべての頁を Chromium で開き、コンソールと CSP、はみ出し、キーボード、拡大、動き、遊び場、言葉の切り替え、
+  # 入れ子の 404、頁の中のつなぎを確かめ、続けて site/ の写しを壊して落ちることを確かめる。
+  browser:
+    name: ブラウザ（全頁・二つの言葉・壊して確かめる）
+    # ubuntu-latest が 26.04 になり、playwright 1.56.1 が Chromium を入れられなくなった（運営者の別のリポジトリ、2026-11-06）。
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: playwright と Chromium を入れる
+        run: |
+          npm install -g playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: 全頁を確かめる
+        run: NODE_PATH="$(npm root -g)" node verification/check_browser.js
+      - name: 壊して落ちることを確かめる
+        run: NODE_PATH="$(npm root -g)" node verification/check_browser.js --break
