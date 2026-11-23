@@ -25,7 +25,7 @@ Law 8 of the canon says that becoming one is a quagmire, and Law 10 says that li
 
 It is a name that casts the wizard of the canon as a class in a game.
 By Law 6, results cannot be seen from outside. That is why it is called "stealth".
-Until 2026-11-21 it was called the "Quiet Wizard" (in Japanese, 地味な魔法使い).
+Until 2026-11-21 it was called the "Quiet Wizard" (in Japanese, 〘地味な魔法使い〙).
 
 ## Does a class sort people?
 

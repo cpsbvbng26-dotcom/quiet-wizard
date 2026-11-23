@@ -276,11 +276,13 @@ const headText = (h) => h.replace(/<span class="lat"[^>]*>[^<]*<\/span>/g, '').r
 function tocList(html, top) {
   const groups = [];
   for (const m of html.matchAll(/<h([23]) id="(s[\d-]+)">(.+?)<\/h\1>/g)) {
-    const e = { id: m[2], text: headText(m[3]) };
+    const e = { id: m[2], text: headText(m[3]), raw: m[3] };
     if ((m[1] === '2' && top(e.text)) || !groups.length) groups.push({ e, kids: [] }); else groups[groups.length - 1].kids.push(e);
   }
-  return groups.map(({ e, kids }) => '<li><a href="#' + e.id + '">' + esc(e.text) + '</a>'
-    + (kids.length ? '<ol>' + kids.map((k) => '<li><a href="#' + k.id + '">' + esc(k.text) + '</a></li>').join('') + '</ol>' : '') + '</li>').join('');
+  /* 見出しの中の日本語（英語の頁の条の名など）は、lang="ja" を付けたまま目次に写す（2026-11-23）。 */
+  const t = (e) => esc(e.text).replace(/（[^）]*[\u3040-\u30ff\u4e00-\u9fff][^）]*）/g, (m) => (/<span lang="ja">/.test(e.raw) ? '<span lang="ja">' + m + '</span>' : m));
+  return groups.map(({ e, kids }) => '<li><a href="#' + e.id + '">' + t(e) + '</a>'
+    + (kids.length ? '<ol>' + kids.map((k) => '<li><a href="#' + k.id + '">' + t(k) + '</a></li>').join('') + '</ol>' : '') + '</li>').join('');
 }
 const pageToc = (html, lang) => '<nav class="toc" aria-label="' + UI[lang === 'en' ? 'en' : 'ja'].tocLabel + '"><p class="toc-h">' + UI[lang === 'en' ? 'en' : 'ja'].toc + '</p><ol class="toc-books">' + tocList(html, () => true) + '</ol></nav>';
 /* 原理の目次と索引。英語の頁では、巻（Book I など）と General Scholium を上の段に置く。 */

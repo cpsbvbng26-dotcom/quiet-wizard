@@ -64,7 +64,7 @@ Nothing in these terms limits any right that the law does not allow to be limite
 
 ## Names
 
-The names "ステルス・ウィザード" (Stealth Wizard), "地味な魔法使い" (Quiet Wizard) and "quiet-wizard" have not been filed as trademarks, and will not be.
+The names "〘ステルス・ウィザード〙" (Stealth Wizard), "〘地味な魔法使い〙" (Quiet Wizard) and "quiet-wizard" have not been filed as trademarks, and will not be.
 Whether the same or similar names are registered as trademarks has not been searched in the Japan Patent Office database.
 If a rights holder gets in touch, the name will be changed or no longer used ([requests and contact](requests.en.html)).
 

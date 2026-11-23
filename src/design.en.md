@@ -139,7 +139,7 @@ The playground script draws only circle and line elements.
 
 ### Filing and registration
 
-The names of the site (ステルス・ウィザード, 地味な魔法使い, quiet-wizard) have not been filed as trademarks ("Names" in the [terms of use](terms.en.html)).
+The names of the site (〘ステルス・ウィザード〙, 〘地味な魔法使い〙, quiet-wizard) have not been filed as trademarks ("Names" in the [terms of use](terms.en.html)).
 There is no record in this repository of the seals, favicon, scene, figures, share card or icon being filed as trademarks or designs.
 Whether the same or similar names, or similar shapes, are registered as trademarks or designs has not been searched in the Japan Patent Office database.
 
