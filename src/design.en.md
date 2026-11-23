@@ -184,7 +184,7 @@ With that said, here are the things this site does about its appearance that the
 - The ratio between the colours of the playground's lines and dots and the ground colours of the two views is at least 3. The lowest in the playground's network is the wizard's view's #5d6672 against the ground #12161c, at 3.12.
 - Text inside figures does not refer to shapes by colour names, because the line colours of the figures turn lighter in the dark scheme.
 - On the English pages, the text in the figures and the scene is replaced with English through the FIG_EN table in `build.js`. Each figure is still a single file. The English text also does not refer to shapes by colour names.
-- With the reduced-motion setting (prefers-reduced-motion), every animation in style.css stops, and so does the transition of the home page scene. "Let the days run" in the playground lengthens each day from 800 milliseconds to 1500 milliseconds.
+- With the reduced-motion setting (prefers-reduced-motion), every animation and every transition in style.css stops. The transition of the home page scene stops, and so do the colour transitions of links and buttons. "Let the days run" in the playground lengthens each day from 800 milliseconds to 1500 milliseconds.
 - Images in the pages carry alternative text. Each img has alt, the figures, scene and playground network have aria-label, and decorative SVGs are hidden from screen readers with aria-hidden. The share card has alternative text through og:image:alt.
 - Parts operated by keyboard draw a focus ring (a 2px line with :focus-visible).
 - Every page has a skip link ("Skip to content") at its start. It is visible only when selected by keyboard.

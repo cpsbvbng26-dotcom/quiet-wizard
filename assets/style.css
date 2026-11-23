@@ -292,6 +292,7 @@ main > .eyebrow, main > h1, main > .en-title, main > blockquote:first-of-type { 
 main > h1 { animation-delay: .08s; } main > .en-title { animation-delay: .16s; } main > blockquote:first-of-type { animation-delay: .24s; }
 @media (prefers-reduced-motion: reduce) { main > .eyebrow, main > h1, main > .en-title, main > blockquote:first-of-type { animation: none; } }
 @media (prefers-reduced-motion: reduce) { .drift { animation: none; } .scene .layer, .eye-switch .knob::after, .meter .fill, .p-index main > ul > li { transition: none; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 @media (max-width: 34rem) {
   main { padding-block: 2rem 3rem; } h2 { margin-top: 2.8rem; }
   header nav { width: 100%; justify-content: space-between; gap: .2rem .6rem; letter-spacing: .06em; }
