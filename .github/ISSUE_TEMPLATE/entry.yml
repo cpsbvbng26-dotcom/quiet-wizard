@@ -1,0 +1,110 @@
+# 生成物：intake/entry.js の FORM から node build.js が作る。手で直さない。
+name: "みんなの図鑑に場面を寄せる / Send a scene to the Field Guide by Visitors"
+description: "十の法則が暮らしの中で地味に現れる場面を寄せる / A made-up everyday scene in which one of the ten laws quietly shows"
+title: "みんなの図鑑: "
+labels: ["entry"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        これは遊びです。科学ではありません。
+
+        寄せるのは、原典の十の法則のどれかが、暮らしの中で地味に現れる場面です。作り話か、誰にでもありそうな場面です。[図鑑](https://quiet-wizard.vercel.app/guide.html)の「十の法則の、地味な現れ」と同じ種類の文です。
+
+        issue は、開いたその時から GitHub で公開されます。運営者が読む前から、誰でも読めます。開いた人の GitHub の名も、一緒に出ます。
+
+        サイトに載るのは、運営者が読んで選んだ場面だけです。受付の機械は、欄と印を確かめてラベルとコメントを付けるだけで、何も載せず、issue を閉じません。
+
+        載せた場面を外すこと、名を隠すこと、この issue を直すか消すことは、いつでも求められます（[求めと連絡](https://quiet-wizard.vercel.app/requests.html)）。寄せた場面の決まりは[利用規約](https://quiet-wizard.vercel.app/terms.html)の「寄せた場面」に、扱う情報は[個人情報の取り扱い](https://quiet-wizard.vercel.app/privacy.html)にあります。
+
+        This is a play, not science.
+
+        What is sent here is a scene in which one of the ten laws of the canon quietly shows up in daily life: a made-up scene, or one that could happen to anyone. It is the same kind of text as "How the ten laws quietly show" in the [field guide](https://quiet-wizard.vercel.app/guide.en.html).
+
+        An issue is public on GitHub from the moment it is opened, before the operator reads it. Anyone can read it, and the GitHub username of the person who opened it is shown with it.
+
+        Only scenes that the operator has read and chosen appear on the site. The intake only checks the fields and boxes and adds a label and a comment; it publishes nothing and closes no issue.
+
+        Removing an added scene, hiding the name, and editing or deleting this issue can be asked for at any time ([requests and contact](https://quiet-wizard.vercel.app/requests.en.html)). The rules for scenes are in "Scenes sent in" of the [terms of use](https://quiet-wizard.vercel.app/terms.en.html), and the information handled is in the [privacy policy](https://quiet-wizard.vercel.app/privacy.en.html).
+  - type: dropdown
+    id: law
+    attributes:
+      label: "法則 / Law"
+      description: "どの法則の場面か / The law the scene shows"
+      options:
+        - "第一法則 成立 / Law 1 Establishment"
+        - "第二法則 多面 / Law 2 Many Faces"
+        - "第三法則 保存 / Law 3 Conservation"
+        - "第四法則 反転 / Law 4 Reversal"
+        - "第五法則 目安 / Law 5 Rule of Thumb"
+        - "第六法則 還元 / Law 6 Return"
+        - "第七法則 共通 / Law 7 Common Practice"
+        - "第八法則 泥沼 / Law 8 Quagmire"
+        - "第九法則 秘匿 / Law 9 Secrecy"
+        - "第十法則 長命 / Law 10 Long Life"
+    validations:
+      required: true
+  - type: input
+    id: title
+    attributes:
+      label: "題 / Title"
+      description: "短い題。日本語は 30 字まで、英語は 80 文字まで / A short title: up to 30 characters in Japanese, 80 in English"
+    validations:
+      required: true
+  - type: textarea
+    id: text
+    attributes:
+      label: "場面 / Scene"
+      description: "一つか二つの文。日本語は 10 字から 200 字まで、英語は 20 文字から 600 文字まで。空白も一字に数え、改行は数えません。実在の人、誰のことか分かる人、GitHub の名（@ で始まる名）、リンクは、場面に入れない決めです。issue は、開いたその時から GitHub で公開されます。運営者が読む前から、誰でも読めます。開いた人の GitHub の名も、一緒に出ます。 / One or two sentences: 10 to 200 characters in Japanese, 20 to 600 in English. Spaces count; line breaks do not. Real or identifiable people, GitHub usernames (names starting with @) and links are kept out of the scene. An issue is public on GitHub from the moment it is opened, before the operator reads it. Anyone can read it, and the GitHub username of the person who opened it is shown with it."
+    validations:
+      required: true
+  - type: dropdown
+    id: lang
+    attributes:
+      label: "言葉 / Language"
+      description: "場面を書いた言葉。訳さずに、書いた言葉のまま載せます / The language the scene is written in. It is shown as written, without translation"
+      options:
+        - "日本語 / Japanese"
+        - "英語 / English"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "確かめ / Checks"
+      description: "どれも印が要ります。印の無い欄があれば、受付の機械がそのことをコメントで知らせます / Every box is needed. If one is left empty, the intake says so in a comment"
+      options:
+        - label: "十八歳以上です。 / I am 18 or older."
+          required: true
+        - label: "自分で新しく書いた文です。他人の文や作品を写していません。 / I wrote this text myself. It copies no one else's text or work."
+          required: true
+        - label: "実在の人や、誰のことか分かる人を、名指しも描写もしていません。 / It names or describes no real or identifiable person."
+          required: true
+        - label: "誰の性経験にも触れていません。性的な描写もありません。 / It says nothing about anyone's sexual experience, and has no sexual content."
+          required: true
+        - label: "自分やほかの誰かを、魔法使いだと言っていません。 / It does not claim that I or anyone else is a wizard."
+          required: true
+        - label: "遊びの文で、科学でも助言でもありません。 / It is play, not science or advice."
+          required: true
+        - label: "この文を CC BY 4.0 で許諾します。名の表示は「名の表示」の欄の印のとおりで、印が無ければ名を出しません。運営者は、載せないことも、載せた後で外すこともあります。 / I license this text under CC BY 4.0. Credit follows the box under \"Credit\"; without it, no name is shown. The operator may decline the text, or remove it later."
+          required: true
+        - label: "載せるときに、運営者が次の三つに限って手を入れることに同意します。長さを詰めること。表記（字、句読点、かなと漢字）をそろえること。このサイトの決めに合わない語を替えること。意味の変わる直しは、この issue で尋ねてからにします。 / I agree that, when adding the text, the operator may change it in these three ways only: shortening it, making the notation consistent (characters, punctuation, kana and kanji), and replacing words that do not fit the rules of this site. A change of meaning is asked about in this issue first."
+          required: true
+  - type: checkboxes
+    id: credit
+    attributes:
+      label: "名の表示 / Credit"
+      description: "任意です。印が無ければ、頁にも data/entries.json にも名を書きません / Optional. Without it, no name is written on the site or in data/entries.json"
+      options:
+        - label: "GitHub の名を、寄せた人として頁に出してよい。 / My GitHub username may be shown on the site as the contributor."
+          required: false
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: "言語モデルに渡ること / Use of a language model"
+      description: |
+        運営者は、このリポジトリの手入れを、言語モデル Claude（Anthropic、米国）の手を借りて行います。この欄に印があれば、その作業のあいだ、この issue の題と本文が Claude に渡ることがあります。運営者は、これを個人情報保護法第 28 条の外国にある第三者への提供として扱います。米国の制度と Anthropic の措置は、[個人情報の取り扱い](https://quiet-wizard.vercel.app/privacy.html)の「言語モデルに渡すこと」にあります。印は任意です。印が無ければ、運営者が自分で読み、題と本文を言語モデルに渡しません。コメントは、印があっても渡しません。同意は、この issue で、いつでも撤回できます。
+        The operator maintains this repository with the help of Claude, the language model of Anthropic (United States). If this box is ticked, the title and text of this issue may be given to Claude during that work. The operator treats this as a provision of personal data to a third party in a foreign country under Article 28 of Japan's Act on the Protection of Personal Information. The system of the United States and Anthropic's measures are set out in the section "Giving issues to a language model" of the [privacy policy](https://quiet-wizard.vercel.app/privacy.en.html). The box is optional. Without it, the operator reads the issue in person and gives its title and text to no language model. Comments are not given to it even with the box. The consent can be withdrawn at any time in this issue.
+      options:
+        - label: "この issue の題と本文を、運営者が Claude（Anthropic、米国）に渡すことに同意します。 / I consent to the operator giving the title and text of this issue to Claude (Anthropic, United States)."
+          required: false
