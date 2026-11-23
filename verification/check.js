@@ -125,7 +125,7 @@ function woff2(buf) {
 
 function files() {
   const x = {};
-  for (const f of ['README.md', 'CLAUDE.md', 'PRINCIPIA.md', 'build.js', 'assets/play.js', 'assets/style.css', 'assets/OFL-InterTight.txt', 'verification/statutes-texts.json', ...B.PAGES.map(([s]) => 'src/' + s + '.md')]) x[f] = R(f);
+  for (const f of ['README.md', 'CLAUDE.md', 'PRINCIPIA.md', 'build.js', 'assets/play.js', 'assets/style.css', 'assets/OFL-InterTight.txt', 'verification/statutes-texts.json', ...B.PAGES.map(([s]) => 'src/' + s + '.md'), ...B.EN_PAGES.map((s) => 'src/' + s + '.en.md')]) x[f] = R(f);
   for (const f of fs.existsSync(path.join(ROOT, 'site')) ? fs.readdirSync(path.join(ROOT, 'site')) : []) if (/\.html$/.test(f)) x['site/' + f] = R('site/' + f);
   /* 配る素材（書体・図・スクリプト・意匠）は、assets と site/assets で同じであること。書体は中身の指紋で固める。 */
   const sha = (p) => { try { return require('crypto').createHash('sha256').update(fs.readFileSync(path.join(ROOT, p))).digest('hex'); } catch (e) { return ''; } };
@@ -155,7 +155,7 @@ const MD = require('./models.js'), mr = MD.run(), mbad = MD.verdict(mr);
 /* 遊び場のスクリプトを、ブラウザの代わりの小さな作り物の上で動かす（2026-11-23）。押したときと、自動で過ごすときの一日を、
  * 決めた乱数で進め、描いた線と点、知らせの文と読み上げの設定を集める。頁の文の数（人の数・閾の幅）と、魔法使い自身の線が
  * 自分の成果で太らないことを、スクリプトの文を読むのではなく、動かした結果で確かめるため。 */
-function simulatePlay(js, play, { first = 0.5, days = 120, seed = 7 } = {}) {
+function simulatePlay(js, play, { first = 0.5, days = 120, seed = 7, lang = 'ja' } = {}) {
   const vm = require('vm');
   const mk = (tag) => ({ tag, attrs: {}, style: {}, kids: [], handlers: {}, textContent: '', className: '',
     setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k]; },
@@ -168,7 +168,8 @@ function simulatePlay(js, play, { first = 0.5, days = 120, seed = 7 } = {}) {
   }
   let tick = null, calls = 0, st = seed;
   const rand = () => { if (calls++ === 0) return first; st = (st * 1103515245 + 12345) % 2147483648; return st / 2147483648; };
-  const ctx = { document: { getElementById: (id) => els[id] || null, createElementNS: (ns, name) => mk(name) },
+  /* 頁の言葉は html の lang から読む（2026-11-23）。 */
+  const ctx = { document: { documentElement: { getAttribute: (k) => (k === 'lang' ? lang : null) }, getElementById: (id) => els[id] || null, createElementNS: (ns, name) => mk(name) },
     window: { matchMedia: () => ({ matches: false }) }, setInterval: (f) => { tick = f; return 1; }, clearInterval: () => { tick = null; }, __rand: rand };
   vm.createContext(ctx);
   vm.runInContext('Math.random = __rand;\n' + js, ctx, { timeout: 2000 });
@@ -195,12 +196,34 @@ function simulatePlay(js, play, { first = 0.5, days = 120, seed = 7 } = {}) {
   for (let d = 0; d < 5 && tick; d++) { tick(); out.live.push(els.note.attrs['aria-live']); look(); }
   click('auto'); out.live.push(els.note.attrs['aria-live'] + ':' + (tick ? 'on' : 'none')); look();
   out.valuemax = Number(els.meter.attrs['aria-valuemax']);
-  out.threshold = Number((out.notes.map((t) => /閾の (\d+) に届き/.exec(t)).find(Boolean) || [, NaN])[1]);
+  out.threshold = Number((out.notes.map((t) => /閾の (\d+) に届き|reached the threshold of (\d+),/.exec(t)).find(Boolean) || [, NaN]).slice(1).find(Boolean));
+  out.state = els.state.textContent; out.autoLabel = els.auto.textContent;
   return out;
 }
 /* 遊び場の部品（build.js の PLAY）は、build.js の文から読む（壊し方が build.js を変えて確かめられるように）。 */
-const playOf = (x) => (/const PLAY = `([\s\S]*?)`;/.exec(x['build.js'] || '') || [, ''])[1];
+const playOf = (x, lang) => (new RegExp('const PLAY' + (lang === 'en' ? '_EN' : '') + ' = `([\\s\\S]*?)`;').exec(x['build.js'] || '') || [, ''])[1];
 const KANJI_N = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+
+/* 英語の頁（2026-11-23）。頁のファイルの名から、言葉と頁の名を読む。 */
+const langOf = (f) => (/\.en\.html$|\.en\.md$/.test(f) ? 'en' : 'ja');
+const pageOf = (f) => f.replace(/^(site|src)\//, '').replace(/(\.en)?\.(html|md)$/, '');
+/* 英語の頁の上の帯と下の欄（日本語の FRAME と FOOT と同じことを言う）。どの英語の頁にも置く。 */
+const FRAME_EN = "This is an entertainment space, separate from the operator's academic work. It is not science.";
+const DISCLOSE_EN = ['The playful parts were written by Claude (a language model made by Anthropic). Claude is not an author.', 'The English pages were translated from the Japanese by Claude.', 'Text is CC BY 4.0; code is MIT.'];
+const CAUTION_EN = ['This is an in-joke, and some people may find it offensive. Please keep that in mind.', 'It is not elitism', 'does not speak for wizards.'];
+/* 頁ごとに、言葉で変わる決まった語。 */
+const LW = {
+  ja: { FOOT: B.FOOT, FRAME, skip: '本文へ', footFrame: '運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。',
+    footWords: ['これは遊びです。', '科学の法則ではなく', '誰の性経験も評価せず', '特定の人を指しません。'],
+    footCaution: ['内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。', '選民思想ではなく、運営者は魔法使いの代表ではありません。'],
+    disclose: DISCLOSE, ruleHref: (up, l) => 'href="' + up + l + '.html"',
+    header: (up) => '<header><div class="mast"><a class="site" href="' + (up || 'index.html') + '"><img class="crest" src="' + up + 'assets/emblem-crest.svg" alt="クラスの紋" width="34" height="40"><span class="titles"><span class="name">' + B.NAME + '</span><span class="sub" lang="la" aria-hidden="true">Magus Occultus</span></span></a>' },
+  en: { FOOT: B.FOOT_EN, FRAME: FRAME_EN, skip: 'Skip to content', footFrame: "an entertainment space, separate from the operator's academic work. It is not science.",
+    footWords: ['This is a play.', 'not scientific laws', "judge no one's sexual experience", 'point at no particular person.'],
+    footCaution: ['This is an in-joke, and some people may find it offensive. Please keep that in mind.', 'It is not elitism, and the operator does not speak for wizards.'],
+    disclose: DISCLOSE_EN, ruleHref: (up, l) => 'href="' + up + l + (B.hasEn(l) ? '.en' : '') + '.html"',
+    header: (up) => '<header><div class="mast"><a class="site" href="' + up + 'index.en.html"><img class="crest" src="' + up + 'assets/emblem-crest.svg" alt="Class crest" width="34" height="40"><span class="titles"><span class="name">' + B.NAME_EN + '</span><span class="sub" lang="la" aria-hidden="true">Magus Occultus</span></span></a>' },
+};
 
 function verdict(x) {
   const bad = [];
@@ -300,37 +323,38 @@ function verdict(x) {
   if (!x['src/about.md'].includes('誰の性経験も評価しません。') || !x['src/about.md'].includes('特定の人を魔法使いと呼ぶものではありません。') || !x['src/about.md'].includes('下の「学術的な正文」のほかは、研究の頁とつないでいません。')) bad.push('断りと開示の三つの断り');
   if (!x['src/faq.md'].includes('このサイトは、誰からも何も集めません。')) bad.push('問い：何も集めない');
   const html = Object.keys(x).filter((f) => f.startsWith('site/') && f.endsWith('.html'));
-  if (html.length !== B.PAGES.length + 1) bad.push('生成した頁の数が ' + html.length);
+  if (html.length !== B.PAGES.length + B.EN_PAGES.length + 2) bad.push('生成した頁の数が ' + html.length);
   for (const f of html) {
-    const h = x[f];
+    const h = x[f], lang = langOf(f), W = LW[lang];
     if (!h.includes('<meta http-equiv="Content-Security-Policy" content="' + B.META_CSP + '">')) bad.push(f + '：CSP');
-    if (!h.includes(B.FOOT)) bad.push(f + '：下の欄の断り');
-    if (!h.includes('<span class="say">' + FRAME + '</span></p></aside>\n<header>')) bad.push(f + '：上の帯の断り');
+    if (!h.startsWith('<!DOCTYPE html>\n<html lang="' + lang + '">\n')) bad.push(f + '：html の lang が ' + lang + ' でない');
+    if (!h.includes(W.FOOT)) bad.push(f + '：下の欄の断り');
+    if (!h.includes('<span class="say">' + W.FRAME + '</span></p></aside>\n<header>')) bad.push(f + '：上の帯の断り');
     /* Search Console の所有の確認（2026-11-22）。運営者が受け取った値を、どの頁の head にも一つだけ置く。 */
     if ((h.match(/<meta name="google-site-verification" content="([^"]*)">/g) || []).join() !== '<meta name="google-site-verification" content="UEPpX5mfnLlhOBTBTETu-PmRO_Y4L2SmjEiaq_U1Zf8">' || h.indexOf('google-site-verification') > h.indexOf('</head>')) bad.push(f + '：Search Console の確認の値');
     /* 上の欄（2026-11-22）：クラスの紋と名とラテン語の添え名。紋は自分の assets から読み、代わりの文を持つ。 */
     /* 404 の頁は、どのディレクトリの所在でも出るので、つなぎと素材を根から書く（2026-11-23）。ほかの頁は、頁のある所から書く。 */
-    const up = f === 'site/404.html' ? '/' : '';
-    if (!h.includes('<header><div class="mast"><a class="site" href="' + (up || 'index.html') + '"><img class="crest" src="' + up + 'assets/emblem-crest.svg" alt="クラスの紋" width="34" height="40"><span class="titles"><span class="name">' + B.NAME + '</span><span class="sub" lang="la" aria-hidden="true">Magus Occultus</span></span></a></div>')) bad.push(f + '：上の欄の紋と名と添え名');
+    const up = /^site\/404(\.en)?\.html$/.test(f) ? '/' : '';
+    if (!h.includes(W.header(up))) bad.push(f + '：上の欄の紋と名と添え名');
     /* 本文へ飛ぶつなぎ（2026-11-23）。body の初めに一つ、飛び先の main は一つ。 */
-    if (!/<body class="p-[a-z0-9]+">\n<a class="skip" href="#main">本文へ<\/a>\n/.test(h) || (h.match(/<main\b[^>]*>/g) || []).join() !== '<main id="main">' || (h.match(/id="main"/g) || []).length !== 1) bad.push(f + '：本文へ飛ぶつなぎ');
+    if (!h.includes('<body class="p-' + pageOf(f) + '">\n<a class="skip" href="#main">' + W.skip + '</a>\n') || (h.match(/<main\b[^>]*>/g) || []).join() !== '<main id="main">' || (h.match(/id="main"/g) || []).length !== 1) bad.push(f + '：本文へ飛ぶつなぎ');
     /* canonical と、検索に載せないこと。404 は canonical を出さず、noindex。ほかは、自分の所在の canonical を一つ。 */
     const canon = h.match(/<link rel="canonical" href="([^"]*)">/g) || [], noidx = /<meta name="robots" content="noindex">/.test(h);
     const self = f.replace(/^site\//, '');
-    if (up ? (canon.length || !noidx) : (canon.join() !== '<link rel="canonical" href="' + B.BASE + (self === 'index.html' ? '' : self) + '">' || noidx)) bad.push(f + '：canonical か noindex');
+    if (up ? (canon.length || !noidx) : (canon.join() !== '<link rel="canonical" href="' + B.urlOf(pageOf(f), lang) + '">' || self !== B.fileOf(pageOf(f), lang) + '.html' || noidx)) bad.push(f + '：canonical か noindex');
     if (up) for (const m of h.matchAll(/\s(?:src|href)="([^"]*)"/g)) if (!/^(\/|#|https:)/.test(m[1])) bad.push(f + '：根から書いていない所在 ' + m[1]);
     const foot = h.indexOf('<footer>') < 0 ? '' : h.slice(h.indexOf('<footer>'));
-    if (!foot.includes('運営者の学術的な活動とは別の、エンターテインメントの枠です。科学ではありません。')) bad.push(f + '：下の欄の、別の枠だという断り');
+    if (!foot.includes(W.footFrame)) bad.push(f + '：下の欄の、別の枠だという断り');
     /* 下の欄の文は FOOT と比べるだけでは、FOOT ごと弱めても通る。決めた語を頁ごとに固める。 */
-    for (const w of ['これは遊びです。', '科学の法則ではなく', '誰の性経験も評価せず', '特定の人を指しません。']) if (!foot.includes(w)) bad.push(f + '：下の欄の断り（' + w + '）');
-    for (const w of ['内輪ノリであり、気分を害する方がいる可能性があります。ご注意ください。', '選民思想ではなく、運営者は魔法使いの代表ではありません。']) if (!h.includes(w)) bad.push(f + '：下の欄の断り（' + w.slice(0, 8) + '）');
-    for (const l of ['terms', 'privacy', 'requests', 'legality', 'about', 'design']) if (!h.includes('href="' + up + l + '.html"') && f !== 'site/' + l + '.html') bad.push(f + '：決まりの頁 ' + l + ' へのつなぎ');
-    for (const d of DISCLOSE) if (!h.includes(d)) bad.push(f + '：開示');
-    /* 外へ読みに行く要素。canonical は読みに行かないので除く。 */
-    if (/<(script|img|link|iframe|source)\b(?![^>]*rel="canonical")[^>]*\s(src|href)="https?:/i.test(h)) bad.push(f + '：外へ読みに行く');
+    for (const w of W.footWords) if (!foot.includes(w)) bad.push(f + '：下の欄の断り（' + w + '）');
+    for (const w of W.footCaution) if (!foot.includes(w)) bad.push(f + '：下の欄の断り（' + w.slice(0, 8) + '）');
+    for (const l of ['terms', 'privacy', 'requests', 'legality', 'about', 'design']) if (!h.includes(W.ruleHref(up, l)) && pageOf(f) !== l) bad.push(f + '：決まりの頁 ' + l + ' へのつなぎ');
+    for (const d of W.disclose) if (!foot.includes(d)) bad.push(f + '：開示');
+    /* 外へ読みに行く要素。canonical と、言葉の対（alternate、2026-11-23）は読みに行かないので除く。 */
+    if (/<(script|img|link|iframe|source)\b(?![^>]*rel="(?:canonical|alternate)")[^>]*\s(src|href)="https?:/i.test(h)) bad.push(f + '：外へ読みに行く');
     if (/\sstyle="|<style|\son[a-z]+="/i.test(h)) bad.push(f + '：頁の中の style か事件の属性');
     /* 例外は一つ：断りと開示の「学術的な正文」が、確かめた DOI 一つだけを示す。 */
-    const hh = f === 'site/about.html' ? h.split(PAPER_LINK).join('') : h;
+    const hh = pageOf(f) === 'about' ? h.split(PAPER_LINK).join('') : h;
     for (const a of AWAY) if (hh.toLowerCase().includes(a)) bad.push(f + '：' + a + ' につないでいる');
   }
   /* 頁の頭の説明と共有のカード（2026-11-23）。説明は頁ごとに違い、短く、短い断りで終える。カードは canonical の所在を指し、
@@ -340,24 +364,26 @@ function verdict(x) {
   try { card = readPng(x['#png:assets/card.png']); } catch (e) { bad.push('共有のカードが読めない：' + e.message); }
   const mastbg = (/--mastbg:\s*(#[0-9a-f]{6})/.exec(x['assets/style.css']) || [, ''])[1];
   for (const f of html) {
-    const h = x[f], head = h.slice(0, h.indexOf('</head>'));
-    const up = f === 'site/404.html' ? '/' : '';
+    const h = x[f], head = h.slice(0, h.indexOf('</head>')), lang = langOf(f), en = lang === 'en';
+    const up = /^site\/404(\.en)?\.html$/.test(f) ? '/' : '';
     const meta = (k) => [...head.matchAll(new RegExp('<meta (?:property|name)="' + k.replace(/:/g, ':') + '" content="([^"]*)">', 'g'))].map((m) => m[1]);
     const d = meta('description');
-    if (d.length !== 1 || !d[0].endsWith('遊びであり、科学ではありません。') || [...d[0]].length > 120) bad.push(f + '：頁の説明（一つ、120 字まで、短い断りで終える）');
+    /* 英語の説明は、英字で 200 字まで、「It is a play, not science.」で終える（2026-11-23）。 */
+    if (d.length !== 1 || !d[0].endsWith(en ? ' It is a play, not science.' : '遊びであり、科学ではありません。') || [...d[0]].length > (en ? 200 : 120)) bad.push(f + '：頁の説明（一つ、決めた長さまで、短い断りで終える）');
     else if (descs.has(d[0])) bad.push(f + '：頁の説明が ' + descs.get(d[0]) + ' と同じ'); else descs.set(d[0], f);
     if (meta('theme-color').join() !== mastbg) bad.push(f + '：帯の色が上の欄の夜の黒でない');
     if (!head.includes('<link rel="apple-touch-icon" href="' + up + 'assets/apple-touch-icon.png">')) bad.push(f + '：ホーム画面のアイコン');
     const og = (k) => meta('og:' + k);
     if (up) { if (/property="og:|name="twitter:/.test(head)) bad.push(f + '：404 に共有のカードがある'); continue; }
     const canon = (/<link rel="canonical" href="([^"]*)">/.exec(head) || [, ''])[1], title = (/<title>([^<]*)<\/title>/.exec(head) || [, ''])[1];
-    const want = { type: 'website', site_name: B.NAME, locale: 'ja_JP', title, description: d[0], url: canon, image: B.BASE + 'assets/card.png', 'image:type': 'image/png',
+    const pair = B.hasEn(pageOf(f));
+    const want = { type: 'website', site_name: en ? B.NAME_EN : B.NAME, locale: en ? 'en_US' : 'ja_JP', 'locale:alternate': pair ? (en ? 'ja_JP' : 'en_US') : '-', title, description: d[0], url: canon, image: B.BASE + 'assets/card.png', 'image:type': 'image/png',
       'image:width': String(card && card.w), 'image:height': String(card && card.h) };
-    for (const [k, v] of Object.entries(want)) if (og(k).join('\u0000') !== v || !v) bad.push(f + '：og:' + k + ' が ' + JSON.stringify(og(k)) + '（求めるのは ' + v + '）');
+    for (const [k, v] of Object.entries(want)) if ((og(k).join('\u0000') || '-') !== v || !v) bad.push(f + '：og:' + k + ' が ' + JSON.stringify(og(k)) + '（求めるのは ' + v + '）');
     if (og('image:alt').length !== 1 || og('image:alt')[0].length < 20) bad.push(f + '：og:image:alt');
     if (meta('twitter:card').join() !== 'summary_large_image') bad.push(f + '：twitter:card');
   }
-  if (descs.size !== B.PAGES.length + 1) bad.push('頁の説明の数が頁の数と違う（' + descs.size + '）');
+  if (descs.size !== B.PAGES.length + B.EN_PAGES.length + 2) bad.push('頁の説明の数が頁の数と違う（' + descs.size + '）');
   if (card && (card.w !== 1200 || card.h !== 630)) bad.push('共有のカードが 1200×630 でない：' + card.w + '×' + card.h);
   /* はじめにの三つの紋（2026-11-22）：決めた三つの img が、どれも代わりの文を持ち、自分の assets から読む。 */
   const emb = [...B.EMBLEMS.matchAll(/<img\b[^>]*src="assets\/(emblem-[a-z]+\.svg)"[^>]*alt="([^"]+)"/g)];
@@ -371,10 +397,12 @@ function verdict(x) {
   if (!x['src/play.md'].includes('人には、名前も年齢も性別も、どんな属性も付けていません。見るのは、関係の移り変わりだけです。')) bad.push('遊び場：属性を付けないという断り');
   if ((x['src/play.md'].match(/^\| 第[二三四五六七八九十]法則 /mg) || []).length !== 9) bad.push('遊び場：法則と働きの表が九行でない');
   /* 生成物が元と同じか（site/ は手で直さない）。 */
-  const fresh = (s) => { const md = x['src/' + s + '.md']; return B.page(s, /^# (.+)$/m.exec(md)[1], B.render(md, s)); };
-  const freshOr = (s) => { try { return fresh(s); } catch (e) { bad.push('src/' + s + '.md から作れない：' + e.message); return null; } };
-  for (const [s, out] of B.PAGES) if (x['site/' + out + '.html'] !== undefined && x['site/' + out + '.html'] !== freshOr(s)) bad.push('site/' + out + '.html が src から作ったものと違う（node build.js）');
+  /* 英語の頁も、src/<名>.en.md から作ったものと同じ（2026-11-23）。 */
+  const fresh = (s, lang) => { const md = x['src/' + B.fileOf(s, lang) + '.md'] || ''; return B.page(s, /^# (.+)$/m.exec(md)[1], B.render(md, B.fileOf(s, lang), lang), lang); };
+  const freshOr = (s, lang) => { try { return fresh(s, lang); } catch (e) { bad.push('src/' + B.fileOf(s, lang) + '.md から作れない：' + e.message); return null; } };
+  for (const [s, out] of B.PAGES) for (const lang of B.hasEn(out) ? B.LANGS : ['ja']) { const f = 'site/' + B.fileOf(out, lang) + '.html'; if (x[f] === undefined || x[f] !== freshOr(s, lang)) bad.push(f + ' が src から作ったものと違う（node build.js）'); }
   if (x['site/404.html'] !== B.page('404', '頁が見つかりません', B.NOT_FOUND)) bad.push('site/404.html が build.js から作ったものと違う（node build.js）');
+  if (x['site/404.en.html'] !== B.page('404', 'Page not found', B.NOT_FOUND_EN, 'en')) bad.push('site/404.en.html が build.js から作ったものと違う（node build.js）');
   if (x['site/vercel.json'] !== B.VERCEL || x['site/robots.txt'] !== B.ROBOTS || x['site/sitemap.xml'] !== B.SITEMAP) bad.push('site の vercel.json・robots.txt・sitemap.xml が build.js から作ったものと違う（node build.js）');
   /* 配信の決まりに、廃れた指定（interest-cohort）を書かない。browsing-topics を止める（2026-11-23）。 */
   let V = {};
@@ -382,11 +410,14 @@ function verdict(x) {
   const pp = (((V.headers || [])[0] || {}).headers || []).find((z) => z.key === 'Permissions-Policy') || {};
   if (/interest-cohort/.test(pp.value || '') || !/(^|, )browsing-topics=\(\)/.test(pp.value || '')) bad.push('配信の Permissions-Policy：' + pp.value);
   /* 最終更新（2026-11-23）：どの頁の元にも、日付の行が一つあり、頁ではその日と、元のファイルの変更の記録へのリンクになる。 */
-  for (const [s, out] of B.PAGES) {
-    const ds = [...(x['src/' + s + '.md'] || '').matchAll(/^最終更新：(\d{4}-\d{2}-\d{2})。$/mg)].map((m) => m[1]);
+  for (const [s0, out0] of B.PAGES) for (const lang of B.hasEn(out0) ? B.LANGS : ['ja']) {
+    const s = B.fileOf(s0, lang), out = B.fileOf(out0, lang), en = lang === 'en';
+    const ds = [...(x['src/' + s + '.md'] || '').matchAll(en ? /^Last updated: (\d{4}-\d{2}-\d{2})\.$/mg : /^最終更新：(\d{4}-\d{2}-\d{2})。$/mg)].map((m) => m[1]);
     const d = ds[0], ok1 = ds.length === 1 && !isNaN(Date.parse(d + 'T00:00:00Z')) && new Date(d + 'T00:00:00Z').toISOString().slice(0, 10) === d;
+    const link = '<a href="https://github.com/cpsbvbng26-dotcom/quiet-wizard/commits/main/src/' + s + '.md" rel="noopener">';
     if (!ok1) bad.push('src/' + s + '.md：最終更新の行が一つでないか、日付でない');
-    else if (!(x['site/' + out + '.html'] || '').includes('<p class="updated">最終更新：<time datetime="' + d + '">' + d + '</time>（<a href="https://github.com/cpsbvbng26-dotcom/quiet-wizard/commits/main/src/' + s + '.md" rel="noopener">変更の記録</a>）。</p>')) bad.push('site/' + out + '.html：最終更新と変更の記録');
+    else if (!(x['site/' + out + '.html'] || '').includes(en ? '<p class="updated">Last updated: <time datetime="' + d + '">' + d + '</time> (' + link + 'change history</a>).</p>'
+      : '<p class="updated">最終更新：<time datetime="' + d + '">' + d + '</time>（' + link + '変更の記録</a>）。</p>')) bad.push('site/' + out + '.html：最終更新と変更の記録');
   }
   if (!x['src/terms.md'].includes('上の案内と下の欄からつなぐ頁には、どれも最終更新の日を書き、その頁の本文を最後に変えた日を示します。')) bad.push('利用規約：最終更新の日の断り');
   /* Search Console の確認の値を置くなら、個人情報の取り扱いにそう書き、頁が Google へ何も送らないことと、運営者の見る集計が Google の側のものであることを書く（2026-11-23）。 */
@@ -458,26 +489,36 @@ const NUMS = { 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, �
 const num = (s) => { const i = s.indexOf('十'); if (i < 0) return NUMS[s]; return (i ? NUMS[s.slice(0, i)] : 1) * 10 + (s.slice(i + 1) ? NUMS[s.slice(i + 1)] : 0); };
 /* 後ろの項を引いてよい証明。定理二は、第二巻の模型 M₀′ を、第一巻に依らずに組んだものとして引く。 */
 const FORWARD_OK = { '定理二>定理十': '第二巻の定理十。その証は、第一巻の定理に依らず' };
+/* 英語の原理（2026-11-23）。定理二が後ろの定理十を引く理由は、英語の証明の文にも書く。 */
+const FORWARD_OK_EN = { 'Proposition 2>Proposition 10': 'Book II, Proposition 10, whose proof uses no proposition of Book I' };
 const PRIN_COUNTS = { 定義: 20, 要請: 5, 法則: 10, 定理: 26, 系: 1 };
-function principiaVerdict(x) {
-  const bad = [];
-  const lines = x['src/strict.md'].split('\n');
+/* 日本語と英語の、項の頭と引き合いの読み方。英語は「**Definition 1. 」の形で、引き合いは単数の「Proposition 3」「Law 6」と大文字の Corollary。 */
+const KIND_EN = { Definition: '定義', Postulate: '要請', Law: '法則', Proposition: '定理', Corollary: '系' };
+const PV = {
+  ja: { md: 'src/strict.md', html: 'site/strict.html', forward: FORWARD_OK, proof: /^証明。/, books: /<li><a href="#s\d+">第[一二三四五]巻/g, top: /^(第[一二三四五六七八九十]+巻|総注解)/,
+    head: (l) => { const m = /^\*\*(定義|要請|定理|系)([一二三四五六七八九十]*)　|^\*\*第([一二三四五六七八九十]+)法則　/.exec(l); if (!m) return null; const kind = m[3] ? '法則' : m[1]; return { kind, n: m[3] ? num(m[3]) : (m[1] === '系' ? 1 : num(m[2])), label: kind === '法則' ? '第' + m[3] + '法則' : m[1] + (m[2] || '') }; },
+    /* 系は「系の」の形で引く（「体系の」は除く）。注は、持ち主の項を引くものとして読む（「第十法則の注」「系の後の注」）。2026-11-23 に系を足した。 */
+    cites: (t) => [...t.matchAll(/(定義|要請|定理)([一二三四五六七八九十]+)(?!つ)|第([一二三四五六七八九十]+)法則|(?<!体)(系)(?=の)/g)].map((c) => (c[4] ? '系' : c[3] ? '第' + c[3] + '法則' : c[1] + c[2])) },
+  en: { md: 'src/strict.en.md', html: 'site/strict.en.html', forward: FORWARD_OK_EN, proof: /^Proof\. /, books: /<li><a href="#s\d+">Book (?:I|II|III|IV|V)\./g, top: /^(Book [IVX]+\b|General Scholium)/,
+    head: (l) => { const m = /^\*\*(?:(Definition|Postulate|Proposition|Law) (\d+)|(Corollary))\. /.exec(l); if (!m) return null; return { kind: KIND_EN[m[1] || m[3]], n: m[3] ? 1 : Number(m[2]), label: m[3] ? 'Corollary' : m[1] + ' ' + m[2] }; },
+    cites: (t) => [...t.matchAll(/\b(Definition|Postulate|Proposition) (\d+)\b|\bLaw (\d+)\b|\b(Corollary)\b/g)].map((c) => (c[4] ? 'Corollary' : c[3] ? 'Law ' + c[3] : c[1] + ' ' + c[2])) },
+};
+function principiaVerdict(x, lang) {
+  const bad = [], P = PV[lang === 'en' ? 'en' : 'ja'];
+  const lines = (x[P.md] || '').split('\n');
   const items = [], deps = {}, cites = [];
   let cur = null;
   for (const l of lines) {
-    const m = /^\*\*(定義|要請|定理|系)([一二三四五六七八九十]*)　|^\*\*第([一二三四五六七八九十]+)法則　/.exec(l);
+    const m = P.head(l);
     if (m) {
-      const kind = m[3] ? '法則' : m[1], n = m[3] ? num(m[3]) : (m[1] === '系' ? 1 : num(m[2]));
-      cur = (kind === '法則' ? '第' + m[3] + '法則' : m[1] + (m[2] || ''));
-      items.push({ kind, n, label: cur, id: { 定義: 'def', 要請: 'post', 法則: 'law', 定理: 'prop', 系: 'cor' }[kind] + '-' + n });
+      cur = m.label;
+      items.push({ kind: m.kind, n: m.n, label: cur, id: { 定義: 'def', 要請: 'post', 法則: 'law', 定理: 'prop', 系: 'cor' }[m.kind] + '-' + m.n });
     } else if (/^## /.test(l)) cur = null;
     if (!cur) continue;
     const rest = m ? l.slice(l.indexOf('**', 2) + 2) : l;
-    /* 系は「系の」の形で引く（「体系の」は除く）。注は、持ち主の項を引くものとして読む（「第十法則の注」「系の後の注」）。2026-11-23 に系を足した。 */
-    for (const c of rest.matchAll(/(定義|要請|定理)([一二三四五六七八九十]+)(?!つ)|第([一二三四五六七八九十]+)法則|(?<!体)(系)(?=の)/g)) {
-      const t = c[4] ? '系' : c[3] ? '第' + c[3] + '法則' : c[1] + c[2];
+    for (const t of P.cites(rest)) {
       cites.push(t);
-      if (/^証明。/.test(l) && t !== cur) (deps[cur] = deps[cur] || []).push({ t, line: l });
+      if (P.proof.test(l) && t !== cur) (deps[cur] = deps[cur] || []).push({ t, line: l });
     }
   }
   const pos = new Map(items.map((it, k) => [it.label, k]));
@@ -493,12 +534,12 @@ function principiaVerdict(x) {
   for (const it of items) if (!state[it.label]) visit(it.label, []);
   /* 後ろの項を引く証明。 */
   for (const [u, ds] of Object.entries(deps)) for (const { t, line } of ds) if (pos.get(t) > pos.get(u)) {
-    const why = FORWARD_OK[u + '>' + t];
+    const why = P.forward[u + '>' + t];
     if (!why) bad.push('原理の' + u + 'の証明が、後ろの' + t + 'を引いている');
     else if (!line.includes(why)) bad.push('原理の' + u + 'の証明が、' + t + 'を引く理由を断っていない');
   }
   /* 頁。 */
-  const h = x['site/strict.html'] || '';
+  const h = x[P.html] || '';
   for (const it of items) if ((h.match(new RegExp('id="' + it.id + '"', 'g')) || []).length !== 1) bad.push('原理の頁に、' + it.label + 'の飛び先が一つない');
   const byId = new Map(items.map((it) => [it.id, it.label]));
   for (const a of h.matchAll(/<a class="xref" href="#([a-z]+-\d+)">([^<]+)<\/a>/g)) if (byId.get(a[1]) !== a[2]) bad.push('原理の頁の引き合いのリンクが違う項を指す：' + a[2] + '→' + a[1]);
@@ -508,14 +549,201 @@ function principiaVerdict(x) {
   const order = [...toc.matchAll(/href="#((?:def|post|law|prop|cor)-\d+)"/g)].map((m) => m[1]);
   const want = ['定義', '要請', '法則', '定理', '系'].flatMap((k) => items.filter((it) => it.kind === k).map((it) => it.id));
   if (order.join() !== want.join()) bad.push('原理の索引が、すべての項を順に挙げていない');
-  if (([...toc.matchAll(/<li><a href="#s\d+">第[一二三四五]巻/g)]).length !== 5) bad.push('原理の目次が五つの巻を挙げていない');
+  if (([...toc.matchAll(P.books)]).length !== 5) bad.push('原理の目次が五つの巻を挙げていない');
   /* 目次は入れ子（2026-11-23）：巻と総注解を上の段に、巻の中の見出しをその下の段に、頁の見出しをすべて順に挙げる。 */
   const tocBooks = (/<ol class="toc-books">([\s\S]*?)<\/ol><\/nav>|<ol class="toc-books">([\s\S]*?)<\/ol><details/.exec(toc) || [])[2] || '';
   const allH2 = [...h.matchAll(/<h2 id="(s\d+)">([\s\S]*?)<\/h2>/g)];
   if ([...tocBooks.matchAll(/href="#(s\d+)"/g)].map((m) => m[1]).join() !== allH2.map((m) => m[1]).join()) bad.push('原理の目次が、頁の見出しをすべて順に挙げていない');
   const topLevel = tocBooks.replace(/<ol>[\s\S]*?<\/ol>/g, '');
-  const want2 = allH2.filter((m) => /^(第[一二三四五六七八九十]+巻|総注解)/.test(m[2].replace(/<[^>]+>/g, ''))).map((m) => m[1]);
+  const want2 = allH2.filter((m) => P.top.test(m[2].replace(/<[^>]+>/g, ''))).map((m) => m[1]);
   if ([...topLevel.matchAll(/href="#(s\d+)"/g)].map((m) => m[1]).join() !== want2.join()) bad.push('原理の目次の上の段が、巻と総注解でない');
+  return bad;
+}
+
+/* 英語の頁（2026-11-23）。日本語の頁ごとの英語の頁が、作ったものと同じで、断りと開示を持ち、言葉の切り替えと hreflang の対が両向きに合い、
+ * 原典と原理の原文が日本語のまま一字一句同じで、散文に書いた数が数えた数と同じこと。訳の文の中身は、決めた文で固める。 */
+const EN_WORD = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen'];
+const EN_TENS = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+const enWord = (n) => (n < 20 ? EN_WORD[n] : EN_TENS[Math.floor(n / 10)] + (n % 10 ? '-' + EN_WORD[n % 10] : ''));
+const cap = (t) => t[0].toUpperCase() + t.slice(1);
+const SOLID_EN = { 正四面体: 'regular tetrahedron', 正六面体: 'regular hexahedron', 正八面体: 'regular octahedron', 正十二面体: 'regular dodecahedron', 正二十面体: 'regular icosahedron' };
+const PLAYFUL_EN = '> This is a play.';
+const NOT_SCIENCE_EN = { 'src/index.en.md': 'The "laws" here are not scientific laws.', 'src/canon.en.md': 'They are not scientific laws.', 'src/guide.en.md': 'nor is it a scientific claim.',
+  'src/play.en.md': 'It measures nothing, predicts nothing, and records nothing.', 'src/faq.en.md': 'The laws of the canon were written from intuition; no experiment or survey has tested them.', 'src/about.en.md': 'They are not scientific laws.' };
+const CLASS_NOTE_EN = 'A class here is a game metaphor, like a job in a role-playing game. It does not sort people into groups, and it is not something to pin on anyone.';
+const CANON_NOTE_EN = ['This page is a translation, not the original.', 'it stands next to each English rendering below, unchanged.', 'Where they differ from the Japanese, the Japanese is the canon.'];
+const LAW_EN = ['Establishment', 'Many Faces', 'Conservation', 'Reversal', 'Rule of Thumb', 'Return', 'Common Practice', 'Quagmire', 'Secrecy', 'Long Life'];
+const EN_SAYS = {
+  'src/strict.en.md': ["This version was written by Claude at the operator's request. It is not the canon.", 'It does not mean that the content is scientifically correct.',
+    '**Proposition 4. These laws cannot be refuted by observing results from outside.**', '**Proposition 9. The ten laws are independent of each other. None of them follows from the other nine together with Definition 6.**',
+    'Note. Following the note to Law 10 in Book I, this version reads L as something not visible from outside.', '**Proposition 5. A wizard is not superior to other people.**',
+    "**Postulate 2. Worth.** A person's worth does not depend on whether they are a wizard, or on whether they are a virgin.", 'No attribute of a person is placed anywhere.',
+    'The groups are a matter of shape, fixed by the signs of the lines; they do not depend on any attribute of a person.',
+    '**Definition 16. Magic.** Magic is an action that produces a result by means of transmutation and returns that result to relationships between people that cannot be seen from outside.',
+    'Conclusion. Magic is turning a negative into the positive on its opposite side and returning it to relationships no one can see.',
+    'Conclusion. Magic cannot be within knowledge not because it does not exist, but because it must not be there. The place where it must not be is within knowledge; the place where it may be is outside knowledge.',
+    'declares in its top band "' + FRAME_EN + '"', 'If x is made a wizard, L10 is broken (Λ > 30), and if x is not, L1 is broken', '**Corollary. Magic must not be within knowledge.**',
+    "it is a translation, and the Japanese page is the original of this version."],
+  'src/about.en.md': ["It judges no one's sexual experience.", 'It does not call any particular person a wizard.', 'Apart from "The scholarly text" below, it is not linked to any research page.',
+    'Its DOI is not given here, because it has not been checked.', 'Inter Tight (Copyright 2022 The Inter Project Authors, SIL Open Font License 1.1)', "This site says nothing about anyone's sexual experience, the operator's included.",
+    'The head of every page carries a Google Search Console ownership token, but the pages send nothing to Google with it', FRAME_EN,
+    "**The English pages**: translations of the Japanese pages, written by Claude at the operator's request. If the two differ, the Japanese page governs."],
+  'src/faq.en.md': ['This site collects nothing from anyone.', CLASS_NOTE_EN, 'It is not elitism.', FRAME_EN, 'The operator does not speak for wizards.'],
+  'src/play.en.md': ['The people carry no names, ages, genders, or any other attributes. Only the changes in relationships are shown.'],
+  'src/guide.en.md': ['Using this guide to decide that someone nearby is a wizard is outside this play.'],
+  'src/about.md': ['- **英語の頁**：日本語の頁を、運営者の求めで Claude が英語に訳したものです。二つが食い違うときは、日本語の頁に従います。'],
+};
+function englishVerdict(x) {
+  const bad = [];
+  const html = Object.keys(x).filter((f) => /^site\/.+\.html$/.test(f));
+  const pages = B.PAGES.map(([s]) => s);
+  for (const s of B.EN_PAGES) { if (!pages.includes(s)) bad.push('英語の頁の一覧に、日本語の頁の無い名：' + s); if (!x['src/' + s + '.en.md']) bad.push('src/' + s + '.en.md が無い'); if (!x['site/' + s + '.en.html']) bad.push('site/' + s + '.en.html が無い'); }
+  /* 言葉の切り替えと、hreflang の対。対は両向きに合う。 */
+  const urlToFile = (u) => 'site/' + (u === B.BASE ? 'index.html' : u.slice(B.BASE.length));
+  const altsOf = (h) => [...h.slice(0, h.indexOf('</head>')).matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)">/g)].map((m) => m[1] + ' ' + m[2]);
+  for (const f of html) {
+    const h = x[f], lang = langOf(f), page = pageOf(f), other = lang === 'en' ? 'ja' : 'en', up = page === '404' ? '/' : '', pair = B.hasEn(page);
+    const sw = [...h.matchAll(/<a class="lang" href="([^"]*)" hreflang="([^"]*)" lang="([^"]*)">([^<]*)<\/a>/g)];
+    const mast = (/<div class="mast">[\s\S]*?<\/div>/.exec(h) || [''])[0];
+    if (pair) {
+      const want = up + B.fileOf(page, other) + '.html';
+      if (sw.length !== 1 || sw[0][1] !== want || sw[0][2] !== other || sw[0][3] !== other || sw[0][4] !== (other === 'en' ? 'English' : '日本語') || !mast.includes(sw[0][0])) bad.push(f + '：言葉の切り替えが、もう一つの言葉の同じ頁（' + want + '）を指していない');
+      else if (!x['site/' + want.replace(/^\//, '')]) bad.push(f + '：言葉の切り替えの先の頁が無い');
+    } else if (sw.length) bad.push(f + '：英語の頁の無い頁に、言葉の切り替えがある');
+    const alts = altsOf(h);
+    if (pair && page !== '404') {
+      const want = ['ja ' + B.urlOf(page, 'ja'), 'en ' + B.urlOf(page, 'en'), 'x-default ' + B.urlOf(page, 'ja')];
+      if (alts.join() !== want.join()) bad.push(f + '：hreflang の対が ' + alts.join(' / '));
+      for (const a of alts) { const t = x[urlToFile(a.split(' ')[1])]; if (!t) bad.push(f + '：hreflang の先の頁が無い：' + a); else if (altsOf(t).join() !== alts.join()) bad.push(f + '：hreflang の対が、先の頁から指し返されていない：' + a); }
+    } else if (alts.length) bad.push(f + '：hreflang を置かない頁に置いている');
+    /* 頁の中のつなぎ：英語の頁から日本語の頁へは、まだ英語の無い頁だけ（hreflang="ja" を付ける）。日本語の頁から英語の頁へは、切り替えだけ。 */
+    const body = h.slice(h.indexOf('<body'));
+    for (const m of body.matchAll(/<a\b([^>]*)\shref="(\/?)([a-z0-9]+)(\.en)?\.html(#[^"]*)?"([^>]*)>/g)) {
+      const attrs = m[1] + m[6];
+      if (/class="lang"/.test(attrs)) continue;
+      if (lang === 'en' && !m[4] && (B.hasEn(m[3]) || !/hreflang="ja"/.test(attrs))) bad.push(f + '：英語の頁から日本語の頁へつないでいる：' + m[3]);
+      if (lang === 'ja' && m[4]) bad.push(f + '：日本語の頁から英語の頁へつないでいる：' + m[3]);
+    }
+  }
+  /* sitemap：配る頁（404 のほか）をすべて挙げ、対のある頁は三つの alternate を持ち、頁の頭の対と同じ。 */
+  const sm = x['site/sitemap.xml'] || '', locs = [];
+  for (const m of sm.matchAll(/<url><loc>([^<]+)<\/loc>((?:<xhtml:link [^>]+\/>)*)<\/url>/g)) {
+    locs.push(m[1]);
+    const t = x[urlToFile(m[1])];
+    const sa = [...m[2].matchAll(/<xhtml:link rel="alternate" hreflang="([^"]+)" href="([^"]+)"\/>/g)].map((z) => z[1] + ' ' + z[2]);
+    if (!t) bad.push('sitemap に、無い頁がある：' + m[1]); else if (sa.join() !== altsOf(t).join()) bad.push('sitemap の対が頁の頭と違う：' + m[1]);
+  }
+  const served = html.filter((f) => !/^site\/404/.test(f)).map((f) => B.urlOf(pageOf(f), langOf(f))).sort();
+  if (locs.slice().sort().join() !== served.join() || !/xmlns:xhtml="http:\/\/www\.w3\.org\/1999\/xhtml"/.test(sm)) bad.push('sitemap が配る頁と合わない');
+  /* 断り：冒頭の「This is a play.」、科学ではないこと、内輪ノリ・選民思想・代表の断り、別の枠だという断り、クラスの断り。 */
+  for (const s of B.EN_PAGES) if (!PLAIN.includes(s) && !(x['src/' + s + '.en.md'] || '').includes(PLAYFUL_EN)) bad.push('src/' + s + '.en.md：冒頭の「This is a play.」');
+  for (const [f, w] of Object.entries(NOT_SCIENCE_EN)) if (!(x[f] || '').includes(w)) bad.push(f + '：科学ではないという断り');
+  for (const f of ['src/index.en.md', 'src/about.en.md']) for (const w of CAUTION_EN) if (!(x[f] || '').includes(w)) bad.push(f + '：' + w.slice(0, 24));
+  if ((/^> [^\n]+\n> ([^\n]+)/m.exec(x['src/index.en.md'] || '') || [])[1] !== FRAME_EN) bad.push('英語のはじめにの断りの二行目が、別の枠だという断りでない');
+  if (B.FRAME_EN !== FRAME_EN) bad.push('英語の上の帯の文が、決めた文と違う');
+  for (const [f, says] of Object.entries(EN_SAYS)) for (const w of says) if (!(x[f] || '').includes(w)) bad.push(f + '：' + w.slice(0, 40));
+  /* 英語のクラス表：断り、スキルの名は法則の英語の名、引く条の並び。 */
+  const cls = (/const CLASS_EN = `([\s\S]*?)`;/.exec(x['build.js'] || '') || [, ''])[1];
+  if (!cls.includes('<p class="cls-note">' + CLASS_NOTE_EN + ' It is not an advanced class, and it is no stronger or better than any other class.</p>')) bad.push('英語のクラス表：職業のたとえで、人を分ける区分ではなく、上位職でもないという断り');
+  const skills = [...cls.matchAll(/<li><b>([^<]+)<\/b><span>[^<]*<\/span><i>Law (\d+)<\/i><\/li>/g)];
+  if (skills.length !== 6 || skills.some(([, nm, n]) => LAW_EN[n - 1] !== nm)) bad.push('英語のクラス表のスキルの名が、法則の名と合わない');
+  if (!/<b>Status<\/b>Quagmire: [^<]*\(Law 8\)/.test(cls)) bad.push('英語のクラス表：状態が Law 8 Quagmire でない');
+  if ((cls.match(/Law \d+|Definition \d+/g) || []).join(' ') !== 'Definition 8 Law 5 Law 2 Law 3 Law 4 Law 6 Law 9 Law 10 Law 8') bad.push('英語のクラス表が引く条');
+  if (!(x['src/index.en.md'] || '').includes('<!-- class -->')) bad.push('英語のはじめにのクラス表');
+  /* 英語の原典：訳だという断り、行ごとに日本語の原文を一字一句そのまま添える。 */
+  const ce = x['src/canon.en.md'] || '', ch = x['site/canon.en.html'] || '';
+  for (const w of CANON_NOTE_EN) if (!ce.includes(w)) bad.push('英語の原典：訳だという断り（' + w.slice(0, 24) + '）');
+  if (!ce.includes('> 〘' + PREFACE + '〙') || !ch.includes('<span lang="ja">' + PREFACE + '</span>')) bad.push('英語の原典：前書きの原文');
+  const rows = ce.split('\n').filter((l) => /^\| (Definition|Law) \d+ \|/.test(l));
+  const wantRows = DEFS.map(([, w, d], i) => ['Definition ' + (i + 1), w, d]).concat(LAWS.map(([, w, d], i) => ['Law ' + (i + 1), w, d]));
+  if (rows.length !== wantRows.length) bad.push('英語の原典の行の数が ' + rows.length);
+  wantRows.forEach(([n, w, d], i) => {
+    const c = (rows[i] || '').split(' | ');
+    if (c[0] !== '| ' + n || !(c[1] || '').endsWith('〘' + w + '〙') || c[3] !== '〘' + d + '〙 |' || !(c[2] || '').trim()) bad.push('英語の原典の ' + n + ' の原文が、原典の文と同じでない');
+    if (!ch.includes('<td role="cell" data-col="Original"><span lang="ja">' + d + '</span></td>')) bad.push('英語の原典の頁に ' + n + ' の原文が無い');
+  });
+  /* 英語の原理：原文の行は、項ごとに日本語の版と一字一句同じ。 */
+  const origOf = (md, P) => { const o = {}; const ls = (md || '').split('\n'); ls.forEach((l, i) => { const m = P.head(l); if (m && /^原文：/.test(ls[i + 1] || '')) o[m.kind + m.n] = ls[i + 1]; }); return o; };
+  const oj = origOf(x['src/strict.md'], PV.ja), oe = origOf(x['src/strict.en.md'], PV.en);
+  const oCount = (md) => ((md || '').match(/^原文：/mg) || []).length;
+  if (JSON.stringify(oj) !== JSON.stringify(oe) || oCount(x['src/strict.en.md']) !== oCount(x['src/strict.md'])) bad.push('英語の原理の原文の行が、日本語の版と一字一句同じでない：' + Object.keys(oj).filter((k) => oj[k] !== oe[k]).join(','));
+  if (oe.定義20 !== '原文：' + INTUITION) bad.push('英語の原理の定義二十の原文が、運営者の直観と一字一句同じでない');
+  const sh = x['site/strict.en.html'] || '';
+  for (const o of Object.values(oe)) if (!sh.includes('<span class="orig-k">Original</span><span lang="ja">' + o.slice(3) + '</span>')) bad.push('英語の原理の頁に、原文の札と原文が無い：' + o.slice(3, 20));
+  /* 英語の原理の数は、模型と計算から（散文の数）。 */
+  const se = x['src/strict.en.md'] || '';
+  const fmt = (n) => BigInt(n).toLocaleString('en-US');
+  const sol = mr.solids, last = sol.length - 1;
+  const nums = [
+    [sol.map((o, i) => (i === last ? 'and ' : '') + fmt(o.orbits) + ' for the ' + SOLID_EN[o.name]).join(', '), '定理十三の数'],
+    ['The orders of the rotation groups are ' + sol.slice(0, -1).map((o) => o.order).join(', ') + ' and ' + sol[last].order + ', in that order.', '回転の群の位数'],
+    ...sol.map((o) => [cap(SOLID_EN[o.name]) + ': (', '定理十三の式（' + o.name + '）', fmt(o.orbits * BigInt(o.order)) + '/' + o.order + ' = ' + fmt(o.orbits) + '.']),
+    [sol.map((o) => SOLID_EN[o.name] + ' ' + o.order + ' = ' + o.faces + ' × ' + o.stabilizer).join(', ') + '.', '定理十四の数'],
+    ...sol.map((o) => [cap(SOLID_EN[o.name]) + ': ' + o.verts + ' − ' + o.edges + ' + ' + o.faces + ' = ' + o.euler + '.', '定理十五の数（' + o.name + '）']),
+    ['A regular icosahedron has ' + enWord(sol[last].faces) + ' faces, so for it there are 2²⁰, that is ' + (2 ** 20).toLocaleString('en-US') + ' ways.', '定理七の数'],
+    ['all ' + enWord(mr.magic.M0count) + ' of the actions a_s (21 ≤ s ≤ 100)', '定理二十二の数'],
+    ['by realizing ' + mr.immuneCount + ' records', '定理二十四の記録の数'],
+    ['Every element has the shape of one of the ' + enWord(sol.length) + ' regular polyhedra.', '正多面体の数'],
+    ['the ' + enWord(DEFS.length) + ' definitions and ' + enWord(LAWS.length) + ' laws of the canon', '原典の定義と法則の数'],
+    ['Definition 10 and the ' + enWord(((x['src/strict.md'] || '').split('## 第二巻')[0].match(/^\*\*要請[一二三四五]　/mg) || []).length) + ' postulates were added in this version.', '第一巻の要請の数'],
+  ];
+  for (const [w, k, w2] of nums) if (w2 ? !se.split('\n').some((l) => l.startsWith(w) && l.includes(' = ' + w2)) : !se.includes(w)) bad.push('英語の原理の' + k + 'が計算と違う');
+  if (!se.includes('in a ring-shaped network of four or more people') && !se.includes('In a ring-shaped network of four or more people') || !mr.ring.every(Boolean) || mr.ring3.some((c) => c !== 1)) bad.push('英語の原理の定理十八の人数');
+  if ((se.match(/^\| M[₀-₉]+ \|/mg) || []).length !== 10) bad.push('英語の原理の定理九の表が十行でない');
+  if ((se.match(/Q\.E\.D\.$/mg) || []).length !== 26) bad.push('英語の原理の証明が二十六でない');
+  if (!/<nav class="toc"/.test(sh)) bad.push('site/strict.en.html：頁の中の目次が無い');
+  /* はじめにの英語：原理の行は五つの巻を順に、決まりの行は決まりの頁を挙げ、原典の数。 */
+  const ie = x['src/index.en.md'] || '';
+  const prin = ie.split('\n').find((l) => l.startsWith('- [Principia](strict.en.html)')) || '';
+  const booksE = (se.match(/^## Book [IVX]+\./mg) || []).map((l) => l.slice(3, -1));
+  if (!booksE.length || (prin.match(/Book [IVX]+\b/g) || []).join() !== booksE.join()) bad.push('英語のはじめにの原理の行が、巻を順に挙げていない');
+  const rulesE = (ie.split('\n').find((l) => l.startsWith('- [Rules](terms.en.html)')) || '').toLowerCase();
+  for (const [s, , , top] of B.PAGES) if (!top && s !== 'about') { const t = (/^# (.+)$/m.exec(x['src/' + s + '.en.md'] || '') || [, B.SHORT_EN[s]])[1].toLowerCase(); if (!rulesE.includes(t)) bad.push('英語のはじめにの決まりの行に無い頁：' + s); }
+  const nd = enWord(DEFS.length), nl = enWord(LAWS.length);
+  for (const [f, w] of [['src/index.en.md', cap(nd) + ' definitions and ' + nl + ' laws.'], ['build.js', "canon: 'Canon · " + nd + ' definitions, ' + nl + " laws'"], ['build.js', cap(nd) + ' definitions, ' + nl + " laws.',"], ['src/guide.en.md', 'the ' + enWord(LAWS.length) + ' laws of the canon']]) if (!(x[f] || '').includes(w)) bad.push(f + '：原典の数の文（' + w.slice(0, 30) + '）');
+  if ((x['src/guide.en.md'] || '').split('\n').filter((l) => /^\| Law \d+ /.test(l)).length !== LAWS.length) bad.push('英語の図鑑：法則の表が十行でない');
+  /* 遊び場の英語：動かして、人の数・閾の幅・図の数・知らせの文を確かめる。 */
+  const js = x['assets/play.js'] || '', PE = playOf(x, 'en'), pe = x['src/play.en.md'] || '';
+  if (!/document\.documentElement\.getAttribute\('lang'\) === 'en'/.test(js)) bad.push('play.js が頁の lang を読まない');
+  let sim = null, lo = null, hi = null;
+  try { sim = simulatePlay(js, PE, { lang: 'en' }); lo = simulatePlay(js, PE, { first: 0, lang: 'en' }); hi = simulatePlay(js, PE, { first: 0.9999999, lang: 'en' }); } catch (e) { bad.push('英語の遊び場を動かせない：' + e.message); }
+  if (sim) {
+    const n = sim.people;
+    for (const [f, w] of [['src/index.en.md', 'A game on the relationships of ' + n + ' people'], ['src/play.en.md', 'The playground below draws only the ' + n + ' people'], ['src/play.en.md', 'the same dot as the other ' + (n - 1) + ' people'], ['build.js', '<p class="small">Only the ' + n + ' people and the lines between neighbours can be seen.'], ['build.js', "play: 'A playground on " + n + ' people']]) if (!(x[f] || '').includes(w)) bad.push(f + '：英語の人の数が遊び場と違う（' + w.slice(0, 24) + '）');
+    if (lo.threshold !== 18 || hi.threshold !== 36 || !pe.includes('it is set somewhere between ' + lo.threshold + ' and ' + hi.threshold + '.')) bad.push('英語の遊び場：閾の幅が頁の文と違う');
+    const figs = (pe.match(/^!\[[^\]]+\]\(fig:[a-z0-9-]+\)$/mg) || []).length;
+    if (!pe.includes('The ' + enWord(figs) + ' figures below')) bad.push('英語の遊び場：図の数が頁の文と違う（' + figs + '）');
+    if (sim.valuemax !== hi.threshold) bad.push('英語の遊び場のメーターの上限が閾の上限と違う');
+    if ([...sim.wizardWidths].join() !== '1' || [...sim.deeds].join() !== '0') bad.push('英語の遊び場：魔法使い自身の線が太るか、見える成果が 0 でない');
+    if (sim.live.join() !== 'polite:on,off,off,off,off,off,polite:none') bad.push('英語の遊び場：自動で過ごすときの読み上げ');
+    for (const [o, w] of [[lo, 'so this is an early switch.'], [hi, 'so this is a late switch.']]) if (!o.notes.some((t) => t.includes('reached the threshold of ' + o.threshold + ',') && t.includes(w))) bad.push('英語の遊び場：切り替わりの知らせが早い遅いを言わない');
+    const jp = /[぀-ヿ一-鿿]/;
+    if (sim.notes.concat(lo.notes, hi.notes, [sim.state, sim.autoLabel]).some((t) => jp.test(t))) bad.push('英語の遊び場の知らせに日本語がある');
+    if (!PE.includes('<b id="state">not yet</b>') || !['not yet', 'switched'].includes(sim.state)) bad.push('英語の遊び場の状態の文');
+    for (const m of PE.matchAll(/<button type="button" id="([a-z]+)">([^<]+)<\/button>/g)) if (!pe.split('\n').some((l) => /^\d+\. \*\*/.test(l) && l.includes('**' + m[2] + '**'))) bad.push('英語の遊び場のボタン「' + m[2] + '」が、遊び方の箇条にない');
+    if (!PE.includes('<button type="button" id="auto">' + sim.autoLabel + '</button>')) bad.push('英語の遊び場：止めたあとのボタンの名が、頁のボタンの名と違う');
+    if ((pe.match(/^\| Law (?:[2-9]|10) /mg) || []).length !== 9) bad.push('英語の遊び場：法則と働きの表が九行でない');
+  }
+  /* 図の文字の英語：表に無い日本語を残さず、形を色の名で指さない。図の番号は頁ごとに 1 から。 */
+  /* 図の文字の英語の表は、build.js の文から読む（壊し方が build.js を変えて確かめられるように）。 */
+  const figEn = [...((/const FIG_EN = \{([\s\S]*?)\n\};/.exec(x['build.js'] || '') || [, ''])[1]).matchAll(/: (?:'([^']*)'|"([^"]*)")/g)].map((m) => m[1] || m[2]);
+  if (figEn.length !== Object.keys(B.FIG_EN).length) bad.push('図の文字の英語の表が読めない');
+  for (const v of figEn) if (/\b(black|white|gold(en)?|silver|red|blue|green|gr[ae]y|navy)\b|colou?r/i.test(v)) bad.push('図の文字の英語が色の名で形を指す：' + v);
+  for (const f of html.filter((k) => langOf(k) === 'en')) for (const m of x[f].matchAll(/<text\b[^>]*>([^<]*)<\/text>/g)) if (/[぀-ヿ一-鿿＀-￯]/.test(m[1])) bad.push(f + '：図の文字に日本語が残る（' + m[1] + '）');
+  for (const s of B.EN_PAGES) { const ns = [...(x['src/' + s + '.en.md'] || '').matchAll(/^!\[Figure (\d+) /mg)].map((m) => Number(m[1])); const nj = [...(x['src/' + s + '.md'] || '').matchAll(/^!\[図(\d+) /mg)].length; if (ns.some((k, i) => k !== i + 1) || ns.length !== nj) bad.push('src/' + s + '.en.md：図の番号が 1 から並ばないか、日本語の頁と数が違う'); }
+  /* ほかの英語の頁から英語の原理へ飛ぶリンク：飛び先が英語の原理にあり、その名か見出しを指す。 */
+  let jumps = 0;
+  for (const f of html.filter((k) => langOf(k) === 'en' && k !== 'site/strict.en.html')) for (const m of x[f].matchAll(/<a href="strict\.en\.html#([a-z0-9-]+)">([^<]+)<\/a>/g)) {
+    jumps++;
+    const at = new RegExp('<(p|h2) id="' + m[1] + '">([\\s\\S]*?)</\\1>').exec(sh);
+    if (!at || !at[2].replace(/<[^>]+>/g, '').replace(/^\s+/, '').startsWith(m[2])) bad.push(f + '：英語の原理へのリンク「' + m[2] + '」の飛び先が違う（#' + m[1] + '）');
+  }
+  if (jumps < 5) bad.push('ほかの英語の頁から英語の原理の項へ飛ぶリンクが少ない（' + jumps + '）');
+  /* デザインに関する法的な扱いは、英語の頁の書体と図の文字の扱いを書く。 */
+  for (const w of ['英語の頁では、本文と見出しの英字も Inter Tight で組みます。', '英語の頁の図と場面の中の文字は、`build.js` の FIG_EN の表で英語に替えて描きます。図のファイルは一つのままです。英語の文字も、形を色の名で指しません。']) if (!(x['src/design.md'] || '').includes(w)) bad.push('デザインに関する法的な扱い：' + w.slice(0, 24));
+  /* 断りと開示の英語：学術的な正文の DOI は確かめた一つだけ。 */
+  const ah = x['site/about.en.html'] || '';
+  if (!ah.includes(PAPER_LINK) || ah.split('doi.org').length !== 2) bad.push('英語の断りと開示：学術的な正文の DOI は、確かめた一つだけ');
   return bad;
 }
 
@@ -920,6 +1148,23 @@ const pbreaks = [
 ];
 const pmissed = pbreaks.filter(([, y]) => principiaVerdict(y).length === 0).map(([k]) => k);
 ok('壊して確かめる：無い項・循環・後ろを引く・理由の断り・番号の飛び・飛び先・リンクの向き・索引のどれでも落ちる（' + (pbreaks.length - pmissed.length) + ' / ' + pbreaks.length + '）', pmissed.length === 0, pmissed.join(' / '));
+/* 英語の原理（2026-11-23）。同じ確かめを、src/strict.en.md と site/strict.en.html に行う。 */
+const pve = principiaVerdict(real, 'en');
+ok('英語の原理も、項の番号が欠けずに並び、引いた項はすべて在り、引き合いは循環せず、後ろを引く証明は決めた一つで理由を断り、飛び先・リンク・索引・目次が項と見出しに合う', pve.length === 0, pve.join(' / '));
+const pebreaks = [
+  ['英語の原理で無い項を引く', pmut('src/strict.en.md', 'By Definition 9, a rule of thumb does not fix the time.', 'By Definition 9 and Proposition 30, a rule of thumb does not fix the time.')],
+  ['英語の原理で証明の引き合いを循環させる', pmut('src/strict.en.md', 'Obs is empty in both, so they are equal', 'Obs is empty in both (Proposition 2), so they are equal')],
+  ['英語の原理で証明が後ろの項を引く', pmut('src/strict.en.md', 'Law 5, too, calls thirty only a rule of thumb.', 'Law 5, too, calls thirty only a rule of thumb (Proposition 19).')],
+  ['英語の原理で後ろを引く理由の断りを外す', pmut('src/strict.en.md', '(Book II, Proposition 10, whose proof uses no proposition of Book I)', '(Proposition 10)')],
+  ['英語の原理で定理の番号を飛ばす', pmut('src/strict.en.md', '**Proposition 7. ', '**Proposition 8. ')],
+  ['英語の原理の頁から飛び先を一つ外す', pmut('site/strict.en.html', 'id="law-6"', '')],
+  ['英語の原理の引き合いのリンクを違う項に向ける', pmut('site/strict.en.html', '<a class="xref" href="#law-6">Law 6</a>', '<a class="xref" href="#law-5">Law 6</a>')],
+  ['英語の原理の索引から項を一つ外す', pmut('site/strict.en.html', /<a href="#def-7"[^>]*>[^<]*<\/a>/, '')],
+  ['英語の原理で証明が後ろの系を引く', pmut('src/strict.en.md', 'and that it is not science. So the Principia is heterodox.', 'and that it is not science (see the Corollary). So the Principia is heterodox.')],
+  ['英語の原理の目次の上の段に巻でない見出しを出す', pmut('site/strict.en.html', /(<ol class="toc-books"><li><a href="#s1">[^<]*<\/a>)<ol>/, '$1</li>')],
+];
+const pemissed = pebreaks.filter(([, y]) => principiaVerdict(y, 'en').length === 0).map(([k]) => k);
+ok('壊して確かめる：英語の原理でも、無い項・循環・後ろを引く・理由の断り・番号の飛び・飛び先・リンクの向き・索引・目次のどれでも落ちる（' + (pebreaks.length - pemissed.length) + ' / ' + pebreaks.length + '）', pemissed.length === 0, pemissed.join(' / '));
 
 console.log('\n4. デザインに関する法的な扱い');
 const dv = designVerdict(real);
@@ -987,8 +1232,7 @@ function gitDates() {
   try {
     if (cp.execFileSync('git', ['rev-parse', '--is-shallow-repository'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() !== 'false') return null;
     const env = Object.assign({}, process.env, { TZ: 'UTC' }), today = new Date().toISOString().slice(0, 10), out = {};
-    for (const [s] of B.PAGES) {
-      const f = 'src/' + s + '.md';
+    for (const f of [...B.PAGES.map(([s]) => 'src/' + s + '.md'), ...B.EN_PAGES.map((s) => 'src/' + s + '.en.md')]) {
       const dirty = cp.spawnSync('git', ['diff', '--quiet', 'HEAD', '--', f], { cwd: ROOT }).status !== 0;
       out[f] = dirty ? today : cp.execFileSync('git', ['log', '-1', '--format=%cd', '--date=format-local:%Y-%m-%d', '--', f], { cwd: ROOT, env }).toString().trim();
     }
@@ -997,7 +1241,7 @@ function gitDates() {
 }
 function updatedVerdict(x, dates) {
   const bad = [];
-  for (const [f, d] of Object.entries(dates)) { const u = (/^最終更新：(\d{4}-\d{2}-\d{2})。$/m.exec(x[f] || '') || [, ''])[1]; if (!u || u < d) bad.push(f + '：最終更新 ' + u + ' が、最後に変えた日 ' + d + ' より前'); }
+  for (const [f, d] of Object.entries(dates)) { const u = ((langOf(f) === 'en' ? /^Last updated: (\d{4}-\d{2}-\d{2})\.$/m : /^最終更新：(\d{4}-\d{2}-\d{2})。$/m).exec(x[f] || '') || [, ''])[1]; if (!u || u < d) bad.push(f + '：最終更新 ' + u + ' が、最後に変えた日 ' + d + ' より前'); }
   return bad;
 }
 console.log('\n5. 最終更新の日と履歴');
@@ -1009,6 +1253,81 @@ else {
   const late = Object.assign({}, gd, { 'src/guide.md': '2099-01-01' });
   ok('壊して確かめる：元のファイルを最終更新の日より後に変えたことにすると落ちる', updatedVerdict(real, late).length === 1);
 }
+
+console.log('\n6. 英語の頁');
+const ev = englishVerdict(real);
+ok('英語の頁は作ったものと同じで、どの頁にも英語の断りと開示、言葉の切り替え、両向きの hreflang の対があり、原典と原理の原文は日本語のまま一字一句同じで、散文の数が数えた数と同じ', ev.length === 0, ev.join(' / '));
+const emut = (f, a, b) => Object.assign({}, real, { [f]: String(real[f]).replace(a, b) });
+const ebreaks = [
+  ['英語の頁の上の帯を外す', emut('site/faq.en.html', /<aside class="frame"[^\n]+\n/, '')],
+  ['英語の上の帯の文を弱める', emut('site/guide.en.html', '<span class="say">' + FRAME_EN, '<span class="say">This is entertainment.')],
+  ['英語の下の欄から科学の法則ではないという断りを外す', emut('site/play.en.html', 'The laws written here are not scientific laws. ', '')],
+  ['英語の下の欄から内輪ノリの断りを外す', emut('site/canon.en.html', 'This is an in-joke, and some people may find it offensive. Please keep that in mind. It is not elitism', 'It is not elitism')],
+  ['英語の下の欄から訳の開示を外す', emut('site/about.en.html', 'The English pages were translated from the Japanese by Claude. Text', 'Text')],
+  ['英語の頁の CSP を緩める', emut('site/guide.en.html', "content=\"default-src 'none';", "content=\"default-src *;")],
+  ['英語の頁の lang を ja にする', emut('site/index.en.html', '<html lang="en">', '<html lang="ja">')],
+  ['日本語の頁から言葉の切り替えを外す', emut('site/faq.html', /<a class="lang"[^>]*>English<\/a>/, '')],
+  ['言葉の切り替えの先を違える', emut('site/canon.en.html', 'href="canon.html" hreflang="ja"', 'href="index.html" hreflang="ja"')],
+  ['hreflang の対の片方を外す', emut('site/guide.en.html', /<link rel="alternate" hreflang="ja"[^>]*>\n/, '')],
+  ['hreflang の x-default を英語の頁にする', emut('site/play.html', '<link rel="alternate" hreflang="x-default" href="https://quiet-wizard.vercel.app/play.html">', '<link rel="alternate" hreflang="x-default" href="https://quiet-wizard.vercel.app/play.en.html">')],
+  ['og:locale:alternate を外す', emut('site/faq.en.html', '<meta property="og:locale:alternate" content="ja_JP">\n', '')],
+  ['英語の頁の og:locale を ja_JP にする', emut('site/about.en.html', '<meta property="og:locale" content="en_US">', '<meta property="og:locale" content="ja_JP">')],
+  ['英語の頁の説明から断りを外す', emut('site/canon.en.html', ' It is a play, not science.">', '">')],
+  ['sitemap から英語の頁を外す', emut('site/sitemap.xml', /<url><loc>https:\/\/quiet-wizard\.vercel\.app\/faq\.en\.html<\/loc>[^\n]*\n/, '')],
+  ['sitemap の対を違える', emut('site/sitemap.xml', '<url><loc>https://quiet-wizard.vercel.app/guide.html</loc><xhtml:link rel="alternate" hreflang="ja" href="https://quiet-wizard.vercel.app/guide.html"/>', '<url><loc>https://quiet-wizard.vercel.app/guide.html</loc><xhtml:link rel="alternate" hreflang="ja" href="https://quiet-wizard.vercel.app/faq.html"/>')],
+  ['日本語の頁から英語の頁へつなぐ', emut('site/faq.html', '</main>', '<a href="play.en.html">x</a></main>')],
+  ['英語の頁から日本語の頁へつなぐ', emut('site/faq.en.html', '</main>', '<a href="play.html">x</a></main>')],
+  ['英語の頁を手で直す', emut('site/guide.en.html', 'There is no way to tell.', 'There is a way to tell.')],
+  ['英語の 404 の頁で素材を相対の所在で読む', emut('site/404.en.html', 'href="/assets/style.css"', 'href="assets/style.css"')],
+  ['英語の冒頭の断りを外す', emut('src/guide.en.md', '> This is a play. ', '> ')],
+  ['英語の科学ではないという断りを外す', emut('src/faq.en.md', NOT_SCIENCE_EN['src/faq.en.md'], '')],
+  ['英語のはじめにの断りの行を入れ替える', emut('src/index.en.md', '> This is a play.\n> ' + FRAME_EN, '> ' + FRAME_EN + '\n> This is a play.')],
+  ['英語の断りと開示から内輪ノリの断りを外す', emut('src/about.en.md', CAUTION_EN[0], '')],
+  ['英語のクラス表の断りを外す', emut('build.js', '<p class="cls-note">' + CLASS_NOTE_EN, '<p class="cls-note">')],
+  ['英語のクラスを上位職にする', emut('build.js', 'It is not an advanced class, and it is no stronger or better than any other class.</p>', 'It is the top class.</p>')],
+  ['英語のスキルの名を法則と違える', emut('build.js', '<li><b>Many Faces</b>', '<li><b>Strongest</b>')],
+  ['英語のクラス表の転職に第一法則を引く', emut('build.js', 'At the switch (Definition 8)', 'At thirty (Law 1)')],
+  ['英語の原典の原文を一字変える', emut('src/canon.en.md', '〘負は消えない。蓄積する。〙', '〘負は消える。〙')],
+  ['英語の原典から訳の断りを外す', emut('src/canon.en.md', CANON_NOTE_EN[0], '')],
+  ['英語の原典から行を一つ外す', emut('src/canon.en.md', /\| Law 8 [^\n]+\n/, '')],
+  ['英語の原典の前書きの原文を外す', emut('src/canon.en.md', '> 〘' + PREFACE + '〙', '> ' + PREFACE)],
+  ['英語の原理の原文を一字変える', emut('src/strict.en.md', '原文：負は消えない。蓄積する。', '原文：負は消えない。')],
+  ['英語の原理で運営者の直観を一字変える', emut('src/strict.en.md', '原文：' + INTUITION, '原文：' + INTUITION.replace('存在してはならない', '存在できない'))],
+  ['英語の原理から原文の行を一つ外す', emut('src/strict.en.md', '原文：性経験のない者をいう。\n', '')],
+  ['英語の原理の定理十三の数を違える', emut('src/strict.en.md', 'and 17,824 for the regular icosahedron', 'and 17,842 for the regular icosahedron')],
+  ['英語の原理の定理十三の式を違える', emut('src/strict.en.md', '552/24 = 23.', '552/24 = 22.')],
+  ['英語の原理の定理十五の数を違える', emut('src/strict.en.md', 'Regular dodecahedron: 20 − 30 + 12 = 2.', 'Regular dodecahedron: 20 − 30 + 12 = 3.')],
+  ['英語の原理の定理二十二の数を違える', emut('src/strict.en.md', 'all eighty of the actions', 'all ninety of the actions')],
+  ['英語の原理の記録の数を違える', emut('src/strict.en.md', 'by realizing 112 records', 'by realizing 120 records')],
+  ['英語の原理の定理十八の人数を違える', emut('src/strict.en.md', /network of four or more people/g, 'network of three or more people')],
+  ['英語の原理の要請の数を違える', emut('src/strict.en.md', 'Definition 10 and the two postulates', 'Definition 10 and the three postulates')],
+  ['英語の原理の原典の数を違える', emut('src/strict.en.md', /the nine definitions and ten laws of the canon/g, 'the eight definitions and ten laws of the canon')],
+  ['英語の原理を原典と称する', emut('src/strict.en.md', "This version was written by Claude at the operator's request. It is not the canon.", 'This version is the canon.')],
+  ['英語の原理から値の要請を外す', emut('src/strict.en.md', "A person's worth does not depend on whether they are a wizard, or on whether they are a virgin.", 'Wizards are worth more.')],
+  ['英語の原理の頁から原文の札を外す', emut('site/strict.en.html', /<span class="orig-k">Original<\/span>/g, '<span class="orig-k"></span>')],
+  ['英語の遊び場のほかの人の数を違える', emut('src/play.en.md', 'the other 7 people', 'the other 6 people')],
+  ['英語のはじめにの人の数を違える', emut('src/index.en.md', 'relationships of 8 people', 'relationships of 6 people')],
+  ['英語の遊び場の閾の幅を違える', emut('src/play.en.md', 'between 18 and 36.', 'between 18 and 30.')],
+  ['英語の遊び場の図の数を違える', emut('src/play.en.md', 'The five figures below', 'The four figures below')],
+  ['遊び場が頁の lang を読まない', emut('assets/play.js', "document.documentElement.getAttribute('lang') === 'en'", 'false')],
+  ['英語の遊び場の知らせに日本語を混ぜる', emut('assets/play.js', "started: 'Days now pass on their own.", "started: '日が自動で進みます。Days now pass on their own.")],
+  ['英語の遊び場の知らせから早めの断りを外す', emut('assets/play.js', 'so this is an early switch.', 'so this is a switch.')],
+  ['英語の遊び場のボタンの名を箇条と違える', emut('build.js', '>Live one day</button>', '>Next day</button>')],
+  ['英語の遊び場から属性の断りを外す', emut('src/play.en.md', 'The people carry no names, ages, genders, or any other attributes.', '')],
+  ['図の文字の英語で形を色の名で指す', Object.assign({}, real, { 'build.js': real['build.js'].replace("'thin-line edge: sign +, thick-band edge: sign −'", "'gold edge: sign +, black band: sign −'") })],
+  ['英語の図の番号を頁をまたいで続ける', emut('src/strict.en.md', '![Figure 1 Concord', '![Figure 6 Concord')],
+  ['英語の原理へのリンクの飛び先を違える', emut('site/faq.en.html', 'strict.en.html#prop-3', 'strict.en.html#prop-4')],
+  ['英語のはじめにの原理の行から巻を一つ外す', emut('src/index.en.md', 'Book III the dynamics of relationships, ', '')],
+  ['英語のはじめにの原典の数を違える', emut('src/index.en.md', 'Nine definitions and ten laws.', 'Ten definitions and ten laws.')],
+  ['英語の図鑑の法則の表から一行外す', emut('src/guide.en.md', /\| Law 6 Return [^\n]+\n/, '')],
+  ['英語の断りと開示に DOI をもう一つ足す', emut('site/about.en.html', '</main>', '<a href="https://doi.org/10.5281/zenodo.99999999">x</a></main>')],
+  ['英語の断りと開示から英語の頁の開示を外す', emut('src/about.en.md', 'If the two differ, the Japanese page governs.', '')],
+  ['日本語の断りと開示から英語の頁の開示を外す', emut('src/about.md', '二つが食い違うときは、日本語の頁に従います。', '')],
+  ['デザインの頁から英語の図の文字の扱いを外す', emut('src/design.md', '英語の文字も、形を色の名で指しません。', '')],
+  ['英語の断りと開示から英語の版の DOI の断りを外す', emut('src/about.en.md', 'Its DOI is not given here, because it has not been checked.', 'Its DOI is 10.5281/zenodo.0.')],
+];
+const emissed = ebreaks.filter(([, y]) => englishVerdict(y).length === 0 && verdict(y).length === 0).map(([k]) => k);
+ok('壊して確かめる：英語の頁の断り・切り替え・hreflang・sitemap・原文・数・遊び場・図の文字のどれでも落ちる（' + (ebreaks.length - emissed.length) + ' / ' + ebreaks.length + '）', emissed.length === 0, emissed.join(' / '));
 
 console.log('\n' + '-'.repeat(48));
 if (fails.length) { console.log(pass + ' 件が通り、' + fails.length + ' 件が通りませんでした。'); process.exit(1); }
