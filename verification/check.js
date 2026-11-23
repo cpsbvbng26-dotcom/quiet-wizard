@@ -143,6 +143,8 @@ function files() {
   x['#pages'] = JSON.stringify(B.PAGES);
   /* 配信の決まりと、検索の仕組みに渡すファイル（2026-11-23 から、元から作ったものと同じことを確かめる）。 */
   for (const f of ['site/vercel.json', 'site/robots.txt', 'site/sitemap.xml']) x[f] = R(f);
+  /* ブラウザでの検査と、それを走らせる CI（2026-11-23）。 */
+  for (const f of ['verification/check_browser.js', '.github/workflows/check.yml']) x[f] = R(f);
   /* 共有のカードとアイコン（2026-11-23）。PNG は base64 で持ち、描くスクリプトの文も読む。 */
   x['tools/card.js'] = R('tools/card.js');
   for (const f of ['assets/card.png', 'assets/apple-touch-icon.png']) { try { x['#png:' + f] = fs.readFileSync(path.join(ROOT, f)).toString('base64'); } catch (e) { x['#png:' + f] = ''; } }
@@ -268,6 +270,11 @@ function verdict(x) {
   /* 上の帯を、見た目で消していないこと。 */
   if (/\.frame\b[^{]*\{[^}]*(display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0[;}\s])/.test(x['assets/style.css'])) bad.push('style.css が上の帯を隠している');
   for (const f of ['src/index.md', 'src/about.md', 'src/faq.md', 'README.md']) if (!x[f].includes(FRAME)) bad.push(f + '：学術的な活動とは別の枠だという断り');
+  /* ブラウザでの検査（2026-11-23）：README と CLAUDE.md が命令を挙げ、CI が確かめと壊し方の両方を走らせる。 */
+  for (const f of ['README.md', 'README.en.md', 'CLAUDE.md']) for (const c of ['', ' --break']) if (!new RegExp('^node verification/check_browser\\.js' + c + '(\\s+#.*)?$', 'm').test(x[f] || '')) bad.push(f + '：ブラウザでの検査の命令 node verification/check_browser.js' + c);
+  const wf = x['.github/workflows/check.yml'] || '';
+  if (!wf.includes('npm install -g playwright@1.56.1') || !wf.includes('runs-on: ubuntu-24.04') || !wf.includes('NODE_PATH="$(npm root -g)" node verification/check_browser.js\n') || !wf.includes('NODE_PATH="$(npm root -g)" node verification/check_browser.js --break\n')) bad.push('CI がブラウザでの検査と壊し方を走らせない');
+  if (!x['verification/check_browser.js']) bad.push('ブラウザでの検査のファイルが無い');
   if (!x['src/faq.md'].includes('選民思想ではありません。') || !x['src/terms.md'].includes('運営者は、魔法使いの代表ではありません。')) bad.push('問いか利用規約の断り');
   if (!(x['site/about.html'] || '').includes(PAPER_LINK) || (x['site/about.html'] || '').split('doi.org').length !== 2) bad.push('学術的な正文の DOI は、確かめた一つだけ');
   if (!x['src/about.md'].includes('その DOI は、ここには書いていません。確かめていないためです。')) bad.push('英語の版の DOI を確かめていないという断り');
@@ -1048,6 +1055,9 @@ function designVerdict(x) {
   if (!animated.length) bad.push('animation を持つ規則が見つからない（読み方の誤り）');
   for (const z of animated) if (!stopA.has(z)) bad.push('動きを減らす設定で止まらない animation：' + z);
   if (!stopT.has('.scene .layer')) bad.push('動きを減らす設定で、場面の切り替えの移り変わりが止まらない');
+  /* どの要素の animation と transition も止める規則（2026-11-23。ブラウザの検査が、色の移り変わりが残ることを見つけた）。 */
+  if (!rmBlocks.some((b) => rules(b).some((r) => ['*', '*::before', '*::after'].every((z) => r.sel.includes(z)) && /animation:\s*none !important/.test(r.body) && /transition:\s*none !important/.test(r.body)))) bad.push('動きを減らす設定で、どの要素の animation と transition も止める規則が無い');
+  if (!md.includes('style.css の animation と transition をすべて止めます。')) bad.push('頁：動きを減らす設定で transition も止めること');
   if (!/reduce \? 1500 : 800\)/.test(x['assets/play.js'] || '') || !md.includes('一日の間を 800 ミリ秒から 1500 ミリ秒に延ばします。')) bad.push('遊び場の、動きを減らす設定のときの間');
   /* 代わりの文、フォーカスの輪、拡大。生成したすべての頁で。 */
   for (const f of Object.keys(x).filter((k) => /^site\/.+\.html$/.test(k))) {
@@ -1169,6 +1179,9 @@ const breaks = [
   ['PRINCIPIA.md を手で直す', mut('PRINCIPIA.md', '負は滅せず、積もる。', '負は滅す。')],
   ['PRINCIPIA.md から開示を外す', Object.assign({}, real, { 'PRINCIPIA.md': real['PRINCIPIA.md'].replace('Claude は著者ではありません。', '') })],
   ['README から別の枠だという断りを外す', mut('README.md', FRAME, '')],
+  ['README からブラウザでの検査の命令を外す', mut('README.md', 'node verification/check_browser.js\n', '')],
+  ['CLAUDE.md からブラウザでの壊し方の命令を外す', mut('CLAUDE.md', 'node verification/check_browser.js --break', 'node verification/check_browser.js')],
+  ['CI からブラウザでの壊し方を外す', mut('.github/workflows/check.yml', 'NODE_PATH="$(npm root -g)" node verification/check_browser.js --break\n', '')],
   ['事件の属性を書く', mut('site/play.html', '<button type="button" id="scene">', '<button type="button" id="scene" onclick="x()">')],
   ['Search Console の確認の値を変える', mut('site/terms.html', 'UEPpX5mfnLlhOBTBTETu-PmRO_Y4L2SmjEiaq_U1Zf8', 'x')],
   ['Search Console の確認を外す', mut('site/index.html', /<meta name="google-site-verification"[^>]*>\n/, '')],
@@ -1295,6 +1308,7 @@ const dbreaks = [
   ['文字の色の比を下げる', dmut('assets/style.css', '--muted: #555b65;', '--muted: #9aa0a8;')],
   ['頁の色の比の数を違える', dmut('src/design.md', 'の 5.73 です。', 'の 5.80 です。')],
   ['動きを減らす設定から一つ外す', dmut('assets/style.css', '{ .drift { animation: none; }', '{ .drift-x { animation: none; }')],
+  ['動きを減らす設定から、どの要素の transition も止める規則を外す', dmut('assets/style.css', '*, *::before, *::after { animation: none !important; transition: none !important; }', '*, *::before, *::after { animation: none !important; }')],
   ['場面の移り変わりを止めない', dmut('assets/style.css', '.scene .layer, .eye-switch .knob::after', '.eye-switch .knob::after')],
   ['遊び場の間を延ばさない', dmut('assets/play.js', 'reduce ? 1500 : 800', '800')],
   ['図の代わりの文を外す', dmut('site/play.html', /<svg role="img" aria-label="[^"]+" /, '<svg ')],

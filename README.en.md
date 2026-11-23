@@ -27,9 +27,16 @@ On the English rule pages, statutes are quoted in the Japanese original, and the
 ```
 node build.js
 node verification/check.js
+node tools/card.js --check
+node verification/check_browser.js
+node verification/check_browser.js --break
 ```
 
 `site/` is generated, English pages included.
+`verification/check_browser.js` is the browser check. It serves `site/` from a small local server with the same headers as `site/vercel.json`, and opens every page in both languages in Playwright's Chromium.
+It checks console errors and CSP violations, horizontal overflow at phone and desktop widths in both the light and the dark scheme, keyboard movement and the focus ring, text when zoomed, the reduced-motion setting, the playground's behaviour and announcements, the language switch, the 404 page served at missing addresses inside directories, and the links and anchors within the pages.
+The number of checks is printed when it runs. `--break` damages a copy of `site/` and confirms that each kind of damage fails.
+CI runs both on every push and pull request.
 The pages request nothing from any other server. There are no cookies, no analytics, and nothing that takes input.
 
 ## Disclosure and licences
