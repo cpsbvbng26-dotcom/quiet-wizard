@@ -37,11 +37,17 @@
 node build.js
 node verification/check.js
 node tools/card.js --check
+node verification/check_browser.js
+node verification/check_browser.js --break
 ```
 
 `site/` は生成物です。
 英語の頁（`site/<名>.en.html`）も、`src/<名>.en.md` から作る生成物です。上の帯と下の欄の英語の断りは `build.js` の `FRAME_EN` と `FOOT_EN` にあり、検査が日本語の断りと同じく固めています。
 共有のカードとホーム画面のアイコン（`assets/card.png`、`assets/apple-touch-icon.png`）は、`tools/card.js` が紋と色と書体から描いた PNG です。描き直すときは `node tools/card.js` を使います。Playwright の Chromium が要ります。`src/` と `assets/` を直して作り直します。
+`verification/check_browser.js` は、ブラウザでの検査です。`site/` を手元の小さなサーバーで配り、配信の見出しは `site/vercel.json` と同じにします。Playwright の Chromium で、二つの言葉のすべての頁を開きます。
+確かめるのは、コンソールの誤りと CSP の違反、携帯と机の幅で明るい配色と暗い配色のどれでも横にはみ出さないこと、キーボードでの移り方とフォーカスの輪、拡大したときの文字、動きを減らす設定、遊び場の動きと読み上げ、言葉の切り替え、ディレクトリの中の存在しない所在で出る 404 の頁、頁の中のつなぎと飛び先です。
+確かめの数は、走らせたときに出ます。`--break` は `site/` の写しを壊し、壊し方のどれでも落ちることを確かめます。
+CI は、push と PR のたびに、この二つを走らせます。
 頁は、ほかのサーバーへ何も要求しません。cookie も、アクセスの解析も、入力を受け取る仕組みもありません。
 配信は Vercel で、`site/` を根にしています。
 
