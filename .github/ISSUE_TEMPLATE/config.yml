@@ -3,4 +3,4 @@ blank_issues_enabled: true
 contact_links:
   - name: "求めと連絡 / Requests and contact"
     url: "https://quiet-wizard.vercel.app/requests.html"
-    about: "誤りの知らせ、記載や場面を外す求め、名を隠す求めは、白紙の issue で受けます / Error reports and requests to remove an entry or a scene, or to hide a name, are received as blank issues"
+    about: "誤りの知らせと、記載や場面を外す求めは、白紙の issue で受けます / Error reports and requests to remove an entry or a scene are received as blank issues"

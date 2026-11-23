@@ -47,7 +47,7 @@
 <h1>Privacy Policy</h1>
 <p class="en-title" lang="ja" aria-hidden="true">個人情報</p>
 <p class="langnote">This page is an English version of a Japanese page. If the two differ, the Japanese page governs.</p>
-<p class="updated">Last updated: <time datetime="2026-11-23">2026-11-23</time> (<a href="https://github.com/cpsbvbng26-dotcom/quiet-wizard/commits/main/src/privacy.en.md" rel="noopener">change history</a>).</p>
+<p class="updated">Last updated: <time datetime="2026-11-24">2026-11-24</time> (<a href="https://github.com/cpsbvbng26-dotcom/quiet-wizard/commits/main/src/privacy.en.md" rel="noopener">change history</a>).</p>
 <h2>Who handles information</h2>
 <p>The operator of this site and its repository.</p>
 <h2>What the site collects</h2>
@@ -77,11 +77,12 @@ What is handled is the GitHub username of the person who opened the issue and wh
 The form asks nothing about the sender, such as sexual experience or real name. On age, there is only the box for being 18 or older.<br>
 The only purposes are to read the scene, to decide whether to add it, to add it, and to answer requests.<br>
 The intake (GitHub Actions) checks the fields and boxes of the body inside GitHub, and adds a label and a comment of fixed wording. It sends the body nowhere and writes it to no log.<br>
-For a scene that is added, the title, text, language, law number, issue number, date added, whether it was edited, and the credit box are recorded in <code>data/entries.json</code> in the repository, and shown on the page.<br>
-The issue number appears on the page only for scenes that show a name, as the link from the name to the issue.<br>
-The GitHub username is written on the page and in <code>data/entries.json</code> only when the &quot;Credit&quot; box was ticked on the form.<br>
-GitHub holds the issue under its own rules.<br>
-On request, an added scene and its name are removed promptly from the current version of the page and of <code>data/entries.json</code>. Requests to edit the body of an issue, or to delete the issue, are also met.</p>
+To check the limit on the number of scenes, the intake counts, from GitHub's public list, the issues sending scenes that the same account opened earlier in this repository. Neither the account name nor the count is kept anywhere other than the label and the comment, and neither is written to a log.<br>
+For a scene that is added, the title, text, language, law number, issue number, date added, and whether it was edited are recorded in <code>data/entries.json</code> in the repository.<br>
+Of these, only the title, text, language, law, date added, and whether it was edited are shown on the page.<br>
+The GitHub username is written neither on the page nor in <code>data/entries.json</code>. The issue number is not shown on the page either. It is kept in <code>data/entries.json</code> to meet requests for removal.<br>
+GitHub holds the issue under its own rules. The issue itself stays public with the GitHub username of the person who opened it. The operator cannot stop anyone from tracing an issue from the text of a scene.<br>
+On request, an added scene is removed promptly from the current version of the page and of <code>data/entries.json</code>. Requests to edit the body of an issue, or to delete the issue, are also met.</p>
 <h2>Giving issues to a language model</h2>
 <p>The operator maintains this repository with the help of a language model, Claude. Claude is a language model of Anthropic, a company in the United States.<br>
 The title and text of an issue opened by anyone other than the operator are given to Claude only when the writer consents within that issue.<br>
