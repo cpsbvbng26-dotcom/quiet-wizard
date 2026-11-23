@@ -37,6 +37,7 @@ node verification/check_browser.js --break
 It checks console errors and CSP violations, horizontal overflow at phone and desktop widths in both the light and the dark scheme, keyboard movement and the focus ring, text when zoomed, the reduced-motion setting, the playground's behaviour and announcements, the language switch, the 404 page served at missing addresses inside directories, and the links and anchors within the pages.
 The number of checks is printed when it runs. `--break` damages a copy of `site/` and confirms that each kind of damage fails.
 CI runs both on every push and pull request.
+`verification/live.js` fetches the live Japanese and English home pages and the share card from outside, without logging in, under a generic crawler name and under X's crawler name (Twitterbot). The workflow "本番" runs it once a day. `--self-test` checks, on made-up answers, that it fails what it should.
 The pages request nothing from any other server. There are no cookies, no analytics, and nothing that takes input.
 
 ## Disclosure and licences
