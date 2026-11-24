@@ -1,0 +1,25 @@
+name: Wayback Machine
+
+# 手で起こしたときだけ回る（2026-11-24）。作業の環境からは web.archive.org に届かないので、GitHub の実行環境から Save Page Now に頼む。
+# 頼むのは site/sitemap.xml の頁のうち、site/robots.txt が Internet Archive の取り寄せ役に閉じていないものだけ（verification/wayback.js）。
+# みんなの図鑑の二つの頁は閉じている。ほかの人が寄せた場面を載せ、求めがあればすぐ外すと決めた頁で、Wayback Machine の写しは運営者には消せないため。
+# 頼んだあと、その日の写しが実際にあるかを確かめ、確かめられたものだけを「残った」として要約に出す。一つでも見えなければ、実行を落とす。
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  wayback:
+    name: 頁の写しを頼み、残ったことを確かめる
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - run: node verification/wayback.js
