@@ -631,7 +631,14 @@ const NOT_FOUND = '<h1>頁が見つかりません</h1>\n<p>この所在に頁�
 const VERCEL = JSON.stringify({ cleanUrls: false, headers: [{ source: '/(.*)', headers: [
   { key: 'Content-Security-Policy', value: CSP }, { key: 'X-Content-Type-Options', value: 'nosniff' }, { key: 'Referrer-Policy', value: 'no-referrer' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()' }] }] }, null, 2) + '\n';
-const ROBOTS = 'User-agent: *\nAllow: /\nSitemap: ' + BASE + 'sitemap.xml\n';
+/* Internet Archive に写させない頁（2026-11-24）。みんなの図鑑は、ほかの人が寄せた場面を載せ、求めがあればすぐ外すと決めている（求めと連絡）。
+ * Wayback Machine の写しは運営者には消せないので、二つの言葉の頁を、Internet Archive の取り寄せ役に robots.txt で閉じる。
+ * verification/wayback.js は robots.txt を読み、閉じた頁を頼まない。運営者の別のリポジトリが、著者の同意の無い記録を閉じるのと同じ形。 */
+const ARCHIVE_CLOSED = ['entries'];
+const ARCHIVE_BOTS = ['ia_archiver', 'archive.org_bot'];
+const ROBOTS = 'User-agent: *\nAllow: /\n\n' + ARCHIVE_BOTS.map((b) => 'User-agent: ' + b + '\n').join('')
+  + ARCHIVE_CLOSED.flatMap((out) => (hasEn(out) ? LANGS : ['ja']).map((l) => 'Disallow: /' + urlOf(out, l).slice(BASE.length) + '\n')).join('')
+  + 'Allow: /\n\nSitemap: ' + BASE + 'sitemap.xml\n';
 /* sitemap は、どの頁も二つの言葉の対を xhtml:link で挙げる（2026-11-23）。英語の頁の無い頁は、日本語の頁だけ。 */
 const SITEMAP = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
   + PAGES.flatMap(([, out]) => (hasEn(out) ? LANGS : ['ja']).map((l) => '<url><loc>' + urlOf(out, l) + '</loc>'
@@ -727,4 +734,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { E, FORM_URL, entriesHtml, loadEntries, ENTRIES_FILE, statuteEn, SUMMARY_K, RULE_PAGES, GOVERNS_EN, LAW_EN, ITEM_HEAD_EN, CITE_EN, BOOK_TOP, EN_PAGES, LANGS, hasEn, fileOf, urlOf, NAME_EN, FRAME_EN, FOOT_EN, HERO_EN, EMBLEMS_EN, CLASS_EN, PLAY_EN, SHORT_EN, EYEBROW_EN, DESC_EN, DESC_TAIL_EN, NOT_FOUND_EN, UI, FIG_EN, figText, CARD_ALT_EN, DESC, DESC_TAIL, CARD, THEME, NOT_FOUND, VERCEL, ROBOTS, SITEMAP, headIds, tocList, CITE, GSC, INDEXNOW_KEY, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { ARCHIVE_CLOSED, ARCHIVE_BOTS, E, FORM_URL, entriesHtml, loadEntries, ENTRIES_FILE, statuteEn, SUMMARY_K, RULE_PAGES, GOVERNS_EN, LAW_EN, ITEM_HEAD_EN, CITE_EN, BOOK_TOP, EN_PAGES, LANGS, hasEn, fileOf, urlOf, NAME_EN, FRAME_EN, FOOT_EN, HERO_EN, EMBLEMS_EN, CLASS_EN, PLAY_EN, SHORT_EN, EYEBROW_EN, DESC_EN, DESC_TAIL_EN, NOT_FOUND_EN, UI, FIG_EN, figText, CARD_ALT_EN, DESC, DESC_TAIL, CARD, THEME, NOT_FOUND, VERCEL, ROBOTS, SITEMAP, headIds, tocList, CITE, GSC, INDEXNOW_KEY, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };

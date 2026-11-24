@@ -155,6 +155,8 @@ function files() {
   const walkTxt = (d) => { for (const e of fs.existsSync(path.join(ROOT, d)) ? fs.readdirSync(path.join(ROOT, d), { withFileTypes: true }) : []) { const q = d + '/' + e.name; if (e.isDirectory()) walkTxt(q); else if (/\.txt$/.test(e.name) && q !== 'site/robots.txt') txt[q.slice(5)] = R(q); } };
   walkTxt('site');
   x['#site-txt'] = JSON.stringify(txt);
+  /* Wayback Machine（2026-11-24）：写しを頼んで確かめるスクリプトと、手で起こすワークフロー。 */
+  for (const f of ['verification/wayback.js', '.github/workflows/wayback.yml']) x[f] = R(f);
   for (const f of ['assets/card.png', 'assets/apple-touch-icon.png']) { try { x['#png:' + f] = fs.readFileSync(path.join(ROOT, f)).toString('base64'); } catch (e) { x['#png:' + f] = ''; } }
   return x;
 }
@@ -2094,6 +2096,141 @@ const ibreaks = [
 const imissed = ibreaks.filter(([, y]) => indexnowVerdict(y).length === 0).map(([k]) => k);
 ok('壊して確かめる：鍵のファイルの有無・中身・置き場・名の長さ・数、build.js の書き出し、配信の書き換えと型、ワークフローの有無・見る sitemap・手で起こすこと・SHA・権限・前の head、スクリプトの所在の根と sitemap と鍵の読み場所、README と CLAUDE.md の記録のどれでも落ちる（' + (ibreaks.length - imissed.length) + ' / ' + ibreaks.length + '）', imissed.length === 0, imissed.join(' / '));
 
+/* Wayback Machine（2026-11-24）。手で起こすだけで読むだけのワークフローが、site/sitemap.xml の頁のうち robots.txt が Internet Archive に
+ * 閉じていないものを頼み、頼んだ日の写しを確かめたものだけを残ったとすることを確かめる。スクリプトは作り物の Internet Archive で動かす。
+ * みんなの図鑑の頁（日本語と英語）は、求めがあればすぐ外すと決めた頁なので、robots.txt で閉じて頼まない（build.js の ARCHIVE_CLOSED）。 */
+const WAYBACK_SAYS = { 'README.md': 'みんなの図鑑の頁（日本語と英語）は頼みません。', 'README.en.md': 'The Field Guide by Visitors pages (Japanese and English) are not sent.' };
+let wbN = 0;
+function loadWayback(src) {
+  const f = path.join(require('os').tmpdir(), 'qw-wayback-' + process.pid + '-' + (++wbN) + '.js');
+  fs.writeFileSync(f, src);
+  try { return require(f); } finally { fs.unlinkSync(f); }
+}
+/* 作り物の Internet Archive。saves は頼んだときの答えの並び（最後の答えを繰り返す）、look は写しを見たときの答えの番号。
+ * day は写しの日、available は写しの印、none は写しが無いこと。 */
+async function waybackMachine(W, plan) {
+  const calls = [];
+  const io = {
+    now: () => new Date('2026-11-24T10:00:00Z'), sleep: async () => {}, log: () => {},
+    get: async (u) => {
+      calls.push(u);
+      if (u.startsWith('https://web.archive.org/save/')) { const q = plan[u.slice(29)].saves; return { status: q.length > 1 ? q.shift() : q[0], text: '' }; }
+      const m = /^https:\/\/archive\.org\/wayback\/available\?timestamp=(\d{14})&url=(.+)$/.exec(u);
+      if (!m) return { status: 404, text: '' };
+      const v = decodeURIComponent(m[2]), p = plan[v];
+      if (p.look !== 200) return { status: p.look, text: '' };
+      const ts = (p.day || '20261124') + '101500';
+      return { status: 200, text: JSON.stringify({ url: v, archived_snapshots: p.none ? {} : { closest: { status: '200', available: p.available !== false, url: 'http://web.archive.org/web/' + ts + '/' + v, timestamp: ts } } }) };
+    },
+  };
+  return { r: await W.saveAll(Object.keys(plan), io), calls };
+}
+async function waybackVerdict(x) {
+  const bad = [];
+  /* ワークフロー：手で起こすときだけ。権限は読むだけで、仕事ごとの権限も持たない。actions は IndexNow と同じ SHA。資格を残さない。 */
+  const wf = x['.github/workflows/wayback.yml'] || '';
+  if (!wf) bad.push('Wayback Machine のワークフローが無い');
+  const lines = wf.split('\n'), at = lines.indexOf('on:'), on = [];
+  if (at >= 0) for (let j = at + 1; j < lines.length && !/^\S/.test(lines[j]); j++) if (lines[j].trim()) on.push(lines[j]);
+  if (on.join('\n') !== '  workflow_dispatch:' || /^\s*(push|pull_request|pull_request_target|schedule|workflow_run|workflow_call|repository_dispatch|issues|issue_comment)\s*:/m.test(wf)) bad.push('Wayback Machine のワークフローが、手で起こすときだけでない：' + on.join(' '));
+  if (!/\npermissions:\n  contents: read\n\n/.test(wf) || (wf.match(/permissions:/g) || []).length !== 1 || /write/.test(wf)) bad.push('Wayback Machine のワークフローの権限が、読むだけでない');
+  const uses = (s) => (s.match(/^\s*- uses: \S+/mg) || []).map((u) => u.trim()).sort();
+  if (!uses(wf).length || uses(wf).some((u) => !/@[0-9a-f]{40}$/.test(u)) || uses(wf).join() !== uses(x['.github/workflows/indexnow.yml'] || '').join()) bad.push('Wayback Machine のワークフローの actions を、IndexNow と同じコミットの SHA で固めていない');
+  if (!/\n          persist-credentials: false\n/.test(wf)) bad.push('Wayback Machine のワークフローが、checkout の資格を残す');
+  if ((wf.match(/\brun:/g) || []).length !== 1 || !/\n      - run: node verification\/wayback\.js\n$/.test(wf)) bad.push('Wayback Machine のワークフローが、node verification/wayback.js だけを走らせない');
+  /* スクリプト：site/sitemap.xml と site/robots.txt を読み、robots.txt で分けた頁だけを頼み、確かめられないものがあれば落ちる。 */
+  const js = x['verification/wayback.js'] || '';
+  if (!js.includes("const SITE = path.join(ROOT, 'site');") || !js.includes("fs.readFileSync(path.join(SITE, 'sitemap.xml'), 'utf8')") || !js.includes("fs.readFileSync(path.join(SITE, 'robots.txt'), 'utf8')")) bad.push('Wayback Machine のスクリプトが、site/sitemap.xml と site/robots.txt を読まない');
+  if ((/^const BASE = '([^']+)';$/m.exec(js) || [])[1] !== B.BASE) bad.push('Wayback Machine のスクリプトの所在の根が、build.js と違う');
+  if (!js.includes("const SAVE = 'https://web.archive.org/save/';") || !js.includes("const AVAILABLE = 'https://archive.org/wayback/available';")) bad.push('Wayback Machine のスクリプトの頼み先か確かめ先');
+  if (!js.includes('const t = targets(xml, robots);') || !js.includes('const r = await saveAll(t.save, io);')) bad.push('Wayback Machine のスクリプトが、robots.txt で分けた頁だけを頼むのでない');
+  if (!js.includes('if (live && live.status === 200 && live.text === robots) break;')) bad.push('Wayback Machine のスクリプトが、本番の robots.txt がこのコミットのものになるのを待たない');
+  if (!js.includes('fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary(r, t.closed));') || !js.includes("if (r.failed.length) throw new Error('今日の写しが見えないもの '") || !js.includes('main().catch((e) => { console.error(e.message); process.exit(1); });')) bad.push('Wayback Machine のスクリプトが、確かめられないものがあっても実行を落とさないか、要約を出さない');
+  let W;
+  try { W = loadWayback(js); } catch (e) { bad.push('Wayback Machine のスクリプトが読めない：' + e.message); return bad; }
+  /* 閉じる頁：robots.txt は、全員には何も閉じず、Internet Archive の取り寄せ役にだけ、ARCHIVE_CLOSED の頁を二つの言葉で閉じる。いまはみんなの図鑑。 */
+  const shut = B.ARCHIVE_CLOSED.flatMap((out) => B.LANGS.map((l) => B.urlOf(out, l)));
+  const robots = x['site/robots.txt'] || '';
+  if (!B.ARCHIVE_CLOSED.includes('entries')) bad.push('みんなの図鑑が、Internet Archive に閉じる頁に無い');
+  if (!robots.startsWith('User-agent: *\nAllow: /\n\n') || !robots.includes('User-agent: ia_archiver\nUser-agent: archive.org_bot\n' + shut.map((u) => 'Disallow: /' + u.slice(B.BASE.length) + '\n').join('') + 'Allow: /\n\n')) bad.push('robots.txt が、Internet Archive の取り寄せ役にだけ、閉じる頁を二つの言葉で閉じるのでない');
+  let t = { save: [], closed: [] };
+  try { t = W.targets(x['site/sitemap.xml'], robots); } catch (e) { bad.push('頼む頁を分けられない：' + e.message); }
+  const all = [...(x['site/sitemap.xml'] || '').matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  if (t.closed.join() !== shut.join() || t.save.join() !== all.filter((u) => !shut.includes(u)).join() || !all.length) bad.push('頼む頁が、sitemap の頁から閉じた頁を除いたものでない：頼まない ' + t.closed.join(' '));
+  const cp = (s) => { try { return W.closedPrefixes(s).join(); } catch (e) { return '止まった'; } };
+  if (cp('User-agent: Googlebot\nDisallow: /faq.html\n\nUser-agent: *\nDisallow: /play.html\n\nUser-agent: ArchiVe.org_bot\nDisallow: /a\nDisallow:\n') !== '/play.html,/a' || cp('User-agent: ia_archiver\nDisallow: /*.html\n') !== '止まった') bad.push('robots.txt の読み方：ほかの取り寄せ役の組を読むか、全員か Internet Archive の組を読まないか、* を読まずに止まらない');
+  /* 確かめ：頼みが通っても、頼んだ日の写しが見えなければ残ったとしない。429 だけを待って頼み直す。要約の「残った」は確かめたものだけ。 */
+  const U = (k) => B.BASE + k + '.html';
+  const plan = {
+    [U('a')]: { saves: [200], look: 200 },
+    [U('b')]: { saves: [200], look: 200, day: '20261123' },
+    [U('c')]: { saves: [200], look: 200, available: false },
+    [U('d')]: { saves: [429, 429, 200], look: 200 },
+    [U('e')]: { saves: [200], look: 503 },
+    [U('f')]: { saves: [500], look: 200, none: true },
+    [U('g')]: { saves: [200], look: 200, none: true },
+    [U('h')]: { saves: [429], look: 200, none: true },
+  };
+  let m = null;
+  try { m = await waybackMachine(W, plan); } catch (e) { bad.push('作り物の Internet Archive で止まった：' + e.message); return bad; }
+  const saves = (k) => m.calls.filter((u) => u === 'https://web.archive.org/save/' + U(k)).length;
+  const looks = (k) => m.calls.filter((u) => u === 'https://archive.org/wayback/available?timestamp=20261124100000&url=' + encodeURIComponent(U(k))).length;
+  if (m.r.done.map(([u]) => u).join() !== [U('a'), U('d')].join() || m.r.failed.map(([u]) => u).join() !== ['b', 'c', 'e', 'f', 'g', 'h'].map(U).join()) bad.push('残ったとするものが、頼んだ日の写しを確かめたものと違う：' + m.r.done.map(([u]) => u.slice(-6)).join(' '));
+  if (m.r.done.some(([u, w]) => w !== 'http://web.archive.org/web/20261124101500/' + u)) bad.push('残ったものに、確かめた写しの所在を添えない');
+  if (saves('a') !== 1 || saves('d') !== 3 || saves('f') !== 1 || saves('h') !== 3) bad.push('頼み直しが、429 のときだけ二度まででない：' + ['a', 'd', 'f', 'h'].map(saves).join(','));
+  if (!Object.keys(plan).every((u) => looks(u.slice(B.BASE.length, -5)) >= 1)) bad.push('頼んだ時刻で写しを見ない頁がある');
+  const sm = W.summary(m.r, [U('z')]);
+  const head = sm.split('今日の写しが見えなかったもの')[0];
+  if (!sm.startsWith('残ったもの 2 / 頼んだもの 8\n') || !head.includes(U('a')) || !head.includes(U('d')) || ['b', 'c', 'e', 'f', 'g', 'h', 'z'].some((k) => head.includes(U(k))) || !sm.includes('robots.txt が閉じているので頼まなかったもの\n\n- ' + U('z'))) bad.push('要約の「残った」に、確かめていないものが入るか、数が合わない');
+  /* 記録：README（日本語と英語）が閉じた頁と理由を書き、三つの文書が試す命令を挙げる。 */
+  for (const [f, w] of Object.entries(WAYBACK_SAYS)) if (!(x[f] || '').includes(w)) bad.push(f + '：' + w);
+  for (const f of ['README.md', 'README.en.md', 'CLAUDE.md']) if (!/^node verification\/wayback\.js --dry-run(\s+#.*)?$/m.test(x[f] || '')) bad.push(f + '：命令 node verification/wayback.js --dry-run');
+  if (!(x['CLAUDE.md'] || '').includes('`build.js` の `ARCHIVE_CLOSED` に挙げて robots.txt で閉じ、頼まない')) bad.push('CLAUDE.md：閉じる頁の決め');
+  return bad;
+}
+async function waybackSection() {
+  console.log('\n9. Wayback Machine');
+  const wv = await waybackVerdict(real);
+  ok('Wayback Machine のワークフローは手で起こすときだけで、読むだけで、actions を SHA で固める。スクリプトは site/sitemap.xml と site/robots.txt を読み、Internet Archive に閉じたみんなの図鑑の頁（日本語と英語）を頼まず、頼んだ日の写しを確かめたものだけを残ったとし、見えないものがあれば落ちる', wv.length === 0, wv.join(' / '));
+  const W = (a, b) => mut('verification/wayback.js', a, b);
+  const F = (a, b) => mut('.github/workflows/wayback.yml', a, b);
+  const wbreaks = [
+    ['ワークフローを外す', Object.assign({}, real, { '.github/workflows/wayback.yml': '' })],
+    ['main への push でも起こす', F('on:\n  workflow_dispatch:\n', 'on:\n  workflow_dispatch:\n  push:\n    branches: [main]\n')],
+    ['毎日起こす', F('on:\n  workflow_dispatch:\n', "on:\n  workflow_dispatch:\n  schedule:\n    - cron: '0 3 * * *'\n")],
+    ['書く権限を与える', F('  contents: read\n', '  contents: write\n')],
+    ['権限の決めを外す', F('\npermissions:\n  contents: read\n', '')],
+    ['仕事ごとに権限を足す', F('    runs-on: ubuntu-latest\n', '    runs-on: ubuntu-latest\n    permissions:\n      issues: write\n')],
+    ['action を版の札で読む', F('actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1', 'actions/checkout@v7')],
+    ['setup-node を別の SHA で読む', F('actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1', 'actions/setup-node@0123456789abcdef0123456789abcdef01234567')],
+    ['checkout の資格を残す', F('        with:\n          persist-credentials: false\n', '')],
+    ['--dry-run で走らせる', F('      - run: node verification/wayback.js\n', '      - run: node verification/wayback.js --dry-run\n')],
+    ['スクリプトが根の sitemap.xml を読む', W("path.join(SITE, 'sitemap.xml')", "path.join(ROOT, 'sitemap.xml')")],
+    ['スクリプトが robots.txt で分けない', W('const t = targets(xml, robots);', "const t = targets(xml, '');")],
+    ['スクリプトの所在の根を別の所にする', W("const BASE = 'https://quiet-wizard.vercel.app/';", "const BASE = 'https://quiet-wizard.example.org/';")],
+    ['Internet Archive の取り寄せ役の組を読まない', W("const BOTS = ['*', 'ia_archiver', 'archive.org_bot'];", "const BOTS = ['*'];")],
+    ['閉じた頁も頼む', W('const r = await saveAll(t.save, io);', 'const r = await saveAll([...t.save, ...t.closed], io);')],
+    ['本番の robots.txt を待たない', W('live.text === robots) break;', 'true) break;')],
+    ['* を読まずに止めない', W("if (/[*$]/.test(v)) throw new Error('robots.txt の Disallow に、この台本が読まない書き方がある：' + v);", '')],
+    ['robots.txt でみんなの図鑑を開く', mut('site/robots.txt', 'Disallow: /entries.html\n', '')],
+    ['robots.txt で英語のみんなの図鑑を開く', mut('site/robots.txt', 'Disallow: /entries.en.html\n', '')],
+    ['robots.txt で全員にみんなの図鑑を閉じる', mut('site/robots.txt', 'User-agent: *\nAllow: /\n', 'User-agent: *\nDisallow: /entries.html\nAllow: /\n')],
+    ['頼みが通れば、写しを見ずに残ったとする', W('s = a && a.status === 200 ? confirmed(a.text, day) : null;', 's = asked.status === 200 ? u : null;')],
+    ['写しの日を見ない', W('String(c.timestamp).startsWith(day)', 'true')],
+    ['写しの印を見ない', W('c.available === true && ', '')],
+    ['429 で頼み直さない', W('if (asked.status !== 429) break;', 'break;')],
+    ['429 のほかでも頼み直す', W('if (asked.status !== 429) break;', 'if (asked.status === 200) break;')],
+    ['要約が見えないものも残ったとする', W('for (const [u, w] of r.done)', 'for (const [u, w] of [...r.done, ...r.failed])')],
+    ['見えないものがあっても落とさない', W("if (r.failed.length) throw new Error('今日の写しが見えないもの '", "if (false) throw new Error('今日の写しが見えないもの '")],
+    ['README から閉じた頁の一行を外す', mut('README.md', WAYBACK_SAYS['README.md'], '')],
+    ['英語の README から閉じた頁の一行を外す', mut('README.en.md', WAYBACK_SAYS['README.en.md'], '')],
+    ['CLAUDE.md から命令を外す', mut('CLAUDE.md', /^node verification\/wayback\.js --dry-run.*\n/m, '')],
+  ];
+  const wmissed = [];
+  for (const [k, y] of wbreaks) if ((await waybackVerdict(y)).length === 0) wmissed.push(k);
+  ok('壊して確かめる：ワークフローの有無・起こし方・権限・SHA・資格・走らせ方、スクリプトの読む sitemap と robots.txt・所在の根・読む組・閉じた頁・本番を待つこと・止まり方、robots.txt の閉じ方、写しの確かめ・日・印、429 の頼み直し、要約、落とし方、README と CLAUDE.md の記録のどれでも落ちる（' + (wbreaks.length - wmissed.length) + ' / ' + wbreaks.length + '）', wmissed.length === 0, wmissed.join(' / '));
+}
+
 /* 受付の上限を、作り物の API で動かす（2026-11-23）。受付のスクリプトを一か所ずつ壊した写しでも動かし、落ちることを見る。 */
 let mutN = 0;
 function mutant(a, b) {
@@ -2123,6 +2260,7 @@ function mutant(a, b) {
   const mm = [];
   for (const [name, [a, b]] of mbreaks) { let r; try { r = await limitsMachine(mutant(a, b)); } catch (e) { r = ['止まった']; } if (!r.length) mm.push(name); }
   ok('壊して確かめる：受付の上限の数・比べ・閉じた寄せ・法則の数え・効く日・日本時間・前の issue・ラベル・ログとコメントの名のどれを壊しても落ちる（' + (mbreaks.length - mm.length) + ' / ' + mbreaks.length + '）', mm.length === 0, mm.join(' / '));
+  await waybackSection();
   console.log('\n' + '-'.repeat(48));
   if (fails.length) { console.log(pass + ' 件が通り、' + fails.length + ' 件が通りませんでした。'); process.exit(1); }
   console.log(pass + ' 件すべて通りました。');
