@@ -23,7 +23,8 @@ const BASE = 'https://quiet-wizard.vercel.app/';
 const SAVE = 'https://web.archive.org/save/';
 const AVAILABLE = 'https://archive.org/wayback/available';
 const BOTS = ['*', 'ia_archiver', 'archive.org_bot'];
-/* 429（頼みすぎ）のあとに待つ秒。ほかの答えでは、頼み直さない。 */
+/* 429（頼みすぎ）か、答えの無い接続の失敗（状態 0）のあとに待つ秒。ほかの答えでは、頼み直さない。
+ * 2026-11-24 の初めの実行で、24 頁のうち 9 頁が状態 0 で終わり、頼み直さなかったため写しが残らなかった。 */
 const RETRY_WAITS = [60, 180];
 /* 頼んでから写しを見るまでの秒と、見えなかったときにもう一度見るまでの秒。 */
 const LOOK_WAITS = [20, 60];
@@ -84,7 +85,7 @@ async function saveAll(urls, io) {
     for (const wait of [0, ...RETRY_WAITS]) {
       if (wait) await io.sleep(wait);
       asked = await io.get(SAVE + u).catch(() => ({ status: 0, text: '' }));
-      if (asked.status !== 429) break;
+      if (asked.status !== 429 && asked.status !== 0) break;
     }
     io.log('頼んだ（' + asked.status + '） ' + u);
     let s = null;

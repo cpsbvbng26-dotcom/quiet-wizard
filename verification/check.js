@@ -2159,7 +2159,7 @@ async function waybackVerdict(x) {
   if (t.closed.join() !== shut.join() || t.save.join() !== all.filter((u) => !shut.includes(u)).join() || !all.length) bad.push('頼む頁が、sitemap の頁から閉じた頁を除いたものでない：頼まない ' + t.closed.join(' '));
   const cp = (s) => { try { return W.closedPrefixes(s).join(); } catch (e) { return '止まった'; } };
   if (cp('User-agent: Googlebot\nDisallow: /faq.html\n\nUser-agent: *\nDisallow: /play.html\n\nUser-agent: ArchiVe.org_bot\nDisallow: /a\nDisallow:\n') !== '/play.html,/a' || cp('User-agent: ia_archiver\nDisallow: /*.html\n') !== '止まった') bad.push('robots.txt の読み方：ほかの取り寄せ役の組を読むか、全員か Internet Archive の組を読まないか、* を読まずに止まらない');
-  /* 確かめ：頼みが通っても、頼んだ日の写しが見えなければ残ったとしない。429 だけを待って頼み直す。要約の「残った」は確かめたものだけ。 */
+  /* 確かめ：頼みが通っても、頼んだ日の写しが見えなければ残ったとしない。429 と、答えの無い接続の失敗（状態 0）だけを待って頼み直す。要約の「残った」は確かめたものだけ。 */
   const U = (k) => B.BASE + k + '.html';
   const plan = {
     [U('a')]: { saves: [200], look: 200 },
@@ -2170,18 +2170,20 @@ async function waybackVerdict(x) {
     [U('f')]: { saves: [500], look: 200, none: true },
     [U('g')]: { saves: [200], look: 200, none: true },
     [U('h')]: { saves: [429], look: 200, none: true },
+    [U('i')]: { saves: [0, 200], look: 200 },
+    [U('j')]: { saves: [0], look: 200, none: true },
   };
   let m = null;
   try { m = await waybackMachine(W, plan); } catch (e) { bad.push('作り物の Internet Archive で止まった：' + e.message); return bad; }
   const saves = (k) => m.calls.filter((u) => u === 'https://web.archive.org/save/' + U(k)).length;
   const looks = (k) => m.calls.filter((u) => u === 'https://archive.org/wayback/available?timestamp=20261124100000&url=' + encodeURIComponent(U(k))).length;
-  if (m.r.done.map(([u]) => u).join() !== [U('a'), U('d')].join() || m.r.failed.map(([u]) => u).join() !== ['b', 'c', 'e', 'f', 'g', 'h'].map(U).join()) bad.push('残ったとするものが、頼んだ日の写しを確かめたものと違う：' + m.r.done.map(([u]) => u.slice(-6)).join(' '));
+  if (m.r.done.map(([u]) => u).join() !== [U('a'), U('d'), U('i')].join() || m.r.failed.map(([u]) => u).join() !== ['b', 'c', 'e', 'f', 'g', 'h', 'j'].map(U).join()) bad.push('残ったとするものが、頼んだ日の写しを確かめたものと違う：' + m.r.done.map(([u]) => u.slice(-6)).join(' '));
   if (m.r.done.some(([u, w]) => w !== 'http://web.archive.org/web/20261124101500/' + u)) bad.push('残ったものに、確かめた写しの所在を添えない');
-  if (saves('a') !== 1 || saves('d') !== 3 || saves('f') !== 1 || saves('h') !== 3) bad.push('頼み直しが、429 のときだけ二度まででない：' + ['a', 'd', 'f', 'h'].map(saves).join(','));
+  if (saves('a') !== 1 || saves('d') !== 3 || saves('f') !== 1 || saves('h') !== 3 || saves('i') !== 2 || saves('j') !== 3) bad.push('頼み直しが、429 と接続の失敗のときだけ二度まででない：' + ['a', 'd', 'f', 'h', 'i', 'j'].map(saves).join(','));
   if (!Object.keys(plan).every((u) => looks(u.slice(B.BASE.length, -5)) >= 1)) bad.push('頼んだ時刻で写しを見ない頁がある');
   const sm = W.summary(m.r, [U('z')]);
   const head = sm.split('今日の写しが見えなかったもの')[0];
-  if (!sm.startsWith('残ったもの 2 / 頼んだもの 8\n') || !head.includes(U('a')) || !head.includes(U('d')) || ['b', 'c', 'e', 'f', 'g', 'h', 'z'].some((k) => head.includes(U(k))) || !sm.includes('robots.txt が閉じているので頼まなかったもの\n\n- ' + U('z'))) bad.push('要約の「残った」に、確かめていないものが入るか、数が合わない');
+  if (!sm.startsWith('残ったもの 3 / 頼んだもの 10\n') || !head.includes(U('a')) || !head.includes(U('d')) || !head.includes(U('i')) || ['b', 'c', 'e', 'f', 'g', 'h', 'j', 'z'].some((k) => head.includes(U(k))) || !sm.includes('robots.txt が閉じているので頼まなかったもの\n\n- ' + U('z'))) bad.push('要約の「残った」に、確かめていないものが入るか、数が合わない');
   /* 記録：README（日本語と英語）が閉じた頁と理由を書き、三つの文書が試す命令を挙げる。 */
   for (const [f, w] of Object.entries(WAYBACK_SAYS)) if (!(x[f] || '').includes(w)) bad.push(f + '：' + w);
   for (const f of ['README.md', 'README.en.md', 'CLAUDE.md']) if (!/^node verification\/wayback\.js --dry-run(\s+#.*)?$/m.test(x[f] || '')) bad.push(f + '：命令 node verification/wayback.js --dry-run');
@@ -2218,8 +2220,9 @@ async function waybackSection() {
     ['頼みが通れば、写しを見ずに残ったとする', W('s = a && a.status === 200 ? confirmed(a.text, day) : null;', 's = asked.status === 200 ? u : null;')],
     ['写しの日を見ない', W('String(c.timestamp).startsWith(day)', 'true')],
     ['写しの印を見ない', W('c.available === true && ', '')],
-    ['429 で頼み直さない', W('if (asked.status !== 429) break;', 'break;')],
-    ['429 のほかでも頼み直す', W('if (asked.status !== 429) break;', 'if (asked.status === 200) break;')],
+    ['429 で頼み直さない', W('if (asked.status !== 429 && asked.status !== 0) break;', 'if (asked.status !== 0) break;')],
+    ['接続の失敗で頼み直さない', W('if (asked.status !== 429 && asked.status !== 0) break;', 'if (asked.status !== 429) break;')],
+    ['429 と接続の失敗のほかでも頼み直す', W('if (asked.status !== 429 && asked.status !== 0) break;', 'if (asked.status === 200) break;')],
     ['要約が見えないものも残ったとする', W('for (const [u, w] of r.done)', 'for (const [u, w] of [...r.done, ...r.failed])')],
     ['見えないものがあっても落とさない', W("if (r.failed.length) throw new Error('今日の写しが見えないもの '", "if (false) throw new Error('今日の写しが見えないもの '")],
     ['README から閉じた頁の一行を外す', mut('README.md', WAYBACK_SAYS['README.md'], '')],
@@ -2228,7 +2231,7 @@ async function waybackSection() {
   ];
   const wmissed = [];
   for (const [k, y] of wbreaks) if ((await waybackVerdict(y)).length === 0) wmissed.push(k);
-  ok('壊して確かめる：ワークフローの有無・起こし方・権限・SHA・資格・走らせ方、スクリプトの読む sitemap と robots.txt・所在の根・読む組・閉じた頁・本番を待つこと・止まり方、robots.txt の閉じ方、写しの確かめ・日・印、429 の頼み直し、要約、落とし方、README と CLAUDE.md の記録のどれでも落ちる（' + (wbreaks.length - wmissed.length) + ' / ' + wbreaks.length + '）', wmissed.length === 0, wmissed.join(' / '));
+  ok('壊して確かめる：ワークフローの有無・起こし方・権限・SHA・資格・走らせ方、スクリプトの読む sitemap と robots.txt・所在の根・読む組・閉じた頁・本番を待つこと・止まり方、robots.txt の閉じ方、写しの確かめ・日・印、429 と接続の失敗の頼み直し、要約、落とし方、README と CLAUDE.md の記録のどれでも落ちる（' + (wbreaks.length - wmissed.length) + ' / ' + wbreaks.length + '）', wmissed.length === 0, wmissed.join(' / '));
 }
 
 /* 受付の上限を、作り物の API で動かす（2026-11-23）。受付のスクリプトを一か所ずつ壊した写しでも動かし、落ちることを見る。 */
