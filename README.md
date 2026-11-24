@@ -60,6 +60,7 @@ node tools/card.js --check
 node verification/check_browser.js
 node verification/check_browser.js --break
 node intake/entry.js --self-test
+node verification/indexnow.js --dry-run
 ```
 
 `site/` は生成物です。
@@ -73,6 +74,12 @@ CI は、push と PR のたびに、この二つを走らせます。
 頁そのものは、入力を受け取りません。参加は、GitHub の issue の様式で行います（上の「参加」）。
 配信は Vercel で、`site/` を根にしています。
 `verification/live.js` は、本番の日本語と英語のはじめにの頁と共有のカードを、ログインなしで外から取り寄せて確かめます。一般の取り寄せ役の名と、X の取り寄せ役の名（Twitterbot）の二つで取り寄せます。ワークフロー「本番」が毎日一度回します。`--self-test` は、作り物の答えで、落ちるべきものを落とすかを見ます。
+`verification/indexnow.js` は、`site/sitemap.xml` に増えた頁と消えた頁を、IndexNow（Bing などの検索の仕組みが受ける知らせ）に送ります。
+ワークフロー「IndexNow」が、main への push で `site/sitemap.xml` が変わったときに回します。手で起こして all を yes にすると、sitemap の頁を全部送ります。
+本番の sitemap がそのコミットのものと同じになり、鍵のファイルが読めるようになるまで待ってから送ります。
+鍵は `build.js` の `INDEXNOW_KEY` で、`node build.js` が `site/<鍵>.txt` に、中身も鍵そのものとして書きます。鍵は秘密ではありません。
+送るのはこのサイトの頁の所在だけで、読む人についての何も送りません。`--dry-run` は、送らずに、送る頁を出します。
+Google は IndexNow を読みません。sitemap を読みます（robots.txt が名指しています）。
 
 ## 開示とライセンス
 
