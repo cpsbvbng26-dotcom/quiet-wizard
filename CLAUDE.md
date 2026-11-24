@@ -43,10 +43,13 @@ node verification/check_browser.js           # ブラウザでの検査（Playwr
 node verification/check_browser.js --break   # site/ の写しを壊し、ブラウザでの検査が落ちることを確かめる
 node intake/entry.js --self-test             # みんなの図鑑の受付を、作り物の本文と作り物の API で確かめる
 node verification/indexnow.js --dry-run      # IndexNow に送る頁を出す（送るのは CI のワークフロー「IndexNow」。鍵は build.js の INDEXNOW_KEY で、site/<鍵>.txt に書く）
+node verification/wayback.js --dry-run       # Wayback Machine に頼む頁と、robots.txt が閉じているので頼まない頁を出す（頼むのは CI のワークフロー「Wayback Machine」を手で起こしたときだけ）
 ```
 
 ブラウザでの検査（`verification/check_browser.js`、2026-11-23）は、`site/` を手元のサーバーで `site/vercel.json` と同じ見出しで配り、二つの言葉のすべての頁を Chromium で開いて、コンソールと CSP、はみ出し、キーボード、拡大、動き、遊び場、言葉の切り替え、入れ子の 404、頁の中のつなぎを確かめる。CI の `browser` の仕事が、push と PR のたびに確かめと壊し方の両方を走らせる。頁や部品を変えたら、この検査も通す。確かめの数は散文に書かない（走らせたときに出る）。
 
 共有のカード（`assets/card.png`）とホーム画面のアイコン（`assets/apple-touch-icon.png`）は、紋や色や書体を変えたら `node tools/card.js` で描き直し、`src/design.md` の表の SHA-256 を改める（2026-11-23）。
+
+Wayback Machine（2026-11-24）：`verification/wayback.js` は、`site/sitemap.xml` の頁のうち `site/robots.txt` が Internet Archive の取り寄せ役（ia_archiver・archive.org_bot）と全員の組で閉じていないものを頼み、頼んだ日の写しを `archive.org/wayback/available` で確かめたものだけを残ったとする。写しは運営者には消せない。求めがあればすぐ外すと決めた頁（いまはみんなの図鑑の日本語と英語の頁）は、`build.js` の `ARCHIVE_CLOSED` に挙げて robots.txt で閉じ、頼まない。ほかの人の個人の情報を載せる頁を足すときも、ここに挙げる。
 
 サイトは Vercel のプロジェクトが `site/` を根にして配る。

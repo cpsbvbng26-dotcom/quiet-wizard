@@ -51,6 +51,7 @@ node verification/check_browser.js
 node verification/check_browser.js --break
 node intake/entry.js --self-test
 node verification/indexnow.js --dry-run
+node verification/wayback.js --dry-run
 ```
 
 `site/` is generated, English pages included.
@@ -65,6 +66,12 @@ It waits until the live sitemap is the one in that commit and the key file is se
 The key is `INDEXNOW_KEY` in `build.js`; `node build.js` writes it to `site/<key>.txt`, whose content is the key itself. The key is not a secret.
 It sends only the addresses of this site's pages, and nothing about readers. `--dry-run` prints the pages it would send, and sends nothing.
 Google does not read IndexNow; it reads the sitemap, which robots.txt names.
+`verification/wayback.js` asks the Internet Archive's Wayback Machine (Save Page Now) to keep a copy of this site's pages.
+The workflow "Wayback Machine" runs it only when started by hand. It asks for the pages in `site/sitemap.xml`.
+After asking, it checks with `archive.org/wayback/available` that a copy dated that day exists. Only the pages it confirmed are listed as saved in the summary. If any is not confirmed, the run fails.
+The Field Guide by Visitors pages (Japanese and English) are not sent. They carry scenes other people sent, which the operator removes as soon as anyone asks. A copy in the Wayback Machine is beyond the operator's reach.
+`site/robots.txt` closes them to the Internet Archive's crawlers (ia_archiver and archive.org_bot). `ARCHIVE_CLOSED` in `build.js` names the closed pages, and `verification/wayback.js` does not ask for any page that robots.txt closes.
+It waits until the live robots.txt is the one in that commit before asking. `--dry-run` prints the pages it would ask for and the pages it leaves out, and asks for nothing.
 The pages request nothing from any other server. There are no cookies and no analytics.
 The pages themselves take no input. Taking part happens through a GitHub issue form ("Taking part" above).
 

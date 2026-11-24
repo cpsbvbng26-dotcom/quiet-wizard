@@ -61,6 +61,7 @@ node verification/check_browser.js
 node verification/check_browser.js --break
 node intake/entry.js --self-test
 node verification/indexnow.js --dry-run
+node verification/wayback.js --dry-run
 ```
 
 `site/` は生成物です。
@@ -80,6 +81,12 @@ CI は、push と PR のたびに、この二つを走らせます。
 鍵は `build.js` の `INDEXNOW_KEY` で、`node build.js` が `site/<鍵>.txt` に、中身も鍵そのものとして書きます。鍵は秘密ではありません。
 送るのはこのサイトの頁の所在だけで、読む人についての何も送りません。`--dry-run` は、送らずに、送る頁を出します。
 Google は IndexNow を読みません。sitemap を読みます（robots.txt が名指しています）。
+`verification/wayback.js` は、このサイトの頁の写しを、Internet Archive の Wayback Machine に頼みます（Save Page Now）。
+ワークフロー「Wayback Machine」を手で起こしたときだけ回ります。頼むのは `site/sitemap.xml` の頁です。
+頼んだあと、頼んだ日の写しがあるかを `archive.org/wayback/available` で確かめます。確かめられたものだけを、残ったものとして要約に出します。一つでも見えなければ、実行を落とします。
+みんなの図鑑の頁（日本語と英語）は頼みません。ほかの人が寄せた場面を載せ、求めがあればすぐ外すと決めた頁です。Wayback Machine の写しは、運営者には消せません。
+この頁は、`site/robots.txt` で Internet Archive の取り寄せ役（ia_archiver と archive.org_bot）に閉じています。閉じる頁は `build.js` の `ARCHIVE_CLOSED` が決め、`verification/wayback.js` は robots.txt が閉じた頁を頼みません。
+本番の robots.txt がそのコミットのものと同じになるまで待ってから頼みます。`--dry-run` は、頼まずに、頼む頁と頼まない頁を出します。
 
 ## 開示とライセンス
 
