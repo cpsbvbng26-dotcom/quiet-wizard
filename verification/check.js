@@ -149,6 +149,12 @@ function files() {
   for (const f of ['.github/ISSUE_TEMPLATE/entry.yml', '.github/ISSUE_TEMPLATE/config.yml', '.github/workflows/entry.yml', 'intake/entry.js', 'data/entries.json', 'verification/fixtures/entries.json']) x[f] = R(f);
   /* 共有のカードとアイコン（2026-11-23）。PNG は base64 で持ち、描くスクリプトの文も読む。 */
   x['tools/card.js'] = R('tools/card.js');
+  /* IndexNow（2026-11-24）：送るスクリプトとワークフロー、site/ の下のテキストのファイル（robots.txt のほか）の所在と中身。 */
+  for (const f of ['verification/indexnow.js', '.github/workflows/indexnow.yml']) x[f] = R(f);
+  const txt = {};
+  const walkTxt = (d) => { for (const e of fs.existsSync(path.join(ROOT, d)) ? fs.readdirSync(path.join(ROOT, d), { withFileTypes: true }) : []) { const q = d + '/' + e.name; if (e.isDirectory()) walkTxt(q); else if (/\.txt$/.test(e.name) && q !== 'site/robots.txt') txt[q.slice(5)] = R(q); } };
+  walkTxt('site');
+  x['#site-txt'] = JSON.stringify(txt);
   for (const f of ['assets/card.png', 'assets/apple-touch-icon.png']) { try { x['#png:' + f] = fs.readFileSync(path.join(ROOT, f)).toString('base64'); } catch (e) { x['#png:' + f] = ''; } }
   return x;
 }
@@ -2010,6 +2016,83 @@ const nbreaks = [
 ];
 const nmissed = nbreaks.filter(([, f]) => f().length === 0).map(([k]) => k);
 ok('壊して確かめる：様式の印と同意と公開の断りと長さと名を出さないこと・受付の権限と式と閉じないこと・スクリプトの API・載せた場面・語の一覧・頁の描き方・決まりの頁・寄せの数の上限と日・参加の法的な扱いのどれでも落ちる（' + (nbreaks.length - nmissed.length) + ' / ' + nbreaks.length + '）', nmissed.length === 0, nmissed.join(' / '));
+
+/* IndexNow（2026-11-24）。鍵のファイル、送るワークフロー、送るスクリプトの所在を、build.js と sitemap と配信の決まりに照らして確かめる。
+ * 鍵は秘密ではない。Google は IndexNow を読まず、sitemap を読む。 */
+const INDEXNOW_SAYS = { 'README.md': 'Google は IndexNow を読みません。sitemap を読みます（robots.txt が名指しています）。', 'README.en.md': 'Google does not read IndexNow; it reads the sitemap, which robots.txt names.' };
+function indexnowVerdict(x) {
+  const bad = [];
+  /* 鍵：32 字の十六進で、site/ の根に <鍵>.txt が一つだけあり、中身は鍵そのもの。build.js が書く。 */
+  const key = B.INDEXNOW_KEY, txt = JSON.parse(x['#site-txt'] || '{}');
+  if (!/^[0-9a-f]{32}$/.test(String(key))) bad.push('IndexNow の鍵が 32 字の十六進でない：' + key);
+  const keys = Object.keys(txt).filter((f) => /(^|\/)[0-9a-f]{32}\.txt$/.test(f));
+  if (keys.join() !== key + '.txt') bad.push('site/ の根の鍵のファイルが、build.js の鍵の一つだけでない：' + (keys.join(', ') || '無い'));
+  if (txt[key + '.txt'] !== key) bad.push('鍵のファイルの中身が、鍵そのものでない');
+  if (!(x['build.js'] || '').includes("fs.writeFileSync(path.join(OUT, INDEXNOW_KEY + '.txt'), INDEXNOW_KEY);")) bad.push('build.js が鍵のファイルを site/ に書かない');
+  /* 配信の決まり：書き換え・転送・経路を持たず、どの見出しも Content-Type を変えない。/<鍵>.txt は、そのままテキストで配られる。 */
+  let V = {};
+  try { V = JSON.parse(x['site/vercel.json']); } catch (e) { bad.push('vercel.json が読めない'); }
+  const vk = Object.keys(V).sort().join();
+  if (vk !== 'cleanUrls,headers' || V.cleanUrls !== false) bad.push('vercel.json が、cleanUrls と headers のほかの決まりを持つ：' + vk);
+  for (const h of V.headers || []) for (const k of h.headers || []) if (/^content-(type|disposition)$/i.test(k.key) || /^x-robots-tag$/i.test(k.key)) bad.push('vercel.json の見出しが、配る型か検索の扱いを変える：' + k.key);
+  /* ワークフロー：main への push で site/sitemap.xml が変わったときと、手で（all）起こしたときに、node verification/indexnow.js を走らせる。読むだけ。 */
+  const wf = x['.github/workflows/indexnow.yml'] || '';
+  if (!wf) bad.push('IndexNow のワークフローが無い');
+  if (!/\n  push:\n    branches: \[main\]\n    paths: \[site\/sitemap\.xml\]\n/.test(wf)) bad.push('IndexNow のワークフローが、main への push の site/sitemap.xml を見ない');
+  if (!/\n  workflow_dispatch:\n    inputs:\n      all:\n/.test(wf)) bad.push('IndexNow のワークフローを、手で all を付けて起こせない');
+  if (!/\npermissions:\n  contents: read\n/.test(wf) || /: write\b/.test(wf)) bad.push('IndexNow のワークフローの権限が、読むだけでない');
+  const uses = wf.match(/^\s*- uses: \S+/mg) || [];
+  if (!uses.length || uses.some((u) => !/@[0-9a-f]{40}$/.test(u))) bad.push('IndexNow のワークフローの actions を、コミットの SHA で固めていない');
+  if (!/\n      - run: node verification\/indexnow\.js\n        env:\n          BEFORE: \$\{\{ github\.event\.before \}\}\n          ALL: \$\{\{ inputs\.all \}\}\n/.test(wf)) bad.push('IndexNow のワークフローが、前の head と all を渡して verification/indexnow.js を走らせない');
+  /* スクリプト：所在の根は sitemap と robots.txt の所在と同じ。読む sitemap は site/sitemap.xml、鍵は site/ から読む。 */
+  const js = x['verification/indexnow.js'] || '';
+  const base = (/^const BASE = '([^']+)';$/m.exec(js) || [])[1] || '';
+  const locs = [...(x['site/sitemap.xml'] || '').matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  let host = '';
+  try { host = new URL(base).host; } catch (e) { /* 下で落ちる */ }
+  if (base !== B.BASE || !host || !locs.length || locs.some((u) => new URL(u).host !== host || !u.startsWith(base))) bad.push('IndexNow のスクリプトの所在の根が、sitemap の所在と合わない：' + base);
+  if (!(x['site/robots.txt'] || '').includes('Sitemap: ' + base + 'sitemap.xml\n')) bad.push('robots.txt が名指す sitemap が、スクリプトの所在の根の下にない');
+  if (!js.includes("const SITE = path.join(ROOT, 'site');") || !js.includes("path.join(SITE, 'sitemap.xml')") || !js.includes("at + ':site/sitemap.xml'") || !js.includes('fs.readdirSync(SITE)')) bad.push('IndexNow のスクリプトが、site/sitemap.xml と site/ の鍵を読まない');
+  if (!js.includes("keyLocation: BASE + KEY + '.txt'") || !js.includes("'https://api.indexnow.org/indexnow'")) bad.push('IndexNow のスクリプトの鍵の所在か送り先');
+  /* 記録：README（日本語と英語）が、Google は IndexNow を読まず sitemap を読むことと、試す命令を書く。CLAUDE.md も命令を挙げる。 */
+  for (const [f, w] of Object.entries(INDEXNOW_SAYS)) if (!(x[f] || '').includes(w)) bad.push(f + '：' + w.slice(0, 32));
+  for (const f of ['README.md', 'README.en.md', 'CLAUDE.md']) if (!/^node verification\/indexnow\.js --dry-run(\s+#.*)?$/m.test(x[f] || '')) bad.push(f + '：命令 node verification/indexnow.js --dry-run');
+  return bad;
+}
+
+console.log('\n8. IndexNow');
+const iv = indexnowVerdict(real);
+ok('IndexNow の鍵は 32 字の十六進で、site/ の根に中身も鍵そのもののファイルが一つだけあり、build.js が書き、配信の決まりが型を変えず書き換えない。ワークフローは main の site/sitemap.xml と手の all で起き、読むだけで、actions を SHA で固める。スクリプトの所在の根は sitemap と robots.txt と同じ。README が、Google は IndexNow を読まないと書く', iv.length === 0, iv.join(' / '));
+const tm = (f) => (o) => { const t = JSON.parse(real['#site-txt']); f(t); return Object.assign({}, real, { '#site-txt': JSON.stringify(t) }); };
+const K = B.INDEXNOW_KEY;
+const ibreaks = [
+  ['鍵のファイルを外す', tm((t) => { delete t[K + '.txt']; })()],
+  ['鍵のファイルの中身を一字変える', tm((t) => { t[K + '.txt'] = K.slice(0, -1) + (K.slice(-1) === '0' ? '1' : '0'); })()],
+  ['鍵のファイルの中身に改行を足す', tm((t) => { t[K + '.txt'] = K + '\n'; })()],
+  ['鍵のファイルを site/assets に移す', tm((t) => { t['assets/' + K + '.txt'] = t[K + '.txt']; delete t[K + '.txt']; })()],
+  ['鍵のファイルの名を 31 字にする', tm((t) => { t[K.slice(1) + '.txt'] = K.slice(1); delete t[K + '.txt']; })()],
+  ['もう一つ鍵のファイルを置く', tm((t) => { t['0123456789abcdef0123456789abcdef.txt'] = '0123456789abcdef0123456789abcdef'; })()],
+  ['build.js が鍵のファイルを書かない', mut('build.js', "  fs.writeFileSync(path.join(OUT, INDEXNOW_KEY + '.txt'), INDEXNOW_KEY);\n", '')],
+  ['配信の決まりに書き換えを足す', mut('site/vercel.json', '"cleanUrls": false,', '"cleanUrls": false,\n  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],')],
+  ['配信の決まりで型を変える', mut('site/vercel.json', '"key": "X-Content-Type-Options"', '"key": "Content-Type", "value": "text/html" }, { "key": "X-Content-Type-Options"')],
+  ['配信の決まりを cleanUrls にする', mut('site/vercel.json', '"cleanUrls": false', '"cleanUrls": true')],
+  ['ワークフローを外す', Object.assign({}, real, { '.github/workflows/indexnow.yml': '' })],
+  ['ワークフローが根の sitemap.xml を見る', mut('.github/workflows/indexnow.yml', 'paths: [site/sitemap.xml]', 'paths: [sitemap.xml]')],
+  ['ワークフローから手で起こすことを外す', mut('.github/workflows/indexnow.yml', /  workflow_dispatch:\n[\s\S]*?default: 'no'\n/, '')],
+  ['ワークフローの action を版の札で読む', mut('.github/workflows/indexnow.yml', 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1', 'actions/checkout@v7')],
+  ['ワークフローに書く権限を与える', mut('.github/workflows/indexnow.yml', '  contents: read\n', '  contents: write\n')],
+  ['ワークフローが前の head を渡さない', mut('.github/workflows/indexnow.yml', '          BEFORE: ${{ github.event.before }}\n', '')],
+  ['スクリプトの所在の根を別の所にする', mut('verification/indexnow.js', "const BASE = 'https://quiet-wizard.vercel.app/';", "const BASE = 'https://quiet-wizard.example.org/';")],
+  ['スクリプトの所在の根から最後の / を外す', mut('verification/indexnow.js', "const BASE = 'https://quiet-wizard.vercel.app/';", "const BASE = 'https://quiet-wizard.vercel.app';")],
+  ['sitemap を別の所在で書く', mut('site/sitemap.xml', '<loc>https://quiet-wizard.vercel.app/faq.html</loc>', '<loc>https://example.org/faq.html</loc>')],
+  ['スクリプトが根の sitemap.xml を読む', mut('verification/indexnow.js', "path.join(SITE, 'sitemap.xml')", "path.join(ROOT, 'sitemap.xml')")],
+  ['スクリプトが鍵を根から読む', mut('verification/indexnow.js', 'fs.readdirSync(SITE)', 'fs.readdirSync(ROOT)')],
+  ['README から Google の一行を外す', mut('README.md', INDEXNOW_SAYS['README.md'], '')],
+  ['英語の README から Google の一行を外す', mut('README.en.md', INDEXNOW_SAYS['README.en.md'], '')],
+  ['CLAUDE.md から命令を外す', mut('CLAUDE.md', /^node verification\/indexnow\.js --dry-run.*\n/m, '')],
+];
+const imissed = ibreaks.filter(([, y]) => indexnowVerdict(y).length === 0).map(([k]) => k);
+ok('壊して確かめる：鍵のファイルの有無・中身・置き場・名の長さ・数、build.js の書き出し、配信の書き換えと型、ワークフローの有無・見る sitemap・手で起こすこと・SHA・権限・前の head、スクリプトの所在の根と sitemap と鍵の読み場所、README と CLAUDE.md の記録のどれでも落ちる（' + (ibreaks.length - imissed.length) + ' / ' + ibreaks.length + '）', imissed.length === 0, imissed.join(' / '));
 
 /* 受付の上限を、作り物の API で動かす（2026-11-23）。受付のスクリプトを一か所ずつ壊した写しでも動かし、落ちることを見る。 */
 let mutN = 0;

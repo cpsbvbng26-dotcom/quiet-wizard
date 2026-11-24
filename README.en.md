@@ -50,6 +50,7 @@ node tools/card.js --check
 node verification/check_browser.js
 node verification/check_browser.js --break
 node intake/entry.js --self-test
+node verification/indexnow.js --dry-run
 ```
 
 `site/` is generated, English pages included.
@@ -58,6 +59,12 @@ It checks console errors and CSP violations, horizontal overflow at phone and de
 The number of checks is printed when it runs. `--break` damages a copy of `site/` and confirms that each kind of damage fails.
 CI runs both on every push and pull request.
 `verification/live.js` fetches the live Japanese and English home pages and the share card from outside, without logging in, under a generic crawler name and under X's crawler name (Twitterbot). The workflow "本番" runs it once a day. `--self-test` checks, on made-up answers, that it fails what it should.
+`verification/indexnow.js` tells IndexNow (the notice that Bing and some other search engines take) which pages were added to or removed from `site/sitemap.xml`.
+The workflow "IndexNow" runs it on each push to main that changes `site/sitemap.xml`. Run by hand with all set to yes, it sends every page of the sitemap.
+It waits until the live sitemap is the one in that commit and the key file is served, and only then sends.
+The key is `INDEXNOW_KEY` in `build.js`; `node build.js` writes it to `site/<key>.txt`, whose content is the key itself. The key is not a secret.
+It sends only the addresses of this site's pages, and nothing about readers. `--dry-run` prints the pages it would send, and sends nothing.
+Google does not read IndexNow; it reads the sitemap, which robots.txt names.
 The pages request nothing from any other server. There are no cookies and no analytics.
 The pages themselves take no input. Taking part happens through a GitHub issue form ("Taking part" above).
 

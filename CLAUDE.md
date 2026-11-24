@@ -42,6 +42,7 @@ node tools/card.js --check   # 共有のカードとアイコンを描き直し�
 node verification/check_browser.js           # ブラウザでの検査（Playwright の Chromium が要る）
 node verification/check_browser.js --break   # site/ の写しを壊し、ブラウザでの検査が落ちることを確かめる
 node intake/entry.js --self-test             # みんなの図鑑の受付を、作り物の本文と作り物の API で確かめる
+node verification/indexnow.js --dry-run      # IndexNow に送る頁を出す（送るのは CI のワークフロー「IndexNow」。鍵は build.js の INDEXNOW_KEY で、site/<鍵>.txt に書く）
 ```
 
 ブラウザでの検査（`verification/check_browser.js`、2026-11-23）は、`site/` を手元のサーバーで `site/vercel.json` と同じ見出しで配り、二つの言葉のすべての頁を Chromium で開いて、コンソールと CSP、はみ出し、キーボード、拡大、動き、遊び場、言葉の切り替え、入れ子の 404、頁の中のつなぎを確かめる。CI の `browser` の仕事が、push と PR のたびに確かめと壊し方の両方を走らせる。頁や部品を変えたら、この検査も通す。確かめの数は散文に書かない（走らせたときに出る）。
