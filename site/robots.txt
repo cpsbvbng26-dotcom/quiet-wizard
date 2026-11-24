@@ -1,3 +1,10 @@
 User-agent: *
 Allow: /
+
+User-agent: ia_archiver
+User-agent: archive.org_bot
+Disallow: /entries.html
+Disallow: /entries.en.html
+Allow: /
+
 Sitemap: https://quiet-wizard.vercel.app/sitemap.xml
