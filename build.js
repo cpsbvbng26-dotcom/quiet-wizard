@@ -15,6 +15,9 @@ const OUT = path.join(ROOT, 'site');
 const BASE = 'https://quiet-wizard.vercel.app/';
 /* Google Search Console の所有の確認（HTML タグの方式）。運営者が Search Console で受け取った値（2026-11-22）。外へは何も読みに行かない。 */
 const GSC = 'UEPpX5mfnLlhOBTBTETu-PmRO_Y4L2SmjEiaq_U1Zf8';
+/* IndexNow の鍵（2026-11-24。Claude が乱数から作った。ほかのサイトの鍵は使わない）。秘密ではない。build が site/<鍵>.txt に、中身も鍵そのものとして書く。
+ * 送るのは verification/indexnow.js と .github/workflows/indexnow.yml。Google は IndexNow を読まず、sitemap を読む。 */
+const INDEXNOW_KEY = '8f777a669407834a99c5e76af4a1258c';
 const REPO = 'https://github.com/cpsbvbng26-dotcom/quiet-wizard';
 const NAME = 'ステルス・ウィザード';
 /* 頁の順。[元, 出力, 案内の短い名, 上の案内に出すか] 上に出さない頁は、下の欄からつなぐ。 */
@@ -711,6 +714,7 @@ function build() {
   fs.writeFileSync(path.join(OUT, 'robots.txt'), ROBOTS);
   fs.writeFileSync(path.join(OUT, 'sitemap.xml'), SITEMAP);
   fs.writeFileSync(path.join(OUT, 'vercel.json'), VERCEL);
+  fs.writeFileSync(path.join(OUT, INDEXNOW_KEY + '.txt'), INDEXNOW_KEY);
   /* みんなの図鑑の様式（2026-11-23）。intake/entry.js の FORM から作る。 */
   fs.mkdirSync(path.join(ROOT, '.github', 'ISSUE_TEMPLATE'), { recursive: true });
   fs.writeFileSync(path.join(ROOT, '.github', 'ISSUE_TEMPLATE', 'entry.yml'), E.form(loadEntries(fs.readFileSync(ENTRIES_FILE, 'utf8'))));
@@ -723,4 +727,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { E, FORM_URL, entriesHtml, loadEntries, ENTRIES_FILE, statuteEn, SUMMARY_K, RULE_PAGES, GOVERNS_EN, LAW_EN, ITEM_HEAD_EN, CITE_EN, BOOK_TOP, EN_PAGES, LANGS, hasEn, fileOf, urlOf, NAME_EN, FRAME_EN, FOOT_EN, HERO_EN, EMBLEMS_EN, CLASS_EN, PLAY_EN, SHORT_EN, EYEBROW_EN, DESC_EN, DESC_TAIL_EN, NOT_FOUND_EN, UI, FIG_EN, figText, CARD_ALT_EN, DESC, DESC_TAIL, CARD, THEME, NOT_FOUND, VERCEL, ROBOTS, SITEMAP, headIds, tocList, CITE, GSC, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { E, FORM_URL, entriesHtml, loadEntries, ENTRIES_FILE, statuteEn, SUMMARY_K, RULE_PAGES, GOVERNS_EN, LAW_EN, ITEM_HEAD_EN, CITE_EN, BOOK_TOP, EN_PAGES, LANGS, hasEn, fileOf, urlOf, NAME_EN, FRAME_EN, FOOT_EN, HERO_EN, EMBLEMS_EN, CLASS_EN, PLAY_EN, SHORT_EN, EYEBROW_EN, DESC_EN, DESC_TAIL_EN, NOT_FOUND_EN, UI, FIG_EN, figText, CARD_ALT_EN, DESC, DESC_TAIL, CARD, THEME, NOT_FOUND, VERCEL, ROBOTS, SITEMAP, headIds, tocList, CITE, GSC, INDEXNOW_KEY, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
