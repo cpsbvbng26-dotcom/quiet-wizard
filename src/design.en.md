@@ -1,6 +1,6 @@
 # Legal Handling of the Design
 
-Last updated: 2026-11-23.
+Last updated: 2026-11-25.
 
 <!-- toc -->
 
@@ -36,7 +36,7 @@ Adding or removing a part file makes it disagree with this table, and the check 
 | Share card | `assets/card.png` | A 1200×630 PNG drawn by `tools/card.js`. On a night-black ground, the three emblems, the Latin-script name and one line set in Inter Tight. No Japanese text. The og:image in the page head points to it. SHA-256 is c01a7394528907a905f3ab5ca216102c5c6da5a5739b32226a0c62d72d52a2dd | CC BY 4.0, as a figure | The check confirms the PNG size, the SHA-256, that the four corners are the night black of the header, that there are gold pixels, and that the card text uses only characters the distributed typeface holds |
 | Home-screen icon | `assets/apple-touch-icon.png` | A 180×180 PNG drawn by `tools/card.js`. On a night-black ground, the class crest and two gold lines. SHA-256 is b2a65f98104f9e534a83e30c79d8083c2ef402b574b5b006adfbb59a068be95b | CC BY 4.0, as a figure | As for the share card |
 | Script that draws the card and icon | `tools/card.js` | Written by Claude at the operator's request. Draws the two PNGs from the emblems, colours and typeface with Playwright's Chromium. `node tools/card.js --check` draws them again and confirms the bytes are the same | MIT, as code | The check confirms the card text and that the only parts it reads belong to this repository |
-| Styles for colour, layout and type | `assets/style.css` | Written by Claude at the operator's request | MIT, as code | The check confirms the contrast ratios, the shadow direction and height levels, the reduced-motion setting, print, and which files are loaded |
+| Styles for colour, layout and type | `assets/style.css` | Written by Claude at the operator's request | MIT, as code | The check confirms the contrast ratios, the shadow direction and height levels, the reduced-motion setting, print, which files are loaded, and that each declaration Safari reads only with a prefix also has its prefixed form |
 | Script that draws the playground | `assets/play.js` | Written by Claude at the operator's request. Draws the network of relationships with circles and lines. Chooses Japanese or English messages from the page language (the lang of html) | MIT, as code | The check confirms that it sends nothing out, keeps nothing, and draws only circles and lines |
 
 The terms of use put the text and figures under CC BY 4.0 and the code under MIT ("Using the text and figures" in the [terms of use](terms.en.html)).

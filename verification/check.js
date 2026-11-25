@@ -258,6 +258,9 @@ function verdict(x) {
   const fonts = x['#assets'].split('\n').filter((l) => /\.(woff2?|ttf|otf) /.test(l));
   if (fonts.join(' ') !== 'intertight.woff2 ' + FONT_SHA) bad.push('配る書体が決めたものと違う：' + fonts.join(' / '));
   if (x['#assets'] !== x['#site-assets']) bad.push('site/assets が assets と違う（node build.js）');
+  /* 出ている版の Safari と iOS の Safari は、user-select を接頭辞の形でしか読まない（MDN の互換の表 css.properties.user-select、2026-11-25 に読んだ。Safari の接頭辞の無い形は 27.3 からで、出た日が無い）。
+     接頭辞の無い形だけでは、Safari で効かない。同じ規則の中に、同じ値の -webkit- の形が先にあること。 */
+  for (const r of x['assets/style.css'].replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/\{([^{}]*)\}/g)) for (const m of r[1].matchAll(/(?:^|[;\s])user-select\s*:\s*([^;}]+)/g)) if (!new RegExp('-webkit-user-select\\s*:\\s*' + m[1].trim() + '\\s*;[^}]*(?:^|[;\\s])user-select\\s*:').test(r[1])) bad.push('style.css：user-select に -webkit- の形が添えていない（Safari で効かない）');
   /* style.css が読むのは、自分のところの書体と図だけ。 */
   for (const m of x['assets/style.css'].matchAll(/url\(([^)]*)\)/g)) if (!/^(intertight\.woff2|mark\.svg)$/.test(m[1])) bad.push('style.css が読むもの：' + m[1]);
   if (!x['assets/OFL-InterTight.txt'].includes('SIL OPEN FONT LICENSE Version 1.1') || !x['assets/OFL-InterTight.txt'].includes('Copyright 2022 The Inter Project Authors')) bad.push('書体の許諾の文');
@@ -1318,6 +1321,9 @@ const breaks = [
   ['帯の色を変える', mut('site/play.html', '<meta name="theme-color" content="#0d0f13">', '<meta name="theme-color" content="#ffffff">')],
   ['ホーム画面のアイコンを外す', mut('site/requests.html', '<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">\n', '')],
   ['遊び場の説明の人の数を違える', mut('site/play.html', '<meta name="description" content="8 人', '<meta name="description" content="7 人')],
+  /* 2026-11-25 に足した壊し方。Safari の接頭辞。 */
+  ['style.css の user-select から -webkit- の形を外す', mut('assets/style.css', '-webkit-user-select: none; ', '')],
+  ['style.css の -webkit-user-select を後ろに回す', mut('assets/style.css', '-webkit-user-select: none; user-select: none;', 'user-select: none; -webkit-user-select: none;')],
   ['印刷で上の欄を黒字にしない', mut('assets/style.css', '.frame, .frame *, header, header * { color: #000 !important;', '.frame, .frame * { color: #000 !important;')],
 ];
 const missed = breaks.filter(([, y]) => verdict(y).length === 0).map(([k]) => k);

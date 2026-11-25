@@ -212,7 +212,7 @@ td:first-child { white-space: nowrap; font-family: var(--head); color: var(--gol
 /* はじめにの場面 */
 .hero { position: relative; margin-top: 2.4rem; margin-bottom: 3rem; }
 .eye-toggle { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.eye-switch { display: inline-flex; align-items: center; gap: .7rem; cursor: pointer; font-size: .84rem; letter-spacing: .12em; color: var(--muted); user-select: none; }
+.eye-switch { display: inline-flex; align-items: center; gap: .7rem; cursor: pointer; font-size: .84rem; letter-spacing: .12em; color: var(--muted); -webkit-user-select: none; user-select: none; }
 .eye-switch .knob { width: 2.2rem; height: 1.15rem; border-radius: 999px; border: 1px solid var(--muted); position: relative; transition: border-color .3s; }
 .eye-switch .knob::after { content: ""; position: absolute; top: .16rem; left: .18rem; width: .7rem; height: .7rem; border-radius: 50%; background: var(--muted); transition: transform .35s cubic-bezier(.2,.7,.2,1), background .3s; }
 .eye-switch .to-out, .cap .cap-in { display: none; }
