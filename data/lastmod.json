@@ -98,12 +98,12 @@
       "sha256": "b906cc23dd8c23878db83be1a073c3c7c0608f0d938fb2aa98b9c97868b9746b"
     },
     "design.html": {
-      "date": "2026-11-23",
-      "sha256": "dba18a5be30f7716e4c3b59d6f5ec610c515220b992f52f46d055e21aaa479b7"
+      "date": "2026-11-26",
+      "sha256": "c42b0bc3b8c8cd265e694477aa21d2b1ba7e7d967c1894b854fbdaec70e0dad9"
     },
     "design.en.html": {
-      "date": "2026-11-23",
-      "sha256": "fda806cbfaa0c60e120033d158a0562c9e011a214a904bc94e4650b53bb90cf6"
+      "date": "2026-11-26",
+      "sha256": "e999895ff3b7a2a01ee892e6edaca2701576e46a6de8082900ff8bd2b705023d"
     }
   }
 }
