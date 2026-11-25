@@ -1,0 +1,109 @@
+{
+  "_": "sitemap の lastmod の控え（2026-11-25）。頁（site/ のファイル）ごとに、中身が最後に変わった日（日本時間）と、その中身の SHA-256。node build.js が書く生成物で、手で直さない。始めの日は、それまでの git の履歴で、その頁のファイルを最後に変えたコミットの日（日本時間）から取った。",
+  "pages": {
+    "index.html": {
+      "date": "2026-11-23",
+      "sha256": "e81a0a4f33fc5dcf87a5f75005172288149cd001c3f4b94287a042c1fbbd1445"
+    },
+    "index.en.html": {
+      "date": "2026-11-23",
+      "sha256": "50388d1973d781ba7421bf654a122cae787447272d60b9db50e3bf79950742f3"
+    },
+    "canon.html": {
+      "date": "2026-11-23",
+      "sha256": "30f2374a01e35e03604912052373b819701282187eea7f583d9a65e64e821493"
+    },
+    "canon.en.html": {
+      "date": "2026-11-23",
+      "sha256": "2c58ec7ec95726a57e2f5c1821ba05a93a1f1607f55bddb2f4be063523604163"
+    },
+    "strict.html": {
+      "date": "2026-11-23",
+      "sha256": "92b04bd738dda86a0ce248dc1158575c3b0e27873dbc39cd17d0a564c7cf77ee"
+    },
+    "strict.en.html": {
+      "date": "2026-11-23",
+      "sha256": "c36bf013698090af9f5c20524a94a1ca0ade322e230819cfd2c1ab2489be8146"
+    },
+    "guide.html": {
+      "date": "2026-11-23",
+      "sha256": "89a97792648b40374a643e68c701160b66eb78ae80728f5b9f50ba449caebffb"
+    },
+    "guide.en.html": {
+      "date": "2026-11-23",
+      "sha256": "fb560af1a06f46cb5ec331fd8456632129fcbda351f96f7cc1af7f1b29888ebb"
+    },
+    "entries.html": {
+      "date": "2026-11-24",
+      "sha256": "85ddb21c8d179d2710e2069fa33fad778ff5ad53f3287c0c7427dc88d9209d9c"
+    },
+    "entries.en.html": {
+      "date": "2026-11-24",
+      "sha256": "61d44a510911101748b72196401d69f3bc82508280f0e571fa309f36f4e6dd38"
+    },
+    "play.html": {
+      "date": "2026-11-23",
+      "sha256": "c51ba1e22457358deb2b3f32d191ef562a354b3770c7dfaaf72b8c4e238e762f"
+    },
+    "play.en.html": {
+      "date": "2026-11-23",
+      "sha256": "8b62e3ea14d52a69c4a3aea42dbf8a3ef91576aaca4fd6c1a7c94871aa8ba645"
+    },
+    "faq.html": {
+      "date": "2026-11-23",
+      "sha256": "56bd229a2ba93b2dbc7d74e9b22ab134e15a6c82cbf69a6a1854e033cac4974a"
+    },
+    "faq.en.html": {
+      "date": "2026-11-23",
+      "sha256": "507b79c2abdcf02f5766e3498ab334c00a347abd76697494b23eafd369e6e718"
+    },
+    "about.html": {
+      "date": "2026-11-23",
+      "sha256": "75e6d0e0a5ad1c8aa606947684d5cd6d49e0690201f107b28300f2cd6960c7fa"
+    },
+    "about.en.html": {
+      "date": "2026-11-23",
+      "sha256": "df416835336f51ea3e59d848535cef209d8273224268af9ae5e3db228f89bf2b"
+    },
+    "terms.html": {
+      "date": "2026-11-24",
+      "sha256": "2c66fb7de2e4328c1b4b2aea3fa46f0e037edc3a95fb3c3b4594207f94c7582f"
+    },
+    "terms.en.html": {
+      "date": "2026-11-24",
+      "sha256": "1b6c9ed9e1f8c6ed0af8d599b58e99a088dbfa04dc456724e5820df1163fc2ff"
+    },
+    "privacy.html": {
+      "date": "2026-11-24",
+      "sha256": "68fa0b90b92b2c8bb3c81aacf61ba5f4a5efd697a10aec3e65b5e458b21f625c"
+    },
+    "privacy.en.html": {
+      "date": "2026-11-24",
+      "sha256": "450a7fe810228a56aeb1208bfe07797028b991b63c048bd08f4e6b177aab716f"
+    },
+    "requests.html": {
+      "date": "2026-11-24",
+      "sha256": "5743bf9050aec934e978686cc4e39beb5b2a61d7127957fba85cc8b22ca13b10"
+    },
+    "requests.en.html": {
+      "date": "2026-11-24",
+      "sha256": "891fa3cabcebf8e8696b061009913b0e5f8ccca6b4415c8523070363f6e09f99"
+    },
+    "legality.html": {
+      "date": "2026-11-24",
+      "sha256": "77c06c7b9f7ec7de40b455384e5b1a1b036bfbbc03301c75c11a31bc79122d4a"
+    },
+    "legality.en.html": {
+      "date": "2026-11-24",
+      "sha256": "b906cc23dd8c23878db83be1a073c3c7c0608f0d938fb2aa98b9c97868b9746b"
+    },
+    "design.html": {
+      "date": "2026-11-23",
+      "sha256": "dba18a5be30f7716e4c3b59d6f5ec610c515220b992f52f46d055e21aaa479b7"
+    },
+    "design.en.html": {
+      "date": "2026-11-23",
+      "sha256": "fda806cbfaa0c60e120033d158a0562c9e011a214a904bc94e4650b53bb90cf6"
+    }
+  }
+}

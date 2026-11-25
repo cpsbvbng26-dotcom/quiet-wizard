@@ -157,6 +157,8 @@ function files() {
   x['#site-txt'] = JSON.stringify(txt);
   /* Wayback Machine（2026-11-24）：写しを頼んで確かめるスクリプトと、手で起こすワークフロー。 */
   for (const f of ['verification/wayback.js', '.github/workflows/wayback.yml']) x[f] = R(f);
+  /* sitemap の lastmod（2026-11-25）：控えと、IndexNow に送る頁を確かめる作り物の前後の sitemap。 */
+  for (const f of ['data/lastmod.json', 'verification/fixtures/sitemap-before.xml', 'verification/fixtures/sitemap-after.xml']) x[f] = R(f);
   for (const f of ['assets/card.png', 'assets/apple-touch-icon.png']) { try { x['#png:' + f] = fs.readFileSync(path.join(ROOT, f)).toString('base64'); } catch (e) { x['#png:' + f] = ''; } }
   return x;
 }
@@ -420,7 +422,9 @@ function verdict(x) {
   for (const [s, out] of B.PAGES) for (const lang of B.hasEn(out) ? B.LANGS : ['ja']) { const f = 'site/' + B.fileOf(out, lang) + '.html'; if (x[f] === undefined || x[f] !== freshOr(s, lang)) bad.push(f + ' が src から作ったものと違う（node build.js）'); }
   if (x['site/404.html'] !== B.page('404', '頁が見つかりません', B.NOT_FOUND)) bad.push('site/404.html が build.js から作ったものと違う（node build.js）');
   if (x['site/404.en.html'] !== B.page('404', 'Page not found', B.NOT_FOUND_EN, 'en')) bad.push('site/404.en.html が build.js から作ったものと違う（node build.js）');
-  if (x['site/vercel.json'] !== B.VERCEL || x['site/robots.txt'] !== B.ROBOTS || x['site/sitemap.xml'] !== B.SITEMAP) bad.push('site の vercel.json・robots.txt・sitemap.xml が build.js から作ったものと違う（node build.js）');
+  let smFresh = null;
+  try { smFresh = B.sitemap(B.readLastmod(x['data/lastmod.json'])); } catch (e) { bad.push('sitemap を data/lastmod.json の控えから作れない：' + e.message); }
+  if (x['site/vercel.json'] !== B.VERCEL || x['site/robots.txt'] !== B.ROBOTS || x['site/sitemap.xml'] !== smFresh) bad.push('site の vercel.json・robots.txt・sitemap.xml が build.js から作ったものと違う（node build.js）');
   /* 配信の決まりに、廃れた指定（interest-cohort）を書かない。browsing-topics を止める（2026-11-23）。 */
   let V = {};
   try { V = JSON.parse(x['site/vercel.json']); } catch (e) { /* 下で落ちる */ }
@@ -644,7 +648,7 @@ function englishVerdict(x) {
   }
   /* sitemap：配る頁（404 のほか）をすべて挙げ、対のある頁は三つの alternate を持ち、頁の頭の対と同じ。 */
   const sm = x['site/sitemap.xml'] || '', locs = [];
-  for (const m of sm.matchAll(/<url><loc>([^<]+)<\/loc>((?:<xhtml:link [^>]+\/>)*)<\/url>/g)) {
+  for (const m of sm.matchAll(/<url><loc>([^<]+)<\/loc>(?:<lastmod>[^<]+<\/lastmod>)?((?:<xhtml:link [^>]+\/>)*)<\/url>/g)) {
     locs.push(m[1]);
     const t = x[urlToFile(m[1])];
     const sa = [...m[2].matchAll(/<xhtml:link rel="alternate" hreflang="([^"]+)" href="([^"]+)"\/>/g)].map((z) => z[1] + ' ' + z[2]);
@@ -1466,7 +1470,7 @@ const ebreaks = [
   ['英語の頁の og:locale を ja_JP にする', emut('site/about.en.html', '<meta property="og:locale" content="en_US">', '<meta property="og:locale" content="ja_JP">')],
   ['英語の頁の説明から断りを外す', emut('site/canon.en.html', ' It is a play, not science.">', '">')],
   ['sitemap から英語の頁を外す', emut('site/sitemap.xml', /<url><loc>https:\/\/quiet-wizard\.vercel\.app\/faq\.en\.html<\/loc>[^\n]*\n/, '')],
-  ['sitemap の対を違える', emut('site/sitemap.xml', '<url><loc>https://quiet-wizard.vercel.app/guide.html</loc><xhtml:link rel="alternate" hreflang="ja" href="https://quiet-wizard.vercel.app/guide.html"/>', '<url><loc>https://quiet-wizard.vercel.app/guide.html</loc><xhtml:link rel="alternate" hreflang="ja" href="https://quiet-wizard.vercel.app/faq.html"/>')],
+  ['sitemap の対を違える', emut('site/sitemap.xml', /(<url><loc>https:\/\/quiet-wizard\.vercel\.app\/guide\.html<\/loc><lastmod>[^<]+<\/lastmod><xhtml:link rel="alternate" hreflang="ja" href=")https:\/\/quiet-wizard\.vercel\.app\/guide\.html"/, '$1https://quiet-wizard.vercel.app/faq.html"')],
   ['日本語の頁から英語の頁へつなぐ', emut('site/faq.html', '</main>', '<a href="play.en.html">x</a></main>')],
   ['英語の頁から日本語の頁へつなぐ', emut('site/faq.en.html', '</main>', '<a href="play.html">x</a></main>')],
   ['英語の頁を手で直す', emut('site/guide.en.html', 'There is no way to tell.', 'There is a way to tell.')],
@@ -2234,6 +2238,260 @@ async function waybackSection() {
   ok('壊して確かめる：ワークフローの有無・起こし方・権限・SHA・資格・走らせ方、スクリプトの読む sitemap と robots.txt・所在の根・読む組・閉じた頁・本番を待つこと・止まり方、robots.txt の閉じ方、写しの確かめ・日・印、429 と接続の失敗の頼み直し、要約、落とし方、README と CLAUDE.md の記録のどれでも落ちる（' + (wbreaks.length - wmissed.length) + ' / ' + wbreaks.length + '）', wmissed.length === 0, wmissed.join(' / '));
 }
 
+/* sitemap の lastmod（2026-11-25）。lastmod は頁の中身（site/ の HTML）が最後に変わった日で、build.js が data/lastmod.json の控えから書く。
+ * 確かめるのは四つ。sitemap のどの頁にも lastmod があり、控えの日と同じで、控えの SHA-256 が頁の中身と同じこと。
+ * 作り直しが同じバイトになること（git の無い写しで、別の日と別の時刻の帯でも）。頁を一つ変えれば、その頁の日だけが作った日（日本時間）になること。
+ * 作り物の前後の sitemap で、IndexNow の --dry-run が送る頁が、決めた頁とちょうど同じこと。
+ * 履歴のある複製では、控えの日を git の履歴とも突き合わせる（浅い複製では省く）。 */
+const LASTMOD_SAYS = {
+  'README.md': 'sitemap の lastmod は、頁の中身（`site/` の HTML）が最後に変わった日です。',
+  'README.en.md': "The lastmod in the sitemap is the day the page's content (its HTML in `site/`) last changed.",
+  'CLAUDE.md': '`data/lastmod.json`（sitemap の lastmod の控え）',
+};
+const LASTMOD_SHALLOW_SAYS = { 'README.md': 'git の履歴を読まないので、浅い複製でも同じ結果になります。', 'README.en.md': 'The build does not read the git history, so a shallow clone gives the same result.' };
+/* 前の制限（lastmod が無いので、増えた頁と消えた頁だけを送る）の文。もう書かない。 */
+const LASTMOD_GONE = { 'README.md': 'に増えた頁と消えた頁を、IndexNow', 'README.en.md': 'which pages were added to or removed from', 'verification/indexnow.js': 'sitemap は lastmod を持たない' };
+const jstOf = (ms) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
+const isDay = (d) => /^\d{4}-\d{2}-\d{2}$/.test(String(d)) && new Date(d + 'T00:00:00Z').toISOString().slice(0, 10) === d;
+function lastmodVerdict(x, today) {
+  const bad = [];
+  let d;
+  try { d = JSON.parse(x['data/lastmod.json']); } catch (e) { return ['data/lastmod.json が読めない']; }
+  if (!d || typeof d !== 'object' || Object.keys(d).join() !== '_,pages' || d._ !== B.LASTMOD_NOTE || !d.pages || typeof d.pages !== 'object') return ['data/lastmod.json の形が、build.js の書く形でない'];
+  const pages = d.pages, files = B.SITEMAP_PAGES.map((p) => p.file);
+  if (Object.keys(pages).join() !== files.join()) bad.push('控えの頁が、sitemap の頁と数か順で違う：' + Object.keys(pages).length + ' / ' + files.length);
+  for (const f of files) {
+    const e = pages[f] || {};
+    if (Object.keys(e).join() !== 'date,sha256') bad.push(f + '：控えの欄が日と SHA-256 でない');
+    if (!isDay(e.date)) bad.push(f + '：控えの日が日付でない：' + e.date);
+    else if (e.date > today) bad.push(f + '：控えの日 ' + e.date + ' が、今日（日本時間 ' + today + '）より後');
+    /* 控えの SHA-256 は、build.js の関数でなく、ここで頁から計算する。 */
+    if (typeof x['site/' + f] !== 'string' || e.sha256 !== require('crypto').createHash('sha256').update(x['site/' + f]).digest('hex')) bad.push(f + '：控えの SHA-256 が頁の中身と違う（頁が変わったのに日を改めていない。node build.js）');
+  }
+  if (x['data/lastmod.json'] !== B.lastmodText(pages)) bad.push('data/lastmod.json が、build.js の書くとおりの文でない（手で直した）');
+  /* 控えから作り直した日が、控えの日と同じ（中身の変わった頁が無い）。 */
+  const html = {};
+  for (const f of files) html[f] = x['site/' + f];
+  try { const again = B.lastmods(html, pages, '9999-12-31'); for (const f of files) if (again[f].date !== (pages[f] || {}).date) bad.push(f + '：控えから求めた日が、控えの日と違う'); } catch (e) { bad.push('控えから日を求められない：' + e.message); }
+  /* sitemap：どの url にも lastmod が一つ、loc のすぐ後にあり、その頁の控えの日と同じ。 */
+  const sm = x['site/sitemap.xml'] || '';
+  const urls = [...sm.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((m) => m[1]);
+  if (urls.length !== files.length) bad.push('sitemap の頁の数が、控えの頁の数と違う：' + urls.length);
+  for (const u of urls) {
+    const loc = (/^<loc>([^<]+)<\/loc>/.exec(u) || [])[1] || '';
+    const lms = [...u.matchAll(/<lastmod>([^<]*)<\/lastmod>/g)].map((m) => m[1]);
+    const p = B.SITEMAP_PAGES.find((q) => q.url === loc);
+    if (lms.length !== 1 || !/^<loc>[^<]+<\/loc><lastmod>/.test(u)) bad.push('sitemap の頁に、lastmod が一つ loc のすぐ後にない：' + (loc || u.slice(0, 60)));
+    else if (!p || lms[0] !== (pages[p.file] || {}).date) bad.push('sitemap の lastmod が、控えの日と違う：' + loc + ' ' + lms[0]);
+  }
+  try { if (sm !== B.sitemap(pages)) bad.push('sitemap が、build.js が控えから作るものと違う'); } catch (e) { bad.push('控えから sitemap を作れない：' + e.message); }
+  /* build.js：作った頁の HTML で控えを改め、改めた控えから sitemap を書く。 */
+  const bj = x['build.js'] || '';
+  if (!bj.includes('const lm = lastmods(html, readLastmod(was), jstDay());') || !bj.includes("fs.writeFileSync(path.join(OUT, 'sitemap.xml'), sitemap(lm));") || !bj.includes('if (lastmodText(lm) !== was) fs.writeFileSync(LASTMOD_FILE, lastmodText(lm));')) bad.push('build.js が、作った頁で控えを改め、控えから sitemap を書くのでない');
+  /* 記録：README（日本語と英語）と CLAUDE.md が lastmod の出所を書き、前の制限の文が残っていない。 */
+  for (const [f, w] of Object.entries(LASTMOD_SAYS).concat(Object.entries(LASTMOD_SHALLOW_SAYS))) if (!(x[f] || '').includes(w)) bad.push(f + '：' + w.slice(0, 40));
+  for (const [f, w] of Object.entries(LASTMOD_GONE)) if ((x[f] || '').includes(w)) bad.push(f + '：前の制限の文が残っている：' + w);
+  return bad;
+}
+
+/* 作り直し。リポジトリを git の無い写しにして、build.js を走らせる。時計は差し込みで変える（日本時間と UTC と時刻の帯の日が分かれる時刻を選ぶ）。 */
+const CLOCK = "'use strict';\nconst T = Date.parse(process.env.QW_NOW), D = Date;\nglobal.Date = class extends D { constructor(...a) { if (a.length) super(...a); else super(T); } static now() { return T; } };\n";
+function outputsOf(dir) {
+  const out = {};
+  const walk = (rel) => { const p = path.join(dir, rel); if (!fs.existsSync(p)) return; for (const e of fs.readdirSync(p, { withFileTypes: true })) { const q = rel + '/' + e.name; if (e.isDirectory()) walk(q); else out[q] = fs.readFileSync(path.join(dir, q)); } };
+  for (const d of ['site', 'docs/figs']) walk(d);
+  for (const f of ['data/lastmod.json', 'PRINCIPIA.md', '.github/ISSUE_TEMPLATE/entry.yml', '.github/ISSUE_TEMPLATE/config.yml']) if (fs.existsSync(path.join(dir, f))) out[f] = fs.readFileSync(path.join(dir, f));
+  return out;
+}
+const diffOf = (a, b) => [...new Set([...Object.keys(a), ...Object.keys(b)])].filter((k) => !a[k] || !b[k] || !a[k].equals(b[k])).sort();
+function rebuildVerdict(over = {}) {
+  const bad = [];
+  const os = require('os'), cp = require('child_process');
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'qw-lastmod-'));
+  try {
+    fs.cpSync(ROOT, d, { recursive: true, filter: (src) => !['.git', 'node_modules'].includes(path.basename(src)) });
+    for (const [f, t] of Object.entries(over)) fs.writeFileSync(path.join(d, f), t);
+    fs.writeFileSync(path.join(d, '.clock.js'), CLOCK);
+    /* git を読めないようにする（浅い複製より厳しく、履歴が一つも無い）。 */
+    const build = (now) => {
+      const env = Object.assign({}, process.env, { GIT_DIR: path.join(d, '.no-git'), GIT_CEILING_DIRECTORIES: path.dirname(d) });
+      const args = [];
+      if (now) { args.push('--require', path.join(d, '.clock.js')); env.QW_NOW = now; env.TZ = 'America/Los_Angeles'; }
+      cp.execFileSync(process.execPath, [...args, path.join(d, 'build.js')], { cwd: d, env, stdio: ['ignore', 'pipe', 'pipe'] });
+      return outputsOf(d);
+    };
+    const here = outputsOf(ROOT);
+    let a, b, c;
+    try { a = build(null); } catch (e) { return ['git の無い写しで作れない：' + String(e.stderr || e.message).trim().split('\n')[0]]; }
+    const da = diffOf(here, a);
+    if (da.length) bad.push('作り直すと、置いてある生成物と違う：' + da.slice(0, 6).join(' '));
+    /* UTC 2099-06-15T20:00 は、日本時間で 06-16、ロサンゼルスで 06-15。中身が同じなので、どの日も変わらないはず。 */
+    try { b = build('2099-06-15T20:00:00Z'); } catch (e) { return bad.concat('別の日に作れない：' + String(e.stderr || e.message).trim().split('\n')[0]); }
+    const db = diffOf(a, b);
+    if (db.length) bad.push('別の日と別の時刻の帯で作り直すと、バイトが変わる：' + db.slice(0, 6).join(' '));
+    /* 頁を一つ変える。UTC 2099-01-01T20:00 は、日本時間で 2099-01-02、UTC とロサンゼルスで 2099-01-01。 */
+    fs.appendFileSync(path.join(d, 'src', 'faq.md'), '\n検査の作り物の一文です。\n');
+    try { c = build('2099-01-01T20:00:00Z'); } catch (e) { return bad.concat('頁を変えて作れない：' + String(e.stderr || e.message).trim().split('\n')[0]); }
+    const dc = diffOf(b, c);
+    if (dc.join() !== 'data/lastmod.json,site/faq.html,site/sitemap.xml') bad.push('頁を一つ変えたときに変わるファイルが、その頁と控えと sitemap でない：' + dc.join(' '));
+    let lb = {}, lc = {};
+    try { lb = B.readLastmod(String(b['data/lastmod.json'])); lc = B.readLastmod(String(c['data/lastmod.json'])); } catch (e) { bad.push('作った控えが読めない'); }
+    const moved = Object.keys(lc).filter((f) => JSON.stringify(lc[f]) !== JSON.stringify(lb[f]));
+    if (moved.join() !== 'faq.html' || (lc['faq.html'] || {}).date !== '2099-01-02') bad.push('頁を一つ変えたときに日の変わる控えが、その頁だけで、日本時間の作った日になるのでない：' + moved.map((f) => f + ' ' + (lc[f] || {}).date).join(' '));
+    /* IndexNow：変える前と後の sitemap で、送るのはその頁だけ。 */
+    try {
+      const I = require(path.join(d, 'verification', 'indexnow.js'));
+      const t = I.targets(String(c['site/sitemap.xml']), String(b['site/sitemap.xml']), false).map((z) => z.url);
+      if (t.join() !== B.BASE + 'faq.html') bad.push('頁を一つ変えたときに IndexNow が送る頁が、その頁だけでない：' + t.join(' '));
+    } catch (e) { bad.push('写しの IndexNow のスクリプトが読めない：' + e.message); }
+  } finally { fs.rmSync(d, { recursive: true, force: true }); }
+  return bad;
+}
+
+/* 作り物の前後の sitemap（verification/fixtures/sitemap-before.xml と sitemap-after.xml）で、IndexNow の --dry-run を、git の作り物のリポジトリで走らせる。 */
+function indexnowFixtureVerdict(js, before, after) {
+  const bad = [];
+  const os = require('os'), cp = require('child_process');
+  const U = (k) => B.BASE + 'fixture-' + k + '.html';
+  const send = ['changed', 'first-lastmod', 'added', 'earlier'].map(U), gone = ['removed'].map(U), all = ['same', 'changed', 'first-lastmod', 'added', 'pair', 'earlier'].map(U);
+  const listing = (urls, g) => '送る頁 ' + (urls.length + g.length) + ' 件\n' + urls.map((u) => '  ' + u + '\n').join('') + g.map((u) => '  消えた ' + u + '\n').join('');
+  /* 作り物そのものが、決めた場合を持つこと。 */
+  const locs = (xml) => [...String(xml || '').matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]).join();
+  if (locs(before) !== ['same', 'changed', 'first-lastmod', 'removed', 'pair', 'earlier'].map(U).join() || locs(after) !== all.join() || !/作り物/.test(before) || !/作り物/.test(after)) bad.push('作り物の前後の sitemap が、決めた頁を持たないか、作り物と書いていない');
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'qw-indexnow-'));
+  try {
+    fs.mkdirSync(path.join(d, 'site')); fs.mkdirSync(path.join(d, 'verification'));
+    fs.writeFileSync(path.join(d, 'verification', 'indexnow.js'), js);
+    fs.writeFileSync(path.join(d, 'site', B.INDEXNOW_KEY + '.txt'), B.INDEXNOW_KEY);
+    fs.writeFileSync(path.join(d, 'site', 'sitemap.xml'), before);
+    const env = Object.assign({}, process.env, { GIT_CEILING_DIRECTORIES: path.dirname(d) });
+    delete env.GIT_DIR; delete env.GIT_WORK_TREE;
+    const git = (...a) => cp.execFileSync('git', ['-c', 'user.name=check', '-c', 'user.email=check@example.invalid', '-c', 'commit.gpgsign=false', ...a], { cwd: d, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    git('init', '-q'); git('add', '-A'); git('commit', '-qm', 'before');
+    const at = git('rev-parse', 'HEAD');
+    fs.writeFileSync(path.join(d, 'site', 'sitemap.xml'), after);
+    const run = (more) => { try { return cp.execFileSync(process.execPath, [path.join(d, 'verification', 'indexnow.js'), '--dry-run'], { cwd: d, env: Object.assign({}, env, { BEFORE: '', ALL: '' }, more), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }); } catch (e) { return '止まった：' + String(e.stderr || e.message).trim().split('\n')[0]; } };
+    const got = run({ BEFORE: at });
+    if (got !== listing(send, gone)) bad.push('--dry-run が、lastmod の変わった頁と増えた頁と消えた頁をちょうど出すのでない：' + got.replace(/\n/g, ' ').slice(0, 300));
+    const gotAll = run({ BEFORE: at, ALL: 'yes' });
+    if (gotAll !== listing(all, [])) bad.push('all のときに、いまの sitemap の頁を全部出すのでない：' + gotAll.replace(/\n/g, ' ').slice(0, 200));
+    const gotFirst = run({});
+    if (gotFirst !== listing(all, [])) bad.push('前の sitemap が無いときに、全部の頁を出すのでない：' + gotFirst.replace(/\n/g, ' ').slice(0, 200));
+    let t = [];
+    try { t = require(path.join(d, 'verification', 'indexnow.js')).targets(after, before, false); } catch (e) { bad.push('IndexNow のスクリプトの targets が使えない：' + e.message); }
+    if (t.map((z) => (z.gone ? '-' : '+') + z.url).join() !== send.map((u) => '+' + u).concat(gone.map((u) => '-' + u)).join()) bad.push('targets が、送る頁と消えた頁をちょうど返すのでない');
+  } catch (e) { bad.push('作り物のリポジトリで走らせられない：' + e.message); } finally { fs.rmSync(d, { recursive: true, force: true }); }
+  return bad;
+}
+
+/* 履歴のある複製でだけ：控えの日を git の履歴と突き合わせる。頁を最後に変えたコミットを C とする。
+ * 控えの頁の欄も C で変わったなら、日は C の親の日から C の日まで（作ってからコミットする）。
+ * 控えの欄が C でなく別のコミット（または、まだコミットしていない控え）で変わったなら、頁は変わっていないので、日は C の日（日本時間）と同じ。始めの控えはこちら。 */
+function gitLastmodVerdict(workText) {
+  const cp = require('child_process');
+  const env = Object.assign({}, process.env, { TZ: 'Asia/Tokyo' });
+  const g = (a) => cp.execFileSync('git', a, { cwd: ROOT, env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  try { if (g(['rev-parse', '--is-shallow-repository']) !== 'false') return null; } catch (e) { return null; }
+  const bad = [], memo = new Map();
+  const day = (c) => g(['log', '-1', '--format=%cd', '--date=format-local:%Y-%m-%d', c]);
+  const at = (c) => { if (!memo.has(c)) { let v = {}; try { v = B.readLastmod(g(['show', c + ':data/lastmod.json'])); } catch (e) { v = {}; } memo.set(c, v); } return memo.get(c); };
+  const same = (a, b) => !!a && !!b && a.date === b.date && a.sha256 === b.sha256;
+  let work = {};
+  try { work = B.readLastmod(workText); } catch (e) { return ['data/lastmod.json が読めない']; }
+  let hist = [];
+  try { hist = g(['log', '--format=%H %P', '--', 'data/lastmod.json']).split('\n').filter(Boolean).map((l) => l.split(' ')); } catch (e) { hist = []; }
+  for (const { file } of B.SITEMAP_PAGES) {
+    const f = 'site/' + file, e = work[file];
+    if (!e) { bad.push(file + '：控えに無い'); continue; }
+    if (cp.spawnSync('git', ['diff', '--quiet', 'HEAD', '--', f], { cwd: ROOT }).status !== 0) continue;
+    const C = g(['log', '-1', '--format=%H', '--', f]);
+    if (!C) continue;
+    const dC = day(C);
+    let X = same(e, at('HEAD')[file]) ? null : 'work';
+    if (!X) for (const [h, p] of hist) if (!same(at(h)[file], p ? at(p)[file] : undefined)) { X = h; break; }
+    if (X === C) {
+      let dP = '0000-00-00';
+      try { dP = day(C + '^1'); } catch (er) { /* 根のコミット */ }
+      if (e.date > dC || e.date < dP) bad.push(file + '：控えの日 ' + e.date + ' が、頁を変えたコミットの親の日 ' + dP + ' から、そのコミットの日 ' + dC + ' までにない');
+    } else if (e.date !== dC) bad.push(file + '：控えの日 ' + e.date + ' が、頁を最後に変えたコミットの日 ' + dC + ' と違う（頁の変わらないコミットで、控えの日を変えた）');
+  }
+  return bad;
+}
+
+function lastmodSection() {
+  console.log('\n10. sitemap の lastmod');
+  const today = jstOf(Date.now());
+  const lv = lastmodVerdict(real, today);
+  ok('sitemap のどの頁にも lastmod が loc のすぐ後に一つあり、data/lastmod.json の控えの日と同じで、控えの SHA-256 は頁の中身と同じ。控えは build.js の書くままで、日は日付で今日（日本時間）より後でない。README（日本語と英語）と CLAUDE.md が lastmod の出所を書き、前の制限の文が残っていない', lv.length === 0, lv.join(' / '));
+  const rv = rebuildVerdict();
+  ok('作り直し：git の無い写しで作ると、置いてある生成物と同じバイトになり、別の日と別の時刻の帯で作り直しても同じ。頁を一つ変えると、その頁と控えと sitemap だけが変わり、その頁の日だけが作った日（日本時間）になり、IndexNow はその頁だけを送る', rv.length === 0, rv.join(' / '));
+  const before = real['verification/fixtures/sitemap-before.xml'], after = real['verification/fixtures/sitemap-after.xml'];
+  const nv = indexnowFixtureVerdict(real['verification/indexnow.js'], before, after);
+  ok('IndexNow：作り物の前後の sitemap で、--dry-run が、lastmod の変わった頁・初めて lastmod の付いた頁・増えた頁・日の戻った頁と、消えた頁をちょうど出し、lastmod の同じ頁と対だけの変わった頁を出さない。all のときと前の sitemap の無いときは、いまの頁を全部出す', nv.length === 0, nv.join(' / '));
+  const gv = gitLastmodVerdict(real['data/lastmod.json']);
+  if (!gv) console.log('  省  履歴の浅い複製なので、控えの日と git の履歴の突き合わせを省きました');
+  else {
+    ok('控えの日が git の履歴と合う：頁と同じコミットで改めた日はそのコミットの親の日からその日まで、頁の変わらないコミットで書いた日は頁を最後に変えたコミットの日（日本時間）', gv.length === 0, gv.join(' / '));
+    const p = B.readLastmod(real['data/lastmod.json']), q = JSON.parse(JSON.stringify(p));
+    if (q['faq.html']) q['faq.html'].date = '2026-11-01';
+    ok('壊して確かめる：頁の変わらないまま控えの日を変えると、git の履歴との突き合わせで落ちる', gitLastmodVerdict(B.lastmodText(q)).length > 0);
+  }
+  /* 控えと sitemap を、つじつまを合わせて書き換える（build.js の関数で作るので、文の形の確かめでは捕まらない）。 */
+  const consistent = (edit) => { const q = JSON.parse(JSON.stringify(B.readLastmod(real['data/lastmod.json']))); edit(q); let sm = ''; try { sm = B.sitemap(q); } catch (e) { sm = ''; } return Object.assign({}, real, { 'data/lastmod.json': B.lastmodText(q), 'site/sitemap.xml': sm }); };
+  const faqLm = new RegExp('(<loc>' + B.BASE.replace(/[.]/g, '\\.') + 'faq\\.html</loc>)<lastmod>[^<]+</lastmod>');
+  const lbreaks = [
+    ['sitemap の頁から lastmod を一つ外す', mut('site/sitemap.xml', faqLm, '$1')],
+    ['sitemap の lastmod を控えと違える', mut('site/sitemap.xml', faqLm, '$1<lastmod>2026-11-01</lastmod>')],
+    ['sitemap の lastmod を二つにする', mut('site/sitemap.xml', faqLm, '$&<lastmod>2026-11-01</lastmod>')],
+    ['sitemap の lastmod を loc の前に置く', mut('site/sitemap.xml', /<url>(<loc>[^<]+<\/loc>)(<lastmod>[^<]+<\/lastmod>)/, '<url>$2$1')],
+    ['頁を変えて、控えを改めない', mut('site/faq.html', '</main>', '<p>x</p></main>')],
+    ['控えから頁を一つ外す', consistent((q) => { delete q['play.en.html']; })],
+    ['控えの頁の順を違える', consistent((q) => { const v = q['index.html']; delete q['index.html']; q['index.html'] = v; })],
+    ['控えの日を日付でなくする', consistent((q) => { q['faq.html'].date = '2026-02-30'; })],
+    ['控えの日を今日より後にする', consistent((q) => { q['faq.html'].date = '2099-01-01'; })],
+    ['控えの SHA-256 を違える', consistent((q) => { q['faq.html'].sha256 = '0'.repeat(64); })],
+    ['控えに欄を足す', consistent((q) => { q['faq.html'].by = 'hand'; })],
+    ['控えを手で書く（字下げを変える）', Object.assign({}, real, { 'data/lastmod.json': JSON.stringify(JSON.parse(real['data/lastmod.json'])) + '\n' })],
+    ['控えの説明を外す', Object.assign({}, real, { 'data/lastmod.json': JSON.stringify({ pages: B.readLastmod(real['data/lastmod.json']) }, null, 2) + '\n' })],
+    ['build.js が控えから sitemap を書かない', mut('build.js', "fs.writeFileSync(path.join(OUT, 'sitemap.xml'), sitemap(lm));", "fs.writeFileSync(path.join(OUT, 'sitemap.xml'), sitemap({}));")],
+    ['build.js が控えを書き直さない', mut('build.js', 'if (lastmodText(lm) !== was) fs.writeFileSync(LASTMOD_FILE, lastmodText(lm));', '')],
+    ['README から lastmod の出所を外す', mut('README.md', LASTMOD_SAYS['README.md'], '')],
+    ['英語の README から lastmod の出所を外す', mut('README.en.md', LASTMOD_SAYS['README.en.md'], '')],
+    ['CLAUDE.md から控えを外す', mut('CLAUDE.md', LASTMOD_SAYS['CLAUDE.md'], '')],
+    ['README から浅い複製の一文を外す', mut('README.md', LASTMOD_SHALLOW_SAYS['README.md'], '')],
+    ['README に前の制限の文を戻す', mut('README.md', '`verification/indexnow.js` は、', '`verification/indexnow.js` は、`site/sitemap.xml` に増えた頁と消えた頁を、IndexNow に送ります。')],
+    ['英語の README に前の制限の文を戻す', mut('README.en.md', '`verification/indexnow.js` tells', '`verification/indexnow.js` tells which pages were added to or removed from `site/sitemap.xml`. It tells')],
+    ['IndexNow のスクリプトの注に前の制限の文を戻す', mut('verification/indexnow.js', ' * Google は IndexNow を読まない。', ' * sitemap は lastmod を持たないので、増えた頁と消えた頁だけを送る。\n * Google は IndexNow を読まない。')],
+  ];
+  const lmissed = lbreaks.filter(([, y]) => lastmodVerdict(y, today).length === 0).map(([k]) => k);
+  ok('壊して確かめる：sitemap の lastmod の有無・日・数・置き場、頁と控えの SHA-256、控えの頁・順・日・欄・書き方・説明、build.js の書き出し、README と CLAUDE.md の記録のどれでも落ちる（' + (lbreaks.length - lmissed.length) + ' / ' + lbreaks.length + '）', lmissed.length === 0, lmissed.join(' / '));
+  const bj = (a, b) => { const s = String(real['build.js']); if (!s.includes(a)) throw new Error('壊し方の元の文が build.js に無い：' + a.slice(0, 40)); return { 'build.js': s.split(a).join(b) }; };
+  const rbreaks = [
+    ['どの頁の日も、作った日にする', bj('pages[file] = p && p.sha256 === h ? { date: p.date, sha256: h } : { date: day, sha256: h };', 'pages[file] = { date: day, sha256: h };')],
+    ['中身が変わっても、日を変えない', bj('pages[file] = p && p.sha256 === h ? { date: p.date, sha256: h } : { date: day, sha256: h };', 'pages[file] = p ? { date: p.date, sha256: h } : { date: day, sha256: h };')],
+    ['控えを書き直さない', bj('if (lastmodText(lm) !== was) fs.writeFileSync(LASTMOD_FILE, lastmodText(lm));', '')],
+    ['日本時間でなく UTC の日にする', bj('new Date(ms + 9 * 3600e3)', 'new Date(ms)')],
+    ['日本時間でなく時刻の帯の日にする', bj('const jstDay = (ms = Date.now()) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);', "const jstDay = (ms = Date.now()) => { const t = new Date(ms); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); };")],
+    ['sitemap に作った時刻を書く', bj("}).join('\\n') + '\\n</urlset>\\n';", "}).join('\\n') + '\\n<!-- ' + new Date().toISOString() + ' -->\\n</urlset>\\n';")],
+    ['git の履歴から日を取る', bj('const lm = lastmods(html, readLastmod(was), jstDay());', "const lm = lastmods(html, readLastmod(was), require('child_process').execFileSync('git', ['log', '-1', '--format=%cs']).toString().trim());")],
+  ];
+  const rmissed = rbreaks.filter(([, o]) => rebuildVerdict(o).length === 0).map(([k]) => k);
+  ok('壊して確かめる：build.js が、どの頁も作った日にする・中身が変わっても日を変えない・控えを書き直さない・UTC や時刻の帯の日にする・sitemap に時刻を書く・git の履歴を読む、のどれでも作り直しの確かめが落ちる（' + (rbreaks.length - rmissed.length) + ' / ' + rbreaks.length + '）', rmissed.length === 0, rmissed.join(' / '));
+  const ij = (a, b) => { const s = String(real['verification/indexnow.js']); if (!s.includes(a)) throw new Error('壊し方の元の文が indexnow.js に無い：' + a.slice(0, 40)); return s.split(a).join(b); };
+  const nbreaks = [
+    ['lastmod を見ずに、増えた頁だけを送る', ij('was.get(u) !== d', '!was.has(u)')],
+    ['lastmod を読まない', ij("m[2] || ''", "''")],
+    ['消えた頁を送らない', ij('.concat(all ? [] : [...was.keys()].filter((u) => !now.has(u)).map((u) => ({ url: u, gone: true })))', '')],
+    ['前の sitemap を読まない', ij("const t = targets(xml, before(), process.env.ALL === 'yes');", "const t = targets(xml, '', process.env.ALL === 'yes');")],
+    ['all を読まない', ij("const t = targets(xml, before(), process.env.ALL === 'yes');", 'const t = targets(xml, before(), false);')],
+    ['消えた頁に印を付けない', ij("(x.gone ? '消えた ' : '')", "''")],
+  ];
+  const nmissed = nbreaks.filter(([, s]) => indexnowFixtureVerdict(s, before, after).length === 0).map(([k]) => k);
+  const fbreaks = [['作り物の後の sitemap を前と同じにする', [before, before]], ['作り物の前の sitemap から消えた頁を外す', [before.replace(/<url><loc>[^<]+fixture-removed[^\n]+\n/, ''), after]]];
+  const fmissed = fbreaks.filter(([, [b0, a0]]) => indexnowFixtureVerdict(real['verification/indexnow.js'], b0, a0).length === 0).map(([k]) => k);
+  ok('壊して確かめる：IndexNow のスクリプトが lastmod を見ない・読まない・消えた頁を送らない・前の sitemap を読まない・all を読まない・消えた頁に印を付けない、作り物の前後を違える、のどれでも落ちる（' + (nbreaks.length + fbreaks.length - nmissed.length - fmissed.length) + ' / ' + (nbreaks.length + fbreaks.length) + '）', nmissed.length + fmissed.length === 0, nmissed.concat(fmissed).join(' / '));
+}
+
 /* 受付の上限を、作り物の API で動かす（2026-11-23）。受付のスクリプトを一か所ずつ壊した写しでも動かし、落ちることを見る。 */
 let mutN = 0;
 function mutant(a, b) {
@@ -2264,6 +2522,7 @@ function mutant(a, b) {
   for (const [name, [a, b]] of mbreaks) { let r; try { r = await limitsMachine(mutant(a, b)); } catch (e) { r = ['止まった']; } if (!r.length) mm.push(name); }
   ok('壊して確かめる：受付の上限の数・比べ・閉じた寄せ・法則の数え・効く日・日本時間・前の issue・ラベル・ログとコメントの名のどれを壊しても落ちる（' + (mbreaks.length - mm.length) + ' / ' + mbreaks.length + '）', mm.length === 0, mm.join(' / '));
   await waybackSection();
+  lastmodSection();
   console.log('\n' + '-'.repeat(48));
   if (fails.length) { console.log(pass + ' 件が通り、' + fails.length + ' 件が通りませんでした。'); process.exit(1); }
   console.log(pass + ' 件すべて通りました。');

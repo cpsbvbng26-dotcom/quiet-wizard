@@ -9,6 +9,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const ROOT = __dirname;
 const OUT = path.join(ROOT, 'site');
@@ -639,10 +640,35 @@ const ARCHIVE_BOTS = ['ia_archiver', 'archive.org_bot'];
 const ROBOTS = 'User-agent: *\nAllow: /\n\n' + ARCHIVE_BOTS.map((b) => 'User-agent: ' + b + '\n').join('')
   + ARCHIVE_CLOSED.flatMap((out) => (hasEn(out) ? LANGS : ['ja']).map((l) => 'Disallow: /' + urlOf(out, l).slice(BASE.length) + '\n')).join('')
   + 'Allow: /\n\nSitemap: ' + BASE + 'sitemap.xml\n';
-/* sitemap は、どの頁も二つの言葉の対を xhtml:link で挙げる（2026-11-23）。英語の頁の無い頁は、日本語の頁だけ。 */
-const SITEMAP = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
-  + PAGES.flatMap(([, out]) => (hasEn(out) ? LANGS : ['ja']).map((l) => '<url><loc>' + urlOf(out, l) + '</loc>'
-    + (hasEn(out) ? [['ja', 'ja'], ['en', 'en'], ['x-default', 'ja']].map(([h, k]) => '<xhtml:link rel="alternate" hreflang="' + h + '" href="' + urlOf(out, k) + '"/>').join('') : '') + '</url>')).join('\n') + '\n</urlset>\n';
+/* sitemap は、どの頁も二つの言葉の対を xhtml:link で挙げる（2026-11-23）。英語の頁の無い頁は、日本語の頁だけ。
+ * lastmod（2026-11-25）は、その頁の中身（site/ に書く HTML）が最後に変わった日で、data/lastmod.json の控えから読む。
+ * 控えは頁ごとに、日と、その日の HTML の SHA-256 を持つ。作った頁の SHA-256 が控えと同じなら、控えの日のまま。違えば、その頁だけを作った日（日本時間）にして控えを書き直す。
+ * 作るたびに全部の日を今日にはしない。同じ中身から二度作れば、同じバイトになる。git の履歴を読まないので、浅い複製でも同じ結果になる。
+ * 控えは生成物で、手で直さない。頁を変えたら、頁と sitemap と控えを同じコミットに入れる。検査が、控えの SHA-256 と頁、控えの日と sitemap を突き合わせる。 */
+const LASTMOD_FILE = path.join(ROOT, 'data', 'lastmod.json');
+const LASTMOD_NOTE = 'sitemap の lastmod の控え（2026-11-25）。頁（site/ のファイル）ごとに、中身が最後に変わった日（日本時間）と、その中身の SHA-256。node build.js が書く生成物で、手で直さない。始めの日は、それまでの git の履歴で、その頁のファイルを最後に変えたコミットの日（日本時間）から取った。';
+const SITEMAP_PAGES = PAGES.flatMap(([, out]) => (hasEn(out) ? LANGS : ['ja']).map((l) => ({ out, lang: l, file: fileOf(out, l) + '.html', url: urlOf(out, l) })));
+const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
+const jstDay = (ms = Date.now()) => new Date(ms + 9 * 3600e3).toISOString().slice(0, 10);
+/* 控えを、作った頁（ファイルの名から HTML）に合わせる。変わった頁だけが day の日になる。控えに無い頁も day。sitemap に無い頁は控えから落ちる。 */
+function lastmods(html, prev, day) {
+  const pages = {};
+  for (const { file } of SITEMAP_PAGES) {
+    if (typeof html[file] !== 'string') throw new Error('sitemap の頁が作られていない：' + file);
+    const h = sha256(html[file]), p = (prev || {})[file];
+    pages[file] = p && p.sha256 === h ? { date: p.date, sha256: h } : { date: day, sha256: h };
+  }
+  return pages;
+}
+const lastmodText = (pages) => JSON.stringify({ _: LASTMOD_NOTE, pages }, null, 2) + '\n';
+const readLastmod = (text) => { if (!text) return {}; const d = JSON.parse(text); return d && d.pages && typeof d.pages === 'object' ? d.pages : {}; };
+const sitemap = (pages) => '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
+  + SITEMAP_PAGES.map(({ out, file, url }) => {
+    const d = (pages[file] || {}).date;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(d))) throw new Error('lastmod の控えに日が無い：' + file);
+    return '<url><loc>' + url + '</loc><lastmod>' + d + '</lastmod>'
+      + (hasEn(out) ? [['ja', 'ja'], ['en', 'en'], ['x-default', 'ja']].map(([h, k]) => '<xhtml:link rel="alternate" hreflang="' + h + '" href="' + urlOf(out, k) + '"/>').join('') : '') + '</url>';
+  }).join('\n') + '\n</urlset>\n';
 
 /* GitHub で読む原理の全文（PRINCIPIA.md）と、GitHub でも色の付く図（docs/figs/*.svg）。
  * src/strict.md から作る。手で直さない。GitHub の Markdown に合わせ、〔ラテン語〕は小さく、原文は引用、証明と注は斜体の見出し、
@@ -708,18 +734,24 @@ function build() {
   fs.rmSync(OUT, { recursive: true, force: true });
   fs.mkdirSync(path.join(OUT, 'assets'), { recursive: true });
   let n = 0;
+  const html = {};
   for (const [src, out] of PAGES) for (const lang of hasEn(out) ? LANGS : ['ja']) {
     const s = fileOf(src, lang);
     const md = fs.readFileSync(path.join(ROOT, 'src', s + '.md'), 'utf8');
     const title = /^# (.+)$/m.exec(md)[1];
-    fs.writeFileSync(path.join(OUT, fileOf(out, lang) + '.html'), page(out, title, render(md, s, lang), lang));
+    html[fileOf(out, lang) + '.html'] = page(out, title, render(md, s, lang), lang);
+    fs.writeFileSync(path.join(OUT, fileOf(out, lang) + '.html'), html[fileOf(out, lang) + '.html']);
     n++;
   }
   fs.writeFileSync(path.join(OUT, '404.en.html'), page('404', 'Page not found', NOT_FOUND_EN, 'en'));
   fs.writeFileSync(path.join(OUT, '404.html'), page('404', '頁が見つかりません', NOT_FOUND));
   for (const f of fs.readdirSync(path.join(ROOT, 'assets'))) fs.copyFileSync(path.join(ROOT, 'assets', f), path.join(OUT, 'assets', f));
   fs.writeFileSync(path.join(OUT, 'robots.txt'), ROBOTS);
-  fs.writeFileSync(path.join(OUT, 'sitemap.xml'), SITEMAP);
+  /* lastmod の控え。変わった頁だけを今日（日本時間）にする。中身が同じなら、控えのファイルに触らない。 */
+  const was = fs.existsSync(LASTMOD_FILE) ? fs.readFileSync(LASTMOD_FILE, 'utf8') : '';
+  const lm = lastmods(html, readLastmod(was), jstDay());
+  if (lastmodText(lm) !== was) fs.writeFileSync(LASTMOD_FILE, lastmodText(lm));
+  fs.writeFileSync(path.join(OUT, 'sitemap.xml'), sitemap(lm));
   fs.writeFileSync(path.join(OUT, 'vercel.json'), VERCEL);
   fs.writeFileSync(path.join(OUT, INDEXNOW_KEY + '.txt'), INDEXNOW_KEY);
   /* みんなの図鑑の様式（2026-11-23）。intake/entry.js の FORM から作る。 */
@@ -734,4 +766,4 @@ function build() {
 }
 
 if (require.main === module) console.log('生成しました: site/（頁 ' + build() + '）');
-module.exports = { ARCHIVE_CLOSED, ARCHIVE_BOTS, E, FORM_URL, entriesHtml, loadEntries, ENTRIES_FILE, statuteEn, SUMMARY_K, RULE_PAGES, GOVERNS_EN, LAW_EN, ITEM_HEAD_EN, CITE_EN, BOOK_TOP, EN_PAGES, LANGS, hasEn, fileOf, urlOf, NAME_EN, FRAME_EN, FOOT_EN, HERO_EN, EMBLEMS_EN, CLASS_EN, PLAY_EN, SHORT_EN, EYEBROW_EN, DESC_EN, DESC_TAIL_EN, NOT_FOUND_EN, UI, FIG_EN, figText, CARD_ALT_EN, DESC, DESC_TAIL, CARD, THEME, NOT_FOUND, VERCEL, ROBOTS, SITEMAP, headIds, tocList, CITE, GSC, INDEXNOW_KEY, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };
+module.exports = { ARCHIVE_CLOSED, ARCHIVE_BOTS, E, FORM_URL, entriesHtml, loadEntries, ENTRIES_FILE, statuteEn, SUMMARY_K, RULE_PAGES, GOVERNS_EN, LAW_EN, ITEM_HEAD_EN, CITE_EN, BOOK_TOP, EN_PAGES, LANGS, hasEn, fileOf, urlOf, NAME_EN, FRAME_EN, FOOT_EN, HERO_EN, EMBLEMS_EN, CLASS_EN, PLAY_EN, SHORT_EN, EYEBROW_EN, DESC_EN, DESC_TAIL_EN, NOT_FOUND_EN, UI, FIG_EN, figText, CARD_ALT_EN, DESC, DESC_TAIL, CARD, THEME, NOT_FOUND, VERCEL, ROBOTS, LASTMOD_FILE, LASTMOD_NOTE, SITEMAP_PAGES, sha256, jstDay, lastmods, lastmodText, readLastmod, sitemap, headIds, tocList, CITE, GSC, INDEXNOW_KEY, EMBLEMS, MARK, FIG_STYLE, principiaItems, crossref, kanNum, principia, githubFig, EN, FRAME, CLASS, render, HERO, statutes, STATUTES, markdown, inline, page, build, PAGES, FOOT, CSP, META_CSP, BASE, NAME, PLAY };

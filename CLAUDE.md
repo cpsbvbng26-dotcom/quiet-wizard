@@ -9,7 +9,7 @@
 3. 原典（`src/canon.md` の定義九つと法則十と前書き）は、利用者から受け取った文のまま。一字も変えない。`verification/check.js` が固めている。
 4. 研究の系列（プロフィールのサイト・Sophaxis・論文・DOI・ORCID）と、Nusquama へつながない。研究の系列からも、ここへつながない。
    例外は一つだけ：断りと開示の「学術的な正文」で、利用者が正文とした論文を示す（2026-11-21 に利用者が渡した）。DOI は確かめたもの（10.5281/zenodo.23114131）だけを書き、英語の版 1.1 の DOI は確かめるまで書かない。
-5. `site/`（英語の頁 `site/<名>.en.html` を含む）、`PRINCIPIA.md`、`docs/figs/` は生成物。`src/`・`assets/`・`build.js` を直して `node build.js`。手で直さない。
+5. `site/`（英語の頁 `site/<名>.en.html` を含む）、`PRINCIPIA.md`、`docs/figs/`、`data/lastmod.json`（sitemap の lastmod の控え）は生成物。`src/`・`assets/`・`build.js` を直して `node build.js`。手で直さない。
 6. 頁は外へ何も要求しない。CSP は `default-src 'none'`。スクリプトは遊び場の `assets/play.js` 一本だけで、何も送らず、何も残さない（localStorage も cookie も使わない）。innerHTML を使わない。
 7. 言語モデル利用の開示は消さない。Claude を著者にしない。
 8. 文は CC BY 4.0、コードは MIT。ライセンスを勝手に変えない。
@@ -49,6 +49,8 @@ node verification/wayback.js --dry-run       # Wayback Machine に頼む頁と�
 ブラウザでの検査（`verification/check_browser.js`、2026-11-23）は、`site/` を手元のサーバーで `site/vercel.json` と同じ見出しで配り、二つの言葉のすべての頁を Chromium で開いて、コンソールと CSP、はみ出し、キーボード、拡大、動き、遊び場、言葉の切り替え、入れ子の 404、頁の中のつなぎを確かめる。CI の `browser` の仕事が、push と PR のたびに確かめと壊し方の両方を走らせる。頁や部品を変えたら、この検査も通す。確かめの数は散文に書かない（走らせたときに出る）。
 
 共有のカード（`assets/card.png`）とホーム画面のアイコン（`assets/apple-touch-icon.png`）は、紋や色や書体を変えたら `node tools/card.js` で描き直し、`src/design.md` の表の SHA-256 を改める（2026-11-23）。
+
+sitemap の lastmod（2026-11-25）：頁の中身（`site/` の HTML）が最後に変わった日。`build.js` が `data/lastmod.json` の控え（頁ごとの日と、中身の SHA-256）から書き、中身の変わった頁だけを作った日（日本時間）にする。作った時刻を全部の頁に書かない。git の履歴を読まない（CI の検査は浅い複製で回るため）。頁を変えたら、頁と sitemap と控えを同じコミットに入れる。始めの控えの日は、それまでの履歴でその頁のファイルを最後に変えたコミットの日（日本時間）から取った。`verification/indexnow.js` は、lastmod の変わった頁と、増えた頁と消えた頁を送る。確かめは `verification/check.js` の節 10（作り直しが同じバイトになること、作り物の前後の sitemap で送る頁、履歴のある複製では控えの日と git の履歴）。
 
 Wayback Machine（2026-11-24）：`verification/wayback.js` は、`site/sitemap.xml` の頁のうち `site/robots.txt` が Internet Archive の取り寄せ役（ia_archiver・archive.org_bot）と全員の組で閉じていないものを頼み、頼んだ日の写しを `archive.org/wayback/available` で確かめたものだけを残ったとする。写しは運営者には消せない。求めがあればすぐ外すと決めた頁（いまはみんなの図鑑の日本語と英語の頁）は、`build.js` の `ARCHIVE_CLOSED` に挙げて robots.txt で閉じ、頼まない。ほかの人の個人の情報を載せる頁を足すときも、ここに挙げる。
 
