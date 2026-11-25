@@ -629,9 +629,12 @@ ${body}
 /* 404 の頁の中身。所在は根から書く。 */
 const NOT_FOUND = '<h1>頁が見つかりません</h1>\n<p>この所在に頁はありません。第六法則のとおり、見えないだけかもしれませんが、たぶん本当にありません。</p>\n<p><a href="/">はじめに</a>へ戻れます。</p>';
 /* 配信の決まり（vercel.json）、robots.txt、sitemap.xml。検査が、置いたファイルとこれらが同じことを確かめる。 */
+/* 配信の応答ヘッダー。2026-11-25 に、運営者のほかの四つのサイトと同じ組に揃えた（X-Frame-Options・HSTS・COOP と、Permissions-Policy の payment と usb）。
+ * 埋め込みを止めるのは CSP の frame-ancestors で、<meta> では効かないので、ここ（応答ヘッダー）に置く。X-Frame-Options は frame-ancestors を読まない古いブラウザのため。 */
 const VERCEL = JSON.stringify({ cleanUrls: false, headers: [{ source: '/(.*)', headers: [
   { key: 'Content-Security-Policy', value: CSP }, { key: 'X-Content-Type-Options', value: 'nosniff' }, { key: 'Referrer-Policy', value: 'no-referrer' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()' }] }] }, null, 2) + '\n';
+  { key: 'X-Frame-Options', value: 'DENY' }, { key: 'Strict-Transport-Security', value: 'max-age=63072000' }, { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()' }] }] }, null, 2) + '\n';
 /* Internet Archive に写させない頁（2026-11-24）。みんなの図鑑は、ほかの人が寄せた場面を載せ、求めがあればすぐ外すと決めている（求めと連絡）。
  * Wayback Machine の写しは運営者には消せないので、二つの言葉の頁を、Internet Archive の取り寄せ役に robots.txt で閉じる。
  * verification/wayback.js は robots.txt を読み、閉じた頁を頼まない。運営者の別のリポジトリが、著者の同意の無い記録を閉じるのと同じ形。 */
