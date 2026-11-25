@@ -60,8 +60,12 @@ It checks console errors and CSP violations, horizontal overflow at phone and de
 The number of checks is printed when it runs. `--break` damages a copy of `site/` and confirms that each kind of damage fails.
 CI runs both on every push and pull request.
 `verification/live.js` fetches the live Japanese and English home pages and the share card from outside, without logging in, under a generic crawler name and under X's crawler name (Twitterbot). The workflow "本番" runs it once a day. `--self-test` checks, on made-up answers, that it fails what it should.
-`verification/indexnow.js` tells IndexNow (the notice that Bing and some other search engines take) which pages were added to or removed from `site/sitemap.xml`.
+`verification/indexnow.js` tells IndexNow (the notice that Bing and some other search engines take) which pages of `site/sitemap.xml` have a new lastmod, and which pages were added or removed.
 The workflow "IndexNow" runs it on each push to main that changes `site/sitemap.xml`. Run by hand with all set to yes, it sends every page of the sitemap.
+The lastmod in the sitemap is the day the page's content (its HTML in `site/`) last changed. `node build.js` writes it from the record in `data/lastmod.json`.
+The record keeps, for each page, that day and the SHA-256 of the content. When a built page has the recorded SHA-256, its day stays. Only a page whose SHA-256 differs gets the day of the build, in Japan time.
+Rebuilding the same content changes no day. The build does not read the git history, so a shallow clone gives the same result.
+The lastmod holds a day and no time, so a page changed twice on one day is sent only for the first change.
 It waits until the live sitemap is the one in that commit and the key file is served, and only then sends.
 The key is `INDEXNOW_KEY` in `build.js`; `node build.js` writes it to `site/<key>.txt`, whose content is the key itself. The key is not a secret.
 It sends only the addresses of this site's pages, and nothing about readers. `--dry-run` prints the pages it would send, and sends nothing.

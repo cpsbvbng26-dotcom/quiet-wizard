@@ -1,6 +1,6 @@
 name: IndexNow
 
-# site/sitemap.xml が変わった main への push のあと、増えた頁と消えた頁を IndexNow に知らせる（verification/indexnow.js、2026-11-24）。
+# site/sitemap.xml が変わった main への push のあと、lastmod の変わった頁と、増えた頁と消えた頁を IndexNow に知らせる（verification/indexnow.js、2026-11-24。lastmod は 2026-11-25 から）。
 # 鍵は site/<鍵>.txt で、秘密ではない。Google は IndexNow を読まず、sitemap を読む。送るのは頁の所在だけで、何も書かない。
 on:
   push:
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   indexnow:
-    name: 増えた頁と消えた頁を IndexNow に知らせる
+    name: 変わった頁と増えた頁と消えた頁を IndexNow に知らせる
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
