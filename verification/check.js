@@ -430,6 +430,15 @@ function verdict(x) {
   try { V = JSON.parse(x['site/vercel.json']); } catch (e) { /* 下で落ちる */ }
   const pp = (((V.headers || [])[0] || {}).headers || []).find((z) => z.key === 'Permissions-Policy') || {};
   if (/interest-cohort/.test(pp.value || '') || !/(^|, )browsing-topics=\(\)/.test(pp.value || '')) bad.push('配信の Permissions-Policy：' + pp.value);
+  /* 応答ヘッダーは、運営者のほかの四つのサイトと同じ組（2026-11-25）。一つでも欠けるか値が違えば落ちる。 */
+  {
+    const H = (((V.headers || [])[0] || {}).headers || []);
+    const want = { 'X-Frame-Options': 'DENY', 'Strict-Transport-Security': 'max-age=63072000', 'Cross-Origin-Opener-Policy': 'same-origin', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer' };
+    for (const [k, v] of Object.entries(want)) { const h = H.find((z) => z.key === k); if (!h || h.value !== v) bad.push('配信の ' + k + '：' + (h ? h.value : '無い')); }
+    if (!/(^|, )payment=\(\)(, |$)/.test(pp.value || '') || !/(^|, )usb=\(\)(, |$)/.test(pp.value || '')) bad.push('配信の Permissions-Policy に payment と usb が無い：' + pp.value);
+    const csp = (H.find((z) => z.key === 'Content-Security-Policy') || {}).value || '';
+    if (!/frame-ancestors 'none'/.test(csp)) bad.push('配信の CSP に frame-ancestors \'none\' が無い');
+  }
   /* 最終更新（2026-11-23）：どの頁の元にも、日付の行が一つあり、頁ではその日と、元のファイルの変更の記録へのリンクになる。 */
   for (const [s0, out0] of B.PAGES) for (const lang of B.hasEn(out0) ? B.LANGS : ['ja']) {
     const s = B.fileOf(s0, lang), out = B.fileOf(out0, lang), en = lang === 'en';
@@ -1264,6 +1273,13 @@ const breaks = [
   ['本文へ飛ぶつなぎを外す', mut('site/guide.html', '<a class="skip" href="#main">本文へ</a>\n', '')],
   ['本文の飛び先を外す', mut('site/terms.html', '<main id="main">', '<main>')],
   ['配信の決まりに廃れた指定を戻す', mut('site/vercel.json', 'browsing-topics=()', 'interest-cohort=()')],
+  /* 2026-11-25 に足した壊し方。ヘッダーをほかの四つのサイトに揃えた分。 */
+  ['配信から X-Frame-Options を外す', mut('site/vercel.json', '"key": "X-Frame-Options"', '"key": "X-Frame-Option"')],
+  ['配信の HSTS を短くする', mut('site/vercel.json', 'max-age=63072000', 'max-age=0')],
+  ['配信の COOP を緩める', mut('site/vercel.json', '"value": "same-origin"', '"value": "unsafe-none"')],
+  ['配信の Permissions-Policy から payment を外す', mut('site/vercel.json', 'payment=(), ', '')],
+  ['配信の Permissions-Policy から usb を外す', mut('site/vercel.json', 'usb=(), ', '')],
+  ['配信の CSP から frame-ancestors を外す', mut('site/vercel.json', "; frame-ancestors 'none'", '')],
   ['sitemap を手で直す', mut('site/sitemap.xml', '</urlset>', '<url><loc>https://quiet-wizard.vercel.app/x.html</loc></url>\n</urlset>')],
   ['最終更新の行を外す', mut('src/guide.md', /\n最終更新：[0-9-]+。\n/, '\n')],
   ['最終更新を日付でなくする', mut('src/canon.md', /最終更新：[0-9-]+。/, '最終更新：2026-02-30。')],
