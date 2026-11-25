@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 検査の作り物（2026-11-25）。前の sitemap（sitemap-before.xml）と比べる後の sitemap。所在の頁は無い。 -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+<url><loc>https://quiet-wizard.vercel.app/fixture-same.html</loc><lastmod>2026-11-20</lastmod></url>
+<url><loc>https://quiet-wizard.vercel.app/fixture-changed.html</loc><lastmod>2026-11-25</lastmod></url>
+<url><loc>https://quiet-wizard.vercel.app/fixture-first-lastmod.html</loc><lastmod>2026-11-23</lastmod></url>
+<url><loc>https://quiet-wizard.vercel.app/fixture-added.html</loc><lastmod>2026-11-25</lastmod></url>
+<url><loc>https://quiet-wizard.vercel.app/fixture-pair.html</loc><lastmod>2026-11-21</lastmod><xhtml:link rel="alternate" hreflang="ja" href="https://quiet-wizard.vercel.app/fixture-pair.html"/><xhtml:link rel="alternate" hreflang="en" href="https://quiet-wizard.vercel.app/fixture-pair.en.html"/></url>
+<url><loc>https://quiet-wizard.vercel.app/fixture-earlier.html</loc><lastmod>2026-11-24</lastmod></url>
+</urlset>
